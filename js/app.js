@@ -284,7 +284,10 @@ async function runSearch() {
   try {
     for (let i = 0; i < resultRows.length; i += 1) {
       const row = resultRows[i];
-      row.tracks = await spotifyClient.searchTracks(row.query, 5);
+      row.tracks = await spotifyClient.searchTracks(row.query, 5, {
+        artist: row.artist,
+        title: row.title,
+      });
       row.selectedUri = row.tracks[0]?.uri ?? null;
       await new Promise((r) => setTimeout(r, 350));
     }
@@ -365,6 +368,17 @@ async function registerServiceWorker() {
 
 async function boot() {
   $('redirect-uri-display').textContent = getRedirectUri();
+
+  $('btn-copy-redirect').addEventListener('click', async () => {
+    const text = getRedirectUri();
+    $('redirect-uri-display').textContent = text;
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('Omdirigerings-URI kopierad. Klistra in den under Redirect URIs i Spotify Dashboard.');
+    } catch {
+      showToast('Kunde inte kopiera automatiskt. Markera URI:n manuellt.', true);
+    }
+  });
 
   wireTabs();
   wirePlaylistMode();

@@ -1,5 +1,5 @@
 /**
- * @typedef {{ raw: string, query: string }} ParsedLine
+ * @typedef {{ raw: string, query: string, artist?: string, title?: string }} ParsedLine
  */
 
 const DASHES = /[–—\-]/;
@@ -17,21 +17,31 @@ export function parseTrackList(text) {
     if (!raw) continue;
 
     let query = raw;
+    /** @type {string | undefined} */
+    let artist;
+    /** @type {string | undefined} */
+    let title;
 
     const avMatch = raw.match(/^(.+?)\s+av\s+(.+)$/i);
     if (avMatch) {
-      const title = avMatch[1].trim();
-      const artist = avMatch[2].trim();
+      title = avMatch[1].trim();
+      artist = avMatch[2].trim();
       query = `${artist} ${title}`;
     } else if (DASHES.test(raw)) {
-      const parts = raw.split(DASHES).map((p) => p.trim());
+      const parts = raw.split(DASHES).map((p) => p.trim()).filter(Boolean);
       if (parts.length >= 2) {
-        const [a, b] = [parts[0], parts.slice(1).join(' ')];
-        query = `${a} ${b}`;
+        artist = parts[0];
+        title = parts.slice(1).join(' ');
+        query = `${artist} ${title}`;
       }
     }
 
-    out.push({ raw, query });
+    const lineObj = { raw, query };
+    if (artist && title) {
+      lineObj.artist = artist;
+      lineObj.title = title;
+    }
+    out.push(lineObj);
   }
   return out;
 }

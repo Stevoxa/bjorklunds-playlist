@@ -2,6 +2,37 @@ import { SPOTIFY_API_BASE } from './config.js';
 import { refreshAccessToken } from './auth.js';
 
 /**
+ * Spotify sök-q stödjer filter track: / artist: . Citat runt värden med mellanslag.
+ * @param {string} s
+ */
+function spotifyQuoted(s) {
+  const t = s.trim().replace(/"/g, '');
+  if (!t) return '';
+  return /\s/.test(t) ? `"${t}"` : t;
+}
+
+/**
+ * @param {string} q
+ * @param {string} [artist]
+ * @param {string} [title]
+ * @returns {string[]}
+ */
+function buildSearchQueries(q, artist, title) {
+  const queries = [];
+  const a = artist?.trim();
+  const ti = title?.trim();
+  if (a && ti) {
+    const aq = spotifyQuoted(a);
+    const tq = spotifyQuoted(ti);
+    queries.push(`track:${tq} artist:${aq}`);
+    queries.push(`artist:${aq} track:${tq}`);
+    queries.push(`${a} ${ti}`);
+  }
+  if (!queries.includes(q.trim())) queries.push(q.trim());
+  return queries;
+}
+
+/**
  * @param {string} accessToken
  * @param {string} path
  * @param {RequestInit} [init]
@@ -48,14 +79,25 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     /**
      * @param {string} q
      * @param {number} [limit]
+     * @param {{ artist?: string, title?: string }} [hints] Om satta: prova fält-sökningar först (bättre träffar).
      */
-    async searchTracks(q, limit = 5) {
+    async searchTracks(q, limit = 5, hints = {}) {
       const access = await ensureAccess();
-      const params = new URLSearchParams({ q, type: 'track', limit: String(limit) });
-      const res = await api(access, `/search?${params.toString()}`);
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      return data.tracks?.items ?? [];
+      const queries = buildSearchQueries(q, hints.artist, hints.title);
+      for (const query of queries) {
+        const params = new URLSearchParams({
+          q: query,
+          type: 'track',
+          limit: String(limit),
+          market: 'from_token',
+        });
+        const res = await api(access, `/search?${params.toString()}`);
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        const items = data.tracks?.items ?? [];
+        if (items.length > 0) return items;
+      }
+      return [];
     },
 
     /**

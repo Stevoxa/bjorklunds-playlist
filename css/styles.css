@@ -301,6 +301,29 @@ a:focus-visible {
   border-radius: 4px;
 }
 
+.redirect-uri-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space);
+  align-items: stretch;
+  margin-bottom: var(--space);
+}
+
+.code-block {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+}
+
 .fieldset {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

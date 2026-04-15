@@ -135,8 +135,18 @@
           <p class="help">
             Ange ditt egna <strong>Client ID</strong> från
             <a href="https://developer.spotify.com/dashboard" rel="noopener noreferrer" target="_blank">Spotify Developer Dashboard</a>.
-            Lägg till exakt denna omdirigerings-URI i appen: <code id="redirect-uri-display" class="code-inline"></code>
+            Med <strong>PKCE</strong> (som denna app använder) ska du <strong>inte</strong> ange någon <em>Client secret</em> i appen eller i källkoden.
           </p>
+          <p class="help">
+            <strong>Spotify-inloggning:</strong> Du skriver inte ditt Spotify-lösenord här. När du klickar ”Logga in med Spotify” skickas du till Spotifys egen inloggning. Fältet <strong>Lösenfras för lokal kryptering</strong> nedan är bara för att låsa upp/spara krypterad data på din enhet — det är <em>inte</em> ditt Spotify-lösenord.
+          </p>
+          <p class="help" id="redirect-uri-help">
+            I Spotify-appens inställningar, under <strong>Redirect URIs</strong>, måste det finnas exakt en rad som är <strong>identisk</strong> med URI:n nedan (rätt domän, sökväg, <code>https</code> och om appen visar avslutande <code>/</code> ska den också finnas med). Varje plats du kör sidan från (t.ex. olika GitHub Pages-mappar) behöver sin egen rad i listan.
+          </p>
+          <div class="redirect-uri-row">
+            <code id="redirect-uri-display" class="code-block" aria-describedby="redirect-uri-help"></code>
+            <button type="button" class="btn" id="btn-copy-redirect">Kopiera URI</button>
+          </div>
           <label for="client-id" class="label">Client ID</label>
           <input type="text" id="client-id" class="input" autocomplete="off" spellcheck="false" inputmode="verbatim" aria-describedby="client-id-help" />
           <p class="help" id="client-id-help">Lagras krypterat lokalt. Ingen client secret används.</p>
