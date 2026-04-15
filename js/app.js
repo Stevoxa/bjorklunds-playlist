@@ -17,6 +17,9 @@ let vaultData = null;
  */
 let resultRows = [];
 
+/** När true: rader utan `tracks` visar ”Söker…” i stället för inaktiv hjälptext */
+let searchInProgress = false;
+
 const SPOTIFY_CHUNK = 100;
 
 function defaultVault() {
@@ -280,34 +283,89 @@ function formatTrackChoiceLine(track) {
   return `${track.name ?? ''} — ${artists}${suffix}`;
 }
 
+function setSearchProgress(visible) {
+  $('search-progress').hidden = !visible;
+}
+
+function finalizeResultsSummary() {
+  const n = resultRows.length;
+  if (n === 0) {
+    $('results-summary').textContent = '';
+    return;
+  }
+  const matched = resultRows.filter((r) => r.tracks && r.tracks.length > 0).length;
+  const pending = resultRows.some((r) => r.tracks === null);
+  if (pending) {
+    $('results-summary').textContent = `${n} sökningar — ${matched} med träff hittills, resten ej sökta ännu.`;
+  } else {
+    $('results-summary').textContent = `${n} sökningar, ${matched} med minst en träff.`;
+  }
+}
+
 function renderResults() {
-  const tbody = $('results-body');
-  tbody.replaceChildren();
-  let matched = 0;
+  const blocks = $('results-body');
+  blocks.replaceChildren();
+  if (resultRows.length === 0) {
+    $('results-section').hidden = true;
+    $('results-summary').textContent = '';
+    updateApplyEnabled();
+    return;
+  }
+  $('results-section').hidden = false;
+
   resultRows.forEach((row, idx) => {
-    const tr = document.createElement('tr');
-    const tdRaw = document.createElement('td');
-    tdRaw.textContent = row.raw;
-    const tdQ = document.createElement('td');
-    tdQ.textContent = row.query;
-    const tdMatch = document.createElement('td');
+    if (idx > 0) {
+      const hrBetween = document.createElement('hr');
+      hrBetween.className = 'results-list__rule results-list__rule--between';
+      hrBetween.setAttribute('aria-hidden', 'true');
+      blocks.append(hrBetween);
+    }
+
+    const article = document.createElement('article');
+    article.className = 'match-block';
+    article.dataset.rowIndex = String(idx);
+    article.setAttribute('aria-label', `Sökning ${idx + 1}: ${row.query}`);
+
+    const queryRow = document.createElement('div');
+    queryRow.className = 'match-block__query-row';
+    const queryEl = document.createElement('div');
+    queryEl.className = 'match-block__query';
+    queryEl.textContent = row.query;
+    const pickCell = document.createElement('div');
+    pickCell.className = 'match-block__pick';
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    const hasHits = row.tracks !== null && row.tracks.length > 0;
+    chk.checked = hasHits;
+    chk.disabled = !hasHits;
+    chk.dataset.rowIndex = String(idx);
+    chk.classList.add('row-select');
+    chk.setAttribute('aria-label', `Ta med sökning ${idx + 1} i spellistan`);
+    pickCell.append(chk);
+    queryRow.append(queryEl, pickCell);
+
+    const hrUnder = document.createElement('hr');
+    hrUnder.className = 'results-list__rule';
+    hrUnder.setAttribute('aria-hidden', 'true');
+
+    const optionsWrap = document.createElement('div');
+    optionsWrap.className = 'match-block__options';
+
     if (row.tracks === null) {
-      tdMatch.textContent = spotifyClient
-        ? 'Inte sökt än — klicka ”Sök på Spotify”.'
-        : 'Inte sökt än — logga in under Inställningar och kör sökning.';
-      tdMatch.classList.add('row-muted');
+      const wait = document.createElement('p');
+      wait.className = 'match-block__status row-muted';
+      wait.textContent = searchInProgress ? 'Söker…' : 'Kör ”Sök på Spotify” för att hämta träffar.';
+      optionsWrap.append(wait);
     } else if (row.tracks.length === 0) {
-      tdMatch.textContent = 'Ingen träff';
-      tdMatch.classList.add('row-muted');
+      const none = document.createElement('p');
+      none.className = 'match-block__status row-muted';
+      none.textContent = 'Ingen träff';
+      optionsWrap.append(none);
     } else {
-      matched += 1;
       const pickId = `pick-${idx}`;
-      const wrap = document.createElement('div');
-      wrap.className = 'match-stack';
       row.tracks.forEach((t, ti) => {
         const label = document.createElement('label');
-        label.className = 'radio-label';
-        label.style.width = '100%';
+        label.className = 'match-option';
         const radio = document.createElement('input');
         radio.type = 'radio';
         radio.name = pickId;
@@ -320,34 +378,22 @@ function renderResults() {
         line.className = 'match-line';
         line.textContent = formatTrackChoiceLine(t);
         label.append(radio, line);
-        wrap.append(label);
+        optionsWrap.append(label);
       });
-      tdMatch.append(wrap);
       if (row.selectedUri === null && row.tracks[0]) row.selectedUri = row.tracks[0].uri;
     }
-    const tdChk = document.createElement('td');
-    const chk = document.createElement('input');
-    chk.type = 'checkbox';
-    const hasHits = row.tracks !== null && row.tracks.length > 0;
-    chk.checked = hasHits;
-    chk.disabled = !hasHits;
-    chk.dataset.rowIndex = String(idx);
-    chk.classList.add('row-select');
-    tdChk.append(chk);
-    tr.append(tdRaw, tdQ, tdMatch, tdChk);
-    tbody.append(tr);
+
+    article.append(queryRow, hrUnder, optionsWrap);
+    blocks.append(article);
   });
-  const pending = resultRows.some((r) => r.tracks === null);
-  $('results-summary').textContent = pending
-    ? `${resultRows.length} rader — kör ”Sök på Spotify” när du är inloggad för att hämta träffar från Spotify.`
-    : `${resultRows.length} rader, ${matched} med minst en träff.`;
-  $('results-section').hidden = resultRows.length === 0;
+
+  if (!searchInProgress) finalizeResultsSummary();
   updateApplyEnabled();
 }
 
 function updateApplyEnabled() {
   $('btn-apply-playlist').disabled = resultRows.length === 0 || !spotifyClient;
-  $('btn-search').disabled = resultRows.length === 0 || !spotifyClient;
+  $('btn-search').disabled = !spotifyClient;
 }
 
 function selectedUrisForPlaylist() {
@@ -367,27 +413,38 @@ async function runSearch() {
     showToast('Logga in på Spotify under Inställningar först.', true);
     return;
   }
-  if (resultRows.length === 0) {
-    showToast('Inga rader att söka.', true);
+  const parsed = parseTrackList($('paste-area').value);
+  if (parsed.length === 0) {
+    showToast('Inga rader att söka. Klistra in en låtlista först.', true);
     return;
   }
+  resultRows = parsed.map((p) => ({ ...p, tracks: null, selectedUri: null }));
+  searchInProgress = true;
+  renderResults();
+  setSearchProgress(true);
   $('btn-search').disabled = true;
+  $('btn-clear-paste').disabled = true;
   try {
     for (let i = 0; i < resultRows.length; i += 1) {
+      $('results-summary').textContent = `Söker ${i + 1} av ${resultRows.length} …`;
       const row = resultRows[i];
       row.tracks = await spotifyClient.searchTracks(row.query, 5, {
         artist: row.artist,
         title: row.title,
       });
       row.selectedUri = row.tracks[0]?.uri ?? null;
+      renderResults();
       await new Promise((r) => setTimeout(r, 350));
     }
-    renderResults();
     showToast('Sökning klar.');
   } catch (e) {
     showToast(String(e?.message ?? e), true);
   } finally {
-    $('btn-search').disabled = false;
+    searchInProgress = false;
+    setSearchProgress(false);
+    $('btn-search').disabled = !spotifyClient;
+    $('btn-clear-paste').disabled = false;
+    renderResults();
   }
 }
 
@@ -553,14 +610,16 @@ async function boot() {
     updateApplyEnabled();
   });
 
-  $('btn-parse').addEventListener('click', () => {
-    const parsed = parseTrackList($('paste-area').value);
-    resultRows = parsed.map((p) => ({ ...p, tracks: null, selectedUri: null }));
-    renderResults();
-    showToast(parsed.length ? `${parsed.length} rader klara för sökning.` : 'Inga rader hittades.', !parsed.length);
-  });
-
   $('btn-search').addEventListener('click', () => runSearch());
+
+  $('btn-clear-paste').addEventListener('click', () => {
+    $('paste-area').value = '';
+    resultRows = [];
+    searchInProgress = false;
+    setSearchProgress(false);
+    renderResults();
+    updateApplyEnabled();
+  });
 
   $('btn-select-all').addEventListener('click', () => {
     document.querySelectorAll('.row-select').forEach((c) => {

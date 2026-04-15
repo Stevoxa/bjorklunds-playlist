@@ -33,8 +33,8 @@
         <section class="card" aria-labelledby="heading-paste">
           <h2 id="heading-paste" class="card__title">Klistra in låtlista</h2>
           <p class="help" id="paste-help">
-            En rad per låt. Tips: <kbd>Artist</kbd> – <kbd>Titel</kbd>, <kbd>Artist</kbd>, <kbd>Titel</kbd> eller <kbd>Titel</kbd> av <kbd>Artist</kbd>. Efter ”Tolka rader” måste du klicka
-            <strong>Sök på Spotify</strong> (kräver inloggning under Inställningar).
+            En rad per låt. Tips: <kbd>Artist</kbd> – <kbd>Titel</kbd>, <kbd>Artist</kbd>, <kbd>Titel</kbd> eller <kbd>Titel</kbd> av <kbd>Artist</kbd>.
+            <strong>Sök på Spotify</strong> tolkar listan och hämtar träffar (kräver inloggning under Inställningar).
           </p>
           <label for="paste-area" class="label">Text</label>
           <textarea
@@ -46,32 +46,36 @@
             aria-describedby="paste-help"
             placeholder="Exempel:&#10;ABBA – Dancing Queen&#10;Waterloo av ABBA"
           ></textarea>
-          <div class="row row--wrap">
-            <button type="button" class="btn btn--primary" id="btn-parse">Tolka rader</button>
-            <button type="button" class="btn" id="btn-search" disabled>Sök på Spotify</button>
+          <div class="row row--wrap row--paste-actions">
+            <button type="button" class="btn btn--primary" id="btn-search" disabled>Sök på Spotify</button>
+            <button type="button" class="btn" id="btn-clear-paste">Rensa</button>
+            <div id="search-progress" class="search-progress" hidden>
+              <div class="circular-progress" role="status" aria-label="Söker">
+                <svg class="circular-progress__svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <circle class="circular-progress__track" cx="24" cy="24" r="20" />
+                  <circle class="circular-progress__arc" cx="24" cy="24" r="20" transform="rotate(-90 24 24)" />
+                </svg>
+              </div>
+              <span class="search-progress__label">Söker…</span>
+            </div>
           </div>
         </section>
 
         <section class="card" aria-labelledby="heading-results" id="results-section" hidden>
-          <h2 id="heading-results" class="card__title">Matchningar</h2>
           <p class="help" id="results-summary" aria-live="polite"></p>
           <p class="help" id="match-columns-help">
-            <strong>Match:</strong> Spotify kan returnera flera närliggande spår för samma rad — välj <em>vilket</em> spår som ska användas (vi visar album och år så likadana titlar skiljs åt).
-            <strong>Välj:</strong> kryssa i om raden ska tas med när du skapar eller uppdaterar spellistan (du kan lämna ur vissa rader trots träff).
+            <strong>Match:</strong> Spotify kan returnera flera närliggande spår för samma sökning — välj <em>vilket</em> spår som ska användas (album och år visas så likadana titlar skiljs åt).
+            <strong>Välj:</strong> kryssa i om sökningen ska tas med när du skapar eller uppdaterar spellistan (du kan lämna ur trots träff).
           </p>
-          <div class="table-wrap" role="region" aria-label="Resultatlista" tabindex="0">
-            <table class="results" id="results-table">
-              <caption class="visually-hidden">Rader och matchade Spotify-låtar</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Rad</th>
-                  <th scope="col">Sökning</th>
-                  <th scope="col">Match</th>
-                  <th scope="col">Välj</th>
-                </tr>
-              </thead>
-              <tbody id="results-body"></tbody>
-            </table>
+          <div class="results-wrap" role="region" aria-label="Resultatlista" tabindex="0">
+            <div class="results-list">
+              <div class="results-list__header">
+                <h2 id="heading-results" class="results-list__title">Matchningar</h2>
+                <span class="results-list__pick-label">Välj</span>
+              </div>
+              <hr class="results-list__rule" aria-hidden="true" />
+              <div id="results-body" class="results-list__blocks"></div>
+            </div>
           </div>
           <div class="row row--wrap">
             <button type="button" class="btn btn--primary" id="btn-select-all">Markera alla med träff</button>
@@ -205,6 +209,12 @@
               </ol>
               <p class="help">
                 <strong>I Spotify Developer Dashboard</strong> (din app): om läget är <strong>Development</strong> måste ditt Spotify-konto finnas med som testanvändare, annars kan API neka vissa steg. Kontrollera också att <strong>Redirect URI</strong> fortfarande stämmer exakt med den URI som visas högst upp här.
+              </p>
+              <p class="help">
+                <strong>Varför stramar Spotify åt?</strong> I <em>Development mode</em> gäller bland annat krav på <strong>Spotify Premium</strong> för den som använder API:et, begränsning till <strong>ett</strong> Development-Client-ID per utvecklare, max <strong>fem</strong> auktoriserade användare per app och ett smalare API-utbud — se Spotifys egen sammanfattning och uppdateringar i
+                <a href="https://developer.spotify.com/blog/2026-02-06-update-on-developer-access-and-platform-security" rel="noopener noreferrer" target="_blank">Update on Developer Access and Platform Security</a>
+                (feb 2026). För endpoint- och fältändringar, se
+                <a href="https://developer.spotify.com/documentation/web-api/references/changes/february-2026" rel="noopener noreferrer" target="_blank">Web API Changelog – February 2026</a>.
               </p>
               <p class="help">
                 Om du ska skapa <strong>publik</strong> spellista måste du kryssa i ”Publik spellista” och token måste inkludera rättighet för det. Vid tvekan: lämna den <strong>urkryssad</strong> (privat spellista) och testa igen.

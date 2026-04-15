@@ -218,6 +218,10 @@ body {
   resize: vertical;
 }
 
+.select {
+  max-width: min(20rem, 100%);
+}
+
 .textarea:focus-visible,
 .input:focus-visible,
 .select:focus-visible {
@@ -358,7 +362,61 @@ a:focus-visible {
   accent-color: var(--spotify);
 }
 
-.table-wrap {
+.row--paste-actions {
+  align-items: center;
+  gap: var(--space-sm) var(--space);
+}
+
+.search-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--touch);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.search-progress__label {
+  white-space: nowrap;
+}
+
+.circular-progress {
+  width: 2.125rem;
+  height: 2.125rem;
+  flex-shrink: 0;
+  color: var(--spotify);
+}
+
+.circular-progress__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: circular-progress-rotate 0.85s linear infinite;
+}
+
+.circular-progress__track {
+  stroke: currentColor;
+  stroke-width: 4;
+  fill: none;
+  opacity: 0.22;
+}
+
+.circular-progress__arc {
+  stroke: currentColor;
+  stroke-width: 4;
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 31.42 94.25;
+}
+
+@keyframes circular-progress-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.results-wrap {
   overflow-x: auto;
   margin-bottom: var(--space);
   -webkit-overflow-scrolling: touch;
@@ -366,36 +424,118 @@ a:focus-visible {
   border-radius: var(--radius-sm);
 }
 
-.results {
-  width: 100%;
-  border-collapse: collapse;
+.results-list {
+  --results-pick-col: 3.25rem;
   font-size: 0.92rem;
 }
 
-.results th,
-.results td {
+.results-list__header {
+  display: grid;
+  grid-template-columns: 1fr var(--results-pick-col);
+  align-items: center;
+  gap: var(--space-sm);
   padding: 0.65rem 0.75rem;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-}
-
-.results th {
-  background: color-mix(in srgb, var(--surface) 85%, var(--border));
+  background: color-mix(in srgb, var(--surface) 88%, var(--border));
   font-weight: 700;
 }
 
-.results tr:last-child td {
-  border-bottom: none;
+.results-list__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
-.results input[type="checkbox"] {
+.results-list__pick-label {
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.results-list__rule {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+
+.results-list__rule--between {
+  border-top-width: 1px;
+}
+
+.results-list__blocks {
+  padding-bottom: 0.15rem;
+}
+
+.match-block__query-row {
+  display: grid;
+  grid-template-columns: 1fr var(--results-pick-col);
+  align-items: start;
+  gap: var(--space-sm);
+  padding: 0.65rem 0.75rem 0.45rem;
+}
+
+.match-block__query {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.match-block__pick {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0.12rem;
+}
+
+.match-block__pick .row-select {
   width: 1.25rem;
   height: 1.25rem;
   accent-color: var(--spotify);
 }
 
-.match-line {
+.match-block__options {
+  padding: 0 0.75rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.match-block__status {
+  margin: 0;
+  padding: 0.35rem 0.25rem;
+  font-size: 0.92rem;
+}
+
+.match-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3rem;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.match-option:focus-within {
+  outline: var(--focus);
+  outline-offset: 2px;
+}
+
+.match-option input[type="radio"] {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: var(--spotify);
+}
+
+.match-option .match-line {
+  flex: 1;
+  min-width: 0;
   font-size: 0.9rem;
   line-height: 1.35;
 }
@@ -509,13 +649,4 @@ a:focus-visible {
 
 .row-muted {
   color: var(--text-muted);
-}
-
-@media (max-width: 640px) {
-  .results th:nth-child(2),
-  .results td:nth-child(2) {
-    max-width: 28vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
 }
