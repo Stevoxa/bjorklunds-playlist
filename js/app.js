@@ -217,6 +217,28 @@ function wirePlaylistMode() {
   update();
 }
 
+/** @param {number | undefined} ms */
+function formatTrackDuration(ms) {
+  if (ms == null || Number.isNaN(ms)) return '';
+  const s = Math.round(ms / 1000);
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+/** @param {object} track Spotify track-objekt från sökning */
+function formatTrackChoiceLine(track) {
+  const album = track.album?.name ?? '';
+  const rawDate = track.album?.release_date || '';
+  const year = rawDate.length >= 4 ? rawDate.slice(0, 4) : '';
+  const albumBit = [album, year].filter(Boolean).join(', ');
+  const dur = formatTrackDuration(track.duration_ms);
+  const extras = [albumBit, dur].filter(Boolean);
+  const suffix = extras.length ? ` (${extras.join(' · ')})` : '';
+  const artists = (track.artists || []).map((a) => a.name).join(', ');
+  return `${track.name ?? ''} — ${artists}${suffix}`;
+}
+
 function renderResults() {
   const tbody = $('results-body');
   tbody.replaceChildren();
@@ -253,15 +275,10 @@ function renderResults() {
         radio.addEventListener('change', () => {
           row.selectedUri = t.uri;
         });
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'match-name';
-        nameSpan.textContent = t.name ?? '';
-        const metaSpan = document.createElement('span');
-        metaSpan.className = 'match-meta';
-        metaSpan.textContent = ` — ${(t.artists || []).map((a) => a.name).join(', ')}`;
-        const span = document.createElement('span');
-        span.append(nameSpan, metaSpan);
-        label.append(radio, span);
+        const line = document.createElement('span');
+        line.className = 'match-line';
+        line.textContent = formatTrackChoiceLine(t);
+        label.append(radio, line);
         wrap.append(label);
       });
       tdMatch.append(wrap);
@@ -346,11 +363,10 @@ async function applyPlaylist() {
   const mode = document.querySelector('input[name="pl-mode"]:checked')?.value;
   $('btn-apply-playlist').disabled = true;
   try {
-    const me = await spotifyClient.me();
     if (mode === 'new') {
       const name = $('new-pl-name').value.trim() || 'Ny spellista';
       const isPublic = $('new-pl-public').checked;
-      const pl = await spotifyClient.createPlaylist(me.id, { name, isPublic });
+      const pl = await spotifyClient.createPlaylist({ name, isPublic });
       for (let i = 0; i < uris.length; i += SPOTIFY_CHUNK) {
         await spotifyClient.appendPlaylistTracks(pl.id, uris.slice(i, i + SPOTIFY_CHUNK));
       }

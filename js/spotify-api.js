@@ -13,11 +13,25 @@ function spotifyQuoted(s) {
 }
 
 /**
- * @param {string} q
- * @param {string} [artist]
- * @param {string} [title]
- * @returns {string[]}
+ * @param {number} status
+ * @param {string} bodyText
  */
+export function formatSpotifyApiError(status, bodyText) {
+  let spotifyMsg = '';
+  try {
+    const j = JSON.parse(bodyText);
+    if (j?.error?.message) spotifyMsg = j.error.message;
+    else if (typeof j?.error === 'string') spotifyMsg = j.error;
+  } catch {
+    /* ok */
+  }
+  const prefix = spotifyMsg || bodyText?.slice(0, 200)?.trim() || `HTTP ${status}`;
+  if (status === 401 || status === 403) {
+    return `${prefix} — Om du nyligen ändrat scopes i Spotify Dashboard: använd ”Rensa session”, logga in igen och spara. Prova också privat spellista (lämna ”Publik spellista” okryssad) om publik nekas.`;
+  }
+  return prefix;
+}
+
 function buildSearchQueries(q, artist, title) {
   const queries = [];
   const a = artist?.trim();
@@ -139,17 +153,27 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     },
 
     /**
-     * @param {string} userId
+     * Skapar spellista för inloggad användare (POST /me/playlists).
      * @param {{ name: string, isPublic: boolean }} opts
      */
-    async createPlaylist(userId, opts) {
+    async createPlaylist(opts) {
       const access = await ensureAccess();
-      const res = await api(access, `/users/${encodeURIComponent(userId)}/playlists`, {
+      const body = {
+        name: opts.name,
+        public: opts.isPublic,
+        collaborative: false,
+      };
+      const res = await api(access, '/me/playlists', {
         method: 'POST',
-        body: JSON.stringify({ name: opts.name, public: opts.isPublic }),
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      const text = await res.text();
+      if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
+      try {
+        return text ? JSON.parse(text) : {};
+      } catch {
+        return {};
+      }
     },
 
     /**
@@ -162,8 +186,13 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         method: 'PUT',
         body: JSON.stringify({ uris }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      const text = await res.text();
+      if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
+      try {
+        return text ? JSON.parse(text) : {};
+      } catch {
+        return {};
+      }
     },
 
     /**
@@ -176,8 +205,13 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         method: 'POST',
         body: JSON.stringify({ uris }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      const text = await res.text();
+      if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
+      try {
+        return text ? JSON.parse(text) : {};
+      } catch {
+        return {};
+      }
     },
   };
 }

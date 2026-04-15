@@ -395,13 +395,9 @@ a:focus-visible {
   accent-color: var(--spotify);
 }
 
-.match-name {
-  font-weight: 600;
-}
-
-.match-meta {
-  color: var(--text-muted);
-  font-size: 0.88em;
+.match-line {
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .status {
