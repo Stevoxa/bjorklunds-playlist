@@ -1,0 +1,20 @@
+{
+  "id": "https://stevoxa.github.io/bjorklunds-playlist/",
+  "name": "Björklund spellista",
+  "short_name": "Spellista",
+  "description": "Lokal PWA: sök Spotify-låtar från inklistrad lista och skapa eller uppdatera spellistor.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f1419",
+  "theme_color": "#1db954",
+  "lang": "sv",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

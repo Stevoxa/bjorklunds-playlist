@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1db954" />
+    <meta name="description" content="Lokal PWA för att matcha låtar mot Spotify och hantera spellistor." />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <title>Björklund spellista</title>
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Hoppa till innehåll</a>
+
+    <header class="site-header" role="banner">
+      <div class="site-header__inner">
+        <h1 class="site-title">Björklund spellista</h1>
+        <p class="site-tagline">Lokal klient · PKCE · krypterad lagring</p>
+      </div>
+      <nav class="tabs" aria-label="Huvudsektioner">
+        <button type="button" class="tabs__tab is-active" data-tab="tracks" aria-controls="panel-tracks" id="tab-tracks" aria-selected="true">
+          Låtar
+        </button>
+        <button type="button" class="tabs__tab" data-tab="settings" aria-controls="panel-settings" id="tab-settings" aria-selected="false">
+          Inställningar
+        </button>
+      </nav>
+    </header>
+
+    <main id="main" class="main" tabindex="-1">
+      <div id="panel-tracks" class="panel is-visible" role="tabpanel" aria-labelledby="tab-tracks">
+        <section class="card" aria-labelledby="heading-paste">
+          <h2 id="heading-paste" class="card__title">Klistra in låtlista</h2>
+          <p class="help" id="paste-help">En rad per låt. Tips: <kbd>Artist</kbd> – <kbd>Titel</kbd> eller <kbd>Titel</kbd> av <kbd>Artist</kbd>.</p>
+          <label for="paste-area" class="label">Text</label>
+          <textarea
+            id="paste-area"
+            class="textarea"
+            rows="8"
+            autocomplete="off"
+            spellcheck="false"
+            aria-describedby="paste-help"
+            placeholder="Exempel:&#10;ABBA – Dancing Queen&#10;Waterloo av ABBA"
+          ></textarea>
+          <div class="row row--wrap">
+            <button type="button" class="btn btn--primary" id="btn-parse">Tolka rader</button>
+            <button type="button" class="btn" id="btn-search" disabled>Sök på Spotify</button>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="heading-results" id="results-section" hidden>
+          <h2 id="heading-results" class="card__title">Matchningar</h2>
+          <p class="help" id="results-summary" aria-live="polite"></p>
+          <div class="table-wrap" role="region" aria-label="Resultatlista" tabindex="0">
+            <table class="results" id="results-table">
+              <caption class="visually-hidden">Rader och matchade Spotify-låtar</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Rad</th>
+                  <th scope="col">Sökning</th>
+                  <th scope="col">Match</th>
+                  <th scope="col">Välj</th>
+                </tr>
+              </thead>
+              <tbody id="results-body"></tbody>
+            </table>
+          </div>
+          <div class="row row--wrap">
+            <button type="button" class="btn btn--primary" id="btn-select-all">Markera alla med träff</button>
+            <button type="button" class="btn" id="btn-clear-selection">Avmarkera</button>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="heading-playlist">
+          <h2 id="heading-playlist" class="card__title">Spellista på Spotify</h2>
+          <fieldset class="fieldset">
+            <legend class="legend">Åtgärd</legend>
+            <div class="radio-row">
+              <label class="radio-label">
+                <input type="radio" name="pl-mode" value="new" checked />
+                Skapa ny spellista
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="pl-mode" value="existing" />
+                Uppdatera befintlig
+              </label>
+            </div>
+          </fieldset>
+
+          <div id="block-new-playlist">
+            <label for="new-pl-name" class="label">Namn på ny spellista</label>
+            <input type="text" id="new-pl-name" class="input" autocomplete="off" />
+            <div class="checkbox-row">
+              <input type="checkbox" id="new-pl-public" />
+              <label for="new-pl-public">Publik spellista</label>
+            </div>
+          </div>
+
+          <div id="block-existing-playlist" hidden>
+            <label for="existing-pl-id" class="label">Spelliste-ID eller Spotify-URI</label>
+            <input
+              type="text"
+              id="existing-pl-id"
+              class="input"
+              autocomplete="off"
+              placeholder="spotify:playlist:… eller bara ID"
+              aria-describedby="existing-pl-help"
+            />
+            <p class="help" id="existing-pl-help">Du kan klistra in en länk från Spotify; appen plockar ut ID automatiskt.</p>
+            <fieldset class="fieldset">
+              <legend class="legend">Uppdatering</legend>
+              <div class="radio-row">
+                <label class="radio-label">
+                  <input type="radio" name="pl-update" value="append" checked />
+                  Lägg till valda låtar
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="pl-update" value="replace" />
+                  Ersätt hela spellistan med valda
+                </label>
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="row row--wrap">
+            <button type="button" class="btn btn--primary" id="btn-apply-playlist" disabled>Utför</button>
+          </div>
+        </section>
+      </div>
+
+      <div id="panel-settings" class="panel" role="tabpanel" aria-labelledby="tab-settings" hidden>
+        <section class="card" aria-labelledby="heading-spotify">
+          <h2 id="heading-spotify" class="card__title">Spotify</h2>
+          <p class="help">
+            Ange ditt egna <strong>Client ID</strong> från
+            <a href="https://developer.spotify.com/dashboard" rel="noopener noreferrer" target="_blank">Spotify Developer Dashboard</a>.
+            Lägg till exakt denna omdirigerings-URI i appen: <code id="redirect-uri-display" class="code-inline"></code>
+          </p>
+          <label for="client-id" class="label">Client ID</label>
+          <input type="text" id="client-id" class="input" autocomplete="off" spellcheck="false" inputmode="verbatim" aria-describedby="client-id-help" />
+          <p class="help" id="client-id-help">Lagras krypterat lokalt. Ingen client secret används.</p>
+
+          <label for="crypto-pass" class="label">Lösenfras för lokal kryptering</label>
+          <input type="password" id="crypto-pass" class="input" autocomplete="new-password" aria-describedby="crypto-pass-help" />
+          <p class="help" id="crypto-pass-help">
+            Används för att kryptera tokens och inställningar i IndexedDB. Om du glömmer den måste du logga in på Spotify igen och spara om.
+          </p>
+
+          <div class="row row--wrap">
+            <button type="button" class="btn btn--primary" id="btn-save-settings">Spara lokalt</button>
+            <button type="button" class="btn" id="btn-load-vault">Läs in sparad data</button>
+            <button type="button" class="btn" id="btn-spotify-login">Logga in med Spotify</button>
+            <button type="button" class="btn btn--danger" id="btn-logout">Rensa session</button>
+          </div>
+          <p class="status" id="auth-status" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="card" aria-labelledby="heading-prefs">
+          <h2 id="heading-prefs" class="card__title">Appinställningar</h2>
+          <label for="pref-theme" class="label">Tema</label>
+          <select id="pref-theme" class="select">
+            <option value="system">System</option>
+            <option value="light">Ljust</option>
+            <option value="dark">Mörkt</option>
+          </select>
+          <p class="help">Tema sparas i den krypterade valvet tillsammans med övriga inställningar när du klickar Spara lokalt.</p>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <p>All data lagras på din enhet. Ingen server i denna app.</p>
+    </footer>
+
+    <div id="toast" class="toast" role="alert" aria-live="assertive" hidden></div>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
