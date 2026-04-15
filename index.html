@@ -78,7 +78,7 @@
         <details class="card spotify-log-card">
           <summary class="spotify-log-card__summary">Spotify API-logg (råsvar vid sökning)</summary>
           <p class="help">
-            Varje sökning loggas som en JSON-rad: HTTP-status, <code>tracks.total</code>, antal returnerade objekt och några exempel. Samma skrivs till konsolen (F12 → Konsol, filter ”Spotify API”).
+            Varje sökning loggas som en JSON-rad: HTTP-status, söksträng <code>q</code>, <code>tracks.total</code>, antal träffar och några exempel (namn/URI). <strong>Client ID, tokens och client secret</strong> skrivs inte ut; känsliga nycklar maskeras om de skulle förekomma.
           </p>
           <pre id="spotify-log-pre" class="log-pre" tabindex="0" aria-label="Spotify API-logg"></pre>
           <button type="button" class="btn" id="btn-clear-spotify-log">Rensa logg</button>

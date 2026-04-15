@@ -123,7 +123,6 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             ok: res.ok,
             tracksTotal: data.tracks?.total,
             itemsReturned: items.length,
-            hints,
             sample: items.slice(0, 5).map((t) => ({
               name: t.name,
               artists: (t.artists || []).map((a) => a.name),
