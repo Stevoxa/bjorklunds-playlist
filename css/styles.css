@@ -377,6 +377,11 @@ a:focus-visible {
   font-weight: 600;
 }
 
+/* `hidden` sätter display:none i UA — vår display:flex vinner annars och indikatorn syns alltid */
+.search-progress[hidden] {
+  display: none !important;
+}
+
 .search-progress__label {
   white-space: nowrap;
 }
@@ -509,13 +514,13 @@ a:focus-visible {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  min-height: 3rem;
+  min-height: 2.75rem;
   width: 100%;
   max-width: 100%;
   margin: 0;
-  padding: 0.4rem 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.25rem;
+  border: none;
+  border-radius: 0;
   cursor: pointer;
   box-sizing: border-box;
 }
