@@ -1,5 +1,6 @@
 import { SPOTIFY_API_BASE } from './config.js';
 import { refreshAccessToken } from './auth.js';
+import { logSpotify } from './spotify-log.js';
 
 /**
  * Spotify sök-q stödjer filter track: / artist: . Citat runt värden med mellanslag.
@@ -84,18 +85,56 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     async searchTracks(q, limit = 5, hints = {}) {
       const access = await ensureAccess();
       const queries = buildSearchQueries(q, hints.artist, hints.title);
+      /** @type {('from_token' | null)[]} */
+      const markets = ['from_token', null];
       for (const query of queries) {
-        const params = new URLSearchParams({
-          q: query,
-          type: 'track',
-          limit: String(limit),
-          market: 'from_token',
-        });
-        const res = await api(access, `/search?${params.toString()}`);
-        if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-        const items = data.tracks?.items ?? [];
-        if (items.length > 0) return items;
+        for (const market of markets) {
+          const params = new URLSearchParams({
+            q: query,
+            type: 'track',
+            limit: String(limit),
+          });
+          if (market) params.set('market', market);
+          const path = `/search?${params.toString()}`;
+          const res = await api(access, path);
+          const bodyText = await res.text();
+          let data;
+          try {
+            data = bodyText ? JSON.parse(bodyText) : {};
+          } catch {
+            logSpotify({
+              t: new Date().toISOString(),
+              endpoint: 'GET /v1/search',
+              q: query,
+              market: market ?? '(ingen)',
+              httpStatus: res.status,
+              parseError: 'Svar var inte JSON',
+              bodyPreview: bodyText.slice(0, 400),
+            });
+            throw new Error('Ogiltigt JSON-svar från Spotify');
+          }
+          const items = data.tracks?.items ?? [];
+          logSpotify({
+            t: new Date().toISOString(),
+            endpoint: 'GET /v1/search',
+            q: query,
+            market: market ?? '(ingen)',
+            httpStatus: res.status,
+            ok: res.ok,
+            tracksTotal: data.tracks?.total,
+            itemsReturned: items.length,
+            hints,
+            sample: items.slice(0, 5).map((t) => ({
+              name: t.name,
+              artists: (t.artists || []).map((a) => a.name),
+              uri: t.uri,
+            })),
+          });
+          if (!res.ok) {
+            throw new Error(bodyText || `HTTP ${res.status}`);
+          }
+          if (items.length > 0) return items;
+        }
       }
       return [];
     },

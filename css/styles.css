@@ -433,6 +433,31 @@ a:focus-visible {
   z-index: 900;
 }
 
+.spotify-log-card__summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.spotify-log-card__summary:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.log-pre {
+  max-height: 14rem;
+  overflow: auto;
+  margin: 0 0 var(--space);
+  padding: var(--space);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

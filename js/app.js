@@ -3,6 +3,7 @@ import { loadVault, saveVault, VAULT_KEY } from './vault.js';
 import { idbGet } from './db.js';
 import { parseTrackList } from './parser.js';
 import { createSpotifyClient, parsePlaylistIdFromInput } from './spotify-api.js';
+import { subscribeSpotifyLog, clearSpotifyLog } from './spotify-log.js';
 
 /** @type {ReturnType<createSpotifyClient> | null} */
 let spotifyClient = null;
@@ -10,7 +11,10 @@ let spotifyClient = null;
 /** @type {object | null} */
 let vaultData = null;
 
-/** @type {{ raw: string, query: string, tracks: object[], selectedUri: string | null }[]} */
+/**
+ * tracks: null = Spotify-sökning ej körd, [] = sökt men inget, annars träfflista
+ * @type {{ raw: string, query: string, artist?: string, title?: string, tracks: object[] | null, selectedUri: string | null }[]}
+ */
 let resultRows = [];
 
 const SPOTIFY_CHUNK = 100;
@@ -204,7 +208,12 @@ function renderResults() {
     const tdQ = document.createElement('td');
     tdQ.textContent = row.query;
     const tdMatch = document.createElement('td');
-    if (row.tracks.length === 0) {
+    if (row.tracks === null) {
+      tdMatch.textContent = spotifyClient
+        ? 'Inte sökt än — klicka ”Sök på Spotify”.'
+        : 'Inte sökt än — logga in under Inställningar och kör sökning.';
+      tdMatch.classList.add('row-muted');
+    } else if (row.tracks.length === 0) {
       tdMatch.textContent = 'Ingen träff';
       tdMatch.classList.add('row-muted');
     } else {
@@ -241,15 +250,19 @@ function renderResults() {
     const tdChk = document.createElement('td');
     const chk = document.createElement('input');
     chk.type = 'checkbox';
-    chk.checked = row.tracks.length > 0;
-    chk.disabled = row.tracks.length === 0;
+    const hasHits = row.tracks !== null && row.tracks.length > 0;
+    chk.checked = hasHits;
+    chk.disabled = !hasHits;
     chk.dataset.rowIndex = String(idx);
     chk.classList.add('row-select');
     tdChk.append(chk);
     tr.append(tdRaw, tdQ, tdMatch, tdChk);
     tbody.append(tr);
   });
-  $('results-summary').textContent = `${resultRows.length} rader, ${matched} med minst en träff.`;
+  const pending = resultRows.some((r) => r.tracks === null);
+  $('results-summary').textContent = pending
+    ? `${resultRows.length} rader — kör ”Sök på Spotify” när du är inloggad för att hämta träffar från Spotify.`
+    : `${resultRows.length} rader, ${matched} med minst en träff.`;
   $('results-section').hidden = resultRows.length === 0;
   updateApplyEnabled();
 }
@@ -369,6 +382,19 @@ async function registerServiceWorker() {
 async function boot() {
   $('redirect-uri-display').textContent = getRedirectUri();
 
+  const logPre = $('spotify-log-pre');
+  subscribeSpotifyLog((line) => {
+    if (line === null) {
+      logPre.textContent = '';
+      return;
+    }
+    logPre.textContent = logPre.textContent ? `${logPre.textContent}\n${line}` : line;
+    logPre.scrollTop = logPre.scrollHeight;
+  });
+  $('btn-clear-spotify-log').addEventListener('click', () => {
+    clearSpotifyLog();
+  });
+
   $('btn-copy-redirect').addEventListener('click', async () => {
     const text = getRedirectUri();
     $('redirect-uri-display').textContent = text;
@@ -422,8 +448,7 @@ async function boot() {
 
   $('btn-parse').addEventListener('click', () => {
     const parsed = parseTrackList($('paste-area').value);
-    resultRows = parsed.map((p) => ({ ...p, tracks: [], selectedUri: null }));
-    $('btn-search').disabled = resultRows.length === 0;
+    resultRows = parsed.map((p) => ({ ...p, tracks: null, selectedUri: null }));
     renderResults();
     showToast(parsed.length ? `${parsed.length} rader klara för sökning.` : 'Inga rader hittades.', !parsed.length);
   });

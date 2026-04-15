@@ -32,7 +32,10 @@
       <div id="panel-tracks" class="panel is-visible" role="tabpanel" aria-labelledby="tab-tracks">
         <section class="card" aria-labelledby="heading-paste">
           <h2 id="heading-paste" class="card__title">Klistra in låtlista</h2>
-          <p class="help" id="paste-help">En rad per låt. Tips: <kbd>Artist</kbd> – <kbd>Titel</kbd> eller <kbd>Titel</kbd> av <kbd>Artist</kbd>.</p>
+          <p class="help" id="paste-help">
+            En rad per låt. Tips: <kbd>Artist</kbd> – <kbd>Titel</kbd>, <kbd>Artist</kbd>, <kbd>Titel</kbd> eller <kbd>Titel</kbd> av <kbd>Artist</kbd>. Efter ”Tolka rader” måste du klicka
+            <strong>Sök på Spotify</strong> (kräver inloggning under Inställningar).
+          </p>
           <label for="paste-area" class="label">Text</label>
           <textarea
             id="paste-area"
@@ -71,6 +74,15 @@
             <button type="button" class="btn" id="btn-clear-selection">Avmarkera</button>
           </div>
         </section>
+
+        <details class="card spotify-log-card">
+          <summary class="spotify-log-card__summary">Spotify API-logg (råsvar vid sökning)</summary>
+          <p class="help">
+            Varje sökning loggas som en JSON-rad: HTTP-status, <code>tracks.total</code>, antal returnerade objekt och några exempel. Samma skrivs till konsolen (F12 → Konsol, filter ”Spotify API”).
+          </p>
+          <pre id="spotify-log-pre" class="log-pre" tabindex="0" aria-label="Spotify API-logg"></pre>
+          <button type="button" class="btn" id="btn-clear-spotify-log">Rensa logg</button>
+        </details>
 
         <section class="card" aria-labelledby="heading-playlist">
           <h2 id="heading-playlist" class="card__title">Spellista på Spotify</h2>

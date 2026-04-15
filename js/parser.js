@@ -34,6 +34,15 @@ export function parseTrackList(text) {
         title = parts.slice(1).join(' ');
         query = `${artist} ${title}`;
       }
+    } else {
+      const comma = raw.match(/^([^,]+),\s*(.+)$/);
+      if (comma) {
+        artist = comma[1].trim();
+        title = comma[2].trim();
+        if (artist && title) {
+          query = `${artist} ${title}`;
+        }
+      }
     }
 
     const lineObj = { raw, query };
