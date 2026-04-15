@@ -427,6 +427,14 @@ a:focus-visible {
   font-weight: 600;
   box-shadow: var(--shadow);
   z-index: 900;
+  text-align: left;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.toast.toast--error {
+  max-width: min(96vw, 560px);
+  font-weight: 500;
 }
 
 .spotify-log-card__summary {

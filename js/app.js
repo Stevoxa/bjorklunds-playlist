@@ -37,14 +37,41 @@ function $(id) {
 
 function showToast(message, isError = false) {
   const t = $('toast');
+  clearTimeout(showToast._timer);
+  if (showToast._abort) {
+    showToast._abort.abort();
+    showToast._abort = null;
+  }
   t.textContent = message;
   t.hidden = false;
-  if (isError) t.style.background = '#c62828';
-  else t.style.background = '';
-  clearTimeout(showToast._timer);
-  showToast._timer = setTimeout(() => {
-    t.hidden = true;
-  }, 5000);
+  if (isError) {
+    t.style.background = '#c62828';
+    t.classList.add('toast--error');
+    t.style.cursor = 'pointer';
+    t.title = 'Tryck här för att stänga meddelandet';
+    const longHelp =
+      message.length > 100 ||
+      /scope|behörighet|Forbidden|403|401|Dashboard|Rensa session|privat spellista/i.test(message);
+    showToast._durationMs = longHelp ? 26_000 : 12_000;
+    const dismiss = () => {
+      clearTimeout(showToast._timer);
+      showToast._abort?.abort();
+      showToast._abort = null;
+      t.hidden = true;
+    };
+    showToast._abort = new AbortController();
+    t.addEventListener('click', dismiss, { signal: showToast._abort.signal });
+    showToast._timer = setTimeout(dismiss, showToast._durationMs);
+  } else {
+    t.style.background = '';
+    t.classList.remove('toast--error');
+    t.style.cursor = 'default';
+    t.removeAttribute('title');
+    showToast._durationMs = 5000;
+    showToast._timer = setTimeout(() => {
+      t.hidden = true;
+    }, showToast._durationMs);
+  }
 }
 
 function applyTheme(theme) {
