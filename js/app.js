@@ -333,6 +333,8 @@ function renderResults() {
     queryEl.textContent = row.query;
     const pickCell = document.createElement('div');
     pickCell.className = 'match-block__pick';
+    const switchLabel = document.createElement('label');
+    switchLabel.className = 'row-switch';
     const chk = document.createElement('input');
     chk.type = 'checkbox';
     const hasHits = row.tracks !== null && row.tracks.length > 0;
@@ -341,7 +343,16 @@ function renderResults() {
     chk.dataset.rowIndex = String(idx);
     chk.classList.add('row-select');
     chk.setAttribute('aria-label', `Ta med sökning ${idx + 1} i spellistan`);
-    pickCell.append(chk);
+    const track = document.createElement('span');
+    track.className = 'row-switch__track';
+    track.setAttribute('aria-hidden', 'true');
+    const mark = document.createElement('span');
+    mark.className = 'row-switch__mark';
+    const thumb = document.createElement('span');
+    thumb.className = 'row-switch__thumb';
+    track.append(mark, thumb);
+    switchLabel.append(chk, track);
+    pickCell.append(switchLabel);
     queryRow.append(queryEl, pickCell);
 
     const hrUnder = document.createElement('hr');
