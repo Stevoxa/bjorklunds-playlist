@@ -437,6 +437,38 @@ a:focus-visible {
   font-weight: 500;
 }
 
+.forbidden-help {
+  margin-top: var(--space-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space) var(--space);
+  background: color-mix(in srgb, var(--surface) 92%, var(--border));
+}
+
+.forbidden-help__summary {
+  font-weight: 700;
+  padding: var(--space) 0;
+  cursor: pointer;
+}
+
+.forbidden-help__summary:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.forbidden-help__list {
+  margin: 0 0 var(--space);
+  padding-left: 1.35rem;
+}
+
+.forbidden-help__list li {
+  margin-bottom: var(--space-sm);
+}
+
+.forbidden-help__body .help:last-child {
+  margin-bottom: 0;
+}
+
 .spotify-log-card__summary {
   font-weight: 700;
   cursor: pointer;

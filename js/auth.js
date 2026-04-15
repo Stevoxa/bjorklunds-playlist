@@ -58,6 +58,7 @@ export async function beginLogin(clientId) {
   sessionStorage.setItem(SS_CLIENT, clientId);
   sessionStorage.setItem(SS_REDIRECT, redirectUri);
 
+  // show_dialog: tvingar fram godkännande igen (annars kan Spotify svara direkt utan synlig ruta).
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: 'code',
@@ -65,6 +66,7 @@ export async function beginLogin(clientId) {
     code_challenge_method: 'S256',
     scope: SPOTIFY_SCOPES,
     state,
+    show_dialog: 'true',
   });
 
   const challenge = await sha256Base64Url(verifier);

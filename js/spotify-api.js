@@ -27,7 +27,7 @@ export function formatSpotifyApiError(status, bodyText) {
   }
   const prefix = spotifyMsg || bodyText?.slice(0, 200)?.trim() || `HTTP ${status}`;
   if (status === 401 || status === 403) {
-    return `${prefix} — Om du nyligen ändrat scopes i Spotify Dashboard: använd ”Rensa session”, logga in igen och spara. Prova också privat spellista (lämna ”Publik spellista” okryssad) om publik nekas.`;
+    return `${prefix}\n\n→ Öppna fliken Inställningar och expandera: »Om du får Forbidden (403)…« (checklista steg för steg).`;
   }
   return prefix;
 }

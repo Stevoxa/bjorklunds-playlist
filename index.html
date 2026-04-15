@@ -180,6 +180,29 @@
             <button type="button" class="btn btn--danger" id="btn-logout">Rensa session</button>
           </div>
           <p class="status" id="auth-status" role="status" aria-live="polite"></p>
+
+          <details class="forbidden-help">
+            <summary class="forbidden-help__summary">Om du får Forbidden (403) när du skapar spellista eller lägger till låtar</summary>
+            <div class="forbidden-help__body">
+              <p class="help">
+                <strong>Vad det betyder:</strong> Spotify svarar ”du får inte göra detta” (HTTP 403). Det är <em>inte</em> ett fel i lösenfras-fältet. Vanligast är att din <strong>inloggningstoken</strong> saknar behörighet för spellistor, eller att du inte fått en <strong>ny</strong> token efter att appen begär fler rättigheter.
+              </p>
+              <p class="help"><strong>Gör så här i denna app (i ordning):</strong></p>
+              <ol class="forbidden-help__list">
+                <li>Klicka <strong>Rensa session</strong> (knappen med röd kant). Då rensas Spotify-tokens (och sparas utan tokens om du har lösenfras ifylld).</li>
+                <li>Fyll i <strong>Client ID</strong> och <strong>Lösenfras</strong> som tidigare.</li>
+                <li>Klicka <strong>Logga in med Spotify</strong>. Du ska då se Spotifys sida (konto + godkänn rättigheter). Om du <em>inte</em> ser någon Spotify-sida kan webbläsaren redan vara inloggad på spotify.com — öppna då <a href="https://accounts.spotify.com/logout" rel="noopener noreferrer" target="_blank">accounts.spotify.com/logout</a> i samma webbläsare, gå tillbaka till appen och prova Logga in igen. Appen skickar <code>show_dialog=true</code> så godkännande oftast visas igen.</li>
+                <li>Klicka <strong>Spara lokalt</strong> så den nya token sparas krypterat.</li>
+                <li>Gå tillbaka till <strong>Låtar</strong> och prova <strong>Utför</strong> igen.</li>
+              </ol>
+              <p class="help">
+                <strong>I Spotify Developer Dashboard</strong> (din app): om läget är <strong>Development</strong> måste ditt Spotify-konto finnas med som testanvändare, annars kan API neka vissa steg. Kontrollera också att <strong>Redirect URI</strong> fortfarande stämmer exakt med den URI som visas högst upp här.
+              </p>
+              <p class="help">
+                Om du ska skapa <strong>publik</strong> spellista måste du kryssa i ”Publik spellista” och token måste inkludera rättighet för det. Vid tvekan: lämna den <strong>urkryssad</strong> (privat spellista) och testa igen.
+              </p>
+            </div>
+          </details>
         </section>
 
         <section class="card" aria-labelledby="heading-prefs">
