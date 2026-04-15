@@ -32,6 +32,43 @@ export function formatSpotifyApiError(status, bodyText) {
   return prefix;
 }
 
+/**
+ * Strukturerad logg för spelliste-skrivning (samma kö som sökning). Ingen Authorization-header loggas.
+ * @param {string} method
+ * @param {string} path Som skickas till api() (t.ex. /me/playlists eller /playlists/{id}/items)
+ * @param {Record<string, unknown>} requestMeta
+ */
+function logPlaylistWrite(method, path, requestMeta, res, bodyText) {
+  let parsed = null;
+  let parseErr = false;
+  try {
+    parsed = bodyText ? JSON.parse(bodyText) : null;
+  } catch {
+    parseErr = true;
+  }
+  /** @type {Record<string, unknown>} */
+  const entry = {
+    t: new Date().toISOString(),
+    kind: 'playlist_write',
+    method,
+    path,
+    request: requestMeta,
+    httpStatus: res.status,
+    ok: res.ok,
+  };
+  if (parseErr) {
+    entry.responseParse = 'non_json';
+    entry.bodyPreview = bodyText.slice(0, 500);
+  } else if (parsed && typeof parsed === 'object') {
+    if (parsed.error != null) entry.spotifyError = parsed.error;
+    if (parsed.snapshot_id != null) entry.snapshotId = parsed.snapshot_id;
+    if (parsed.id != null) entry.playlistId = parsed.id;
+    if (parsed.name != null) entry.playlistName = parsed.name;
+    if (parsed.href != null) entry.playlistHref = parsed.href;
+  }
+  logSpotify(entry);
+}
+
 function buildSearchQueries(q, artist, title) {
   const queries = [];
   const a = artist?.trim();
@@ -158,16 +195,18 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
      */
     async createPlaylist(opts) {
       const access = await ensureAccess();
+      const path = '/me/playlists';
       const body = {
         name: opts.name,
         public: opts.isPublic,
         collaborative: false,
       };
-      const res = await api(access, '/me/playlists', {
+      const res = await api(access, path, {
         method: 'POST',
         body: JSON.stringify(body),
       });
       const text = await res.text();
+      logPlaylistWrite('POST', path, { name: opts.name, public: opts.isPublic, collaborative: false }, res, text);
       if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
       try {
         return text ? JSON.parse(text) : {};
@@ -182,11 +221,18 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
      */
     async replacePlaylistTracks(playlistId, uris) {
       const access = await ensureAccess();
-      const res = await api(access, `/playlists/${encodeURIComponent(playlistId)}/tracks`, {
+      const path = `/playlists/${encodeURIComponent(playlistId)}/items`;
+      const requestMeta = {
+        playlistId,
+        uriCount: uris.length,
+        uriSample: uris.slice(0, 8),
+      };
+      const res = await api(access, path, {
         method: 'PUT',
         body: JSON.stringify({ uris }),
       });
       const text = await res.text();
+      logPlaylistWrite('PUT', path, requestMeta, res, text);
       if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
       try {
         return text ? JSON.parse(text) : {};
@@ -201,11 +247,18 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
      */
     async appendPlaylistTracks(playlistId, uris) {
       const access = await ensureAccess();
-      const res = await api(access, `/playlists/${encodeURIComponent(playlistId)}/tracks`, {
+      const path = `/playlists/${encodeURIComponent(playlistId)}/items`;
+      const requestMeta = {
+        playlistId,
+        uriCount: uris.length,
+        uriSample: uris.slice(0, 8),
+      };
+      const res = await api(access, path, {
         method: 'POST',
         body: JSON.stringify({ uris }),
       });
       const text = await res.text();
+      logPlaylistWrite('POST', path, requestMeta, res, text);
       if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
       try {
         return text ? JSON.parse(text) : {};

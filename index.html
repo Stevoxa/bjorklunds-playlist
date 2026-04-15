@@ -80,9 +80,9 @@
         </section>
 
         <details class="card spotify-log-card">
-          <summary class="spotify-log-card__summary">Spotify API-logg (råsvar vid sökning)</summary>
+          <summary class="spotify-log-card__summary">Spotify API-logg (sökning + spelliste-skrivning)</summary>
           <p class="help">
-            Varje sökning loggas som en JSON-rad: HTTP-status, söksträng <code>q</code>, <code>tracks.total</code>, antal träffar och några exempel (namn/URI). <strong>Client ID, tokens och client secret</strong> skrivs inte ut; känsliga nycklar maskeras om de skulle förekomma.
+            Sökning: JSON-rad utan <code>kind</code>. Skapa/lägga till/ersätta spellista: rad med <code>kind: &quot;playlist_write&quot;</code> — metod, path, <code>request</code> (t.ex. namn/publik, <code>playlistId</code>, <code>uriCount</code>, <code>uriSample</code> max 8 st), <code>httpStatus</code>, samt vid JSON-svar <code>spotifyError</code>, <code>snapshotId</code>, ev. <code>playlistId</code> från svar. Icke-JSON-svar: <code>bodyPreview</code>. <strong>Tokens och client secret</strong> loggas inte; känsliga nycklar maskeras.
           </p>
           <pre id="spotify-log-pre" class="log-pre" tabindex="0" aria-label="Spotify API-logg"></pre>
           <button type="button" class="btn" id="btn-clear-spotify-log">Rensa logg</button>
@@ -184,6 +184,14 @@
           <details class="forbidden-help">
             <summary class="forbidden-help__summary">Om du får Forbidden (403) när du skapar spellista eller lägger till låtar</summary>
             <div class="forbidden-help__body">
+              <p class="help">
+                <strong>Ingen lista med kryssrutor för rättigheter?</strong> Det är normalt: Spotify kan lägga samtycke i inloggning/avtal/kod utan att visa varje scope på en egen rad. Det viktiga är vad Spotify <em>faktiskt skickar tillbaka i token-svaret</em>. Efter inloggning ska statusraden här visa raden <strong>Beviljade rättigheter (från Spotify): …</strong> — där måste <code>playlist-modify-public</code> och/eller <code>playlist-modify-private</code> synas för spellistor.
+              </p>
+              <p class="help">
+                <strong>Tvinga nytt samtycke mot Spotify:</strong> öppna
+                <a href="https://www.spotify.com/account/apps/" rel="noopener noreferrer" target="_blank">spotify.com/account/apps</a>,
+                hitta denna app och välj <strong>Ta bort åtkomst</strong>. Logga sedan in igen via <strong>Logga in med Spotify</strong> i denna app och <strong>Spara lokalt</strong>.
+              </p>
               <p class="help">
                 <strong>Vad det betyder:</strong> Spotify svarar ”du får inte göra detta” (HTTP 403). Det är <em>inte</em> ett fel i lösenfras-fältet. Vanligast är att din <strong>inloggningstoken</strong> saknar behörighet för spellistor, eller att du inte fått en <strong>ny</strong> token efter att appen begär fler rättigheter.
               </p>

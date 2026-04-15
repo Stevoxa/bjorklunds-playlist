@@ -170,7 +170,21 @@ function setAuthStatus() {
     return;
   }
   const exp = new Date(vaultData.tokens.expiresAt).toLocaleString('sv-SE');
-  el.textContent = `Inloggad. Access token giltig till cirka ${exp}.`;
+  const gs = (vaultData.tokens.grantedScopeRaw || '').trim();
+  const hasPlaylistScope =
+    gs.includes('playlist-modify-public') || gs.includes('playlist-modify-private');
+  let lines = `Inloggad. Access token giltig till cirka ${exp}.`;
+  if (gs) {
+    lines += `\nBeviljade rättigheter (från Spotify): ${gs}`;
+  } else {
+    lines +=
+      '\nOBS: Spotify skickade ingen scope-lista i token-svaret (ovanligt). Om spellistor nekas, logga in igen efter att du återkallat appen (länk i checklistan nedan).';
+  }
+  if (gs && !hasPlaylistScope) {
+    lines +=
+      '\nOBS: Denna token saknar playlist-modify-public/private — spellistor kan inte skapas eller ändras. Återkalla appen under spotify.com/account/apps och logga in igen i denna app.';
+  }
+  el.textContent = lines;
 }
 
 /**
@@ -393,6 +407,25 @@ async function applyPlaylist() {
     if (mode === 'new') {
       const name = $('new-pl-name').value.trim() || 'Ny spellista';
       const isPublic = $('new-pl-public').checked;
+      const gs = (vaultData.tokens?.grantedScopeRaw || '').trim();
+      if (gs) {
+        const hasPub = gs.includes('playlist-modify-public');
+        const hasPriv = gs.includes('playlist-modify-private');
+        if (isPublic && !hasPub) {
+          showToast(
+            'Din token saknar playlist-modify-public (Spotify gav andra scopes). Lämna ”Publik spellista” urkryssad, eller återkalla appen på spotify.com/account/apps och logga in igen.',
+            true,
+          );
+          return;
+        }
+        if (!isPublic && !hasPriv) {
+          showToast(
+            'Din token saknar playlist-modify-private. Återkalla appen på spotify.com/account/apps och logga in igen, eller kontrollera att ditt konto finns under User management i Dashboard.',
+            true,
+          );
+          return;
+        }
+      }
       const pl = await spotifyClient.createPlaylist({ name, isPublic });
       for (let i = 0; i < uris.length; i += SPOTIFY_CHUNK) {
         await spotifyClient.appendPlaylistTracks(pl.id, uris.slice(i, i + SPOTIFY_CHUNK));

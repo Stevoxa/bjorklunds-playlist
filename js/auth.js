@@ -134,6 +134,8 @@ export async function consumeOAuthCallback() {
     accessToken: json.access_token,
     refreshToken: json.refresh_token ?? null,
     expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000,
+    /** Spotify returnerar vilka scopes denna token faktiskt har (mellanslag-separerat). */
+    grantedScopeRaw: typeof json.scope === 'string' ? json.scope : '',
   };
 
   /** Samma client_id som vid authorize — formuläret är tomt efter omdirigering. */
@@ -166,9 +168,14 @@ export async function refreshAccessToken(refreshToken, clientId) {
     throw new Error(`refresh_failed:${t}`);
   }
   const json = await res.json();
-  return {
+  /** @type {{ accessToken: string, refreshToken: string, expiresAt: number, grantedScopeRaw?: string }} */
+  const out = {
     accessToken: json.access_token,
     refreshToken: json.refresh_token ?? refreshToken,
     expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000,
   };
+  if (typeof json.scope === 'string' && json.scope.trim()) {
+    out.grantedScopeRaw = json.scope.trim();
+  }
+  return out;
 }

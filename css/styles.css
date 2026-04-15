@@ -403,6 +403,7 @@ a:focus-visible {
 .status {
   margin-top: var(--space);
   font-weight: 600;
+  white-space: pre-line;
 }
 
 .site-footer {
