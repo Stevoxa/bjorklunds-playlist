@@ -117,8 +117,11 @@ async function loadEncryptedVault() {
 
 function initSpotifyClient() {
   spotifyClient = null;
-  if (!vaultData?.tokens?.accessToken || !vaultData?.clientId) return;
-  spotifyClient = createSpotifyClient(vaultData.tokens, vaultData.clientId, (t) => {
+  if (!vaultData?.tokens?.accessToken) return;
+  const cid = (vaultData.clientId || '').trim() || getClientId().trim();
+  if (!cid) return;
+  vaultData.clientId = cid;
+  spotifyClient = createSpotifyClient(vaultData.tokens, cid, (t) => {
     vaultData.tokens = t;
     const pass = getPassphrase();
     if (pass.length >= 8) {
@@ -133,18 +136,27 @@ function setAuthStatus() {
     el.textContent = 'Inte inloggad på Spotify.';
     return;
   }
+  const cid = (vaultData.clientId || '').trim() || getClientId().trim();
+  if (!cid) {
+    el.textContent =
+      'Tokens finns men Client ID saknas i minnet (vanligt efter omdirigering). Ange Client ID i fältet ovan — det fylls i automatiskt nästa gång du sparar.';
+    return;
+  }
   const exp = new Date(vaultData.tokens.expiresAt).toLocaleString('sv-SE');
   el.textContent = `Inloggad. Access token giltig till cirka ${exp}.`;
 }
 
 /**
  * @param {object} tokens
+ * @param {string} [clientIdFromOAuth] Client ID från OAuth-rundan (formuläret är tomt efter sidladdning).
  */
-function mergeOAuthTokens(tokens) {
+function mergeOAuthTokens(tokens, clientIdFromOAuth) {
   if (!tokens) return;
   vaultData = vaultData ?? defaultVault();
   vaultData.tokens = tokens;
-  vaultData.clientId = getClientId() || vaultData.clientId;
+  const cid = (clientIdFromOAuth || '').trim() || getClientId().trim() || (vaultData.clientId || '').trim();
+  vaultData.clientId = cid;
+  $('client-id').value = cid;
   initSpotifyClient();
   showToast('Spotify-inloggning klar. Spara lokalt med din lösenfras för att behålla tokens.');
   setAuthStatus();
@@ -158,7 +170,7 @@ async function handleOAuthReturn() {
     showToast(`Inloggning avbruten: ${result.error}`, true);
     return;
   }
-  mergeOAuthTokens(result.tokens);
+  mergeOAuthTokens(result.tokens, result.clientId);
 }
 
 function setTab(name) {
@@ -179,7 +191,15 @@ function setTab(name) {
 
 function wireTabs() {
   document.querySelectorAll('.tabs__tab').forEach((btn) => {
-    btn.addEventListener('click', () => setTab(btn.getAttribute('data-tab') ?? 'tracks'));
+    btn.addEventListener('click', () => {
+      const name = btn.getAttribute('data-tab') ?? 'tracks';
+      setTab(name);
+      if (name === 'tracks') {
+        initSpotifyClient();
+        updateApplyEnabled();
+        if (resultRows.length > 0) renderResults();
+      }
+    });
   });
 }
 
@@ -415,6 +435,17 @@ async function boot() {
 
   $('btn-save-settings').addEventListener('click', () => saveEncryptedVault());
   $('btn-load-vault').addEventListener('click', () => loadEncryptedVault());
+
+  $('client-id').addEventListener('blur', () => {
+    if (!vaultData?.tokens?.accessToken) return;
+    const cid = getClientId().trim();
+    if (!cid) return;
+    vaultData.clientId = cid;
+    initSpotifyClient();
+    setAuthStatus();
+    updateApplyEnabled();
+    if (resultRows.length > 0) renderResults();
+  });
 
   $('btn-spotify-login').addEventListener('click', async () => {
     const cid = getClientId();

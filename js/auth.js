@@ -73,7 +73,7 @@ export async function beginLogin(clientId) {
 }
 
 /**
- * @returns {Promise<{ tokens: object } | { error: string } | null>}
+ * @returns {Promise<{ tokens: object, clientId: string } | { error: string } | null>}
  */
 export async function consumeOAuthCallback() {
   const url = new URL(window.location.href);
@@ -134,7 +134,8 @@ export async function consumeOAuthCallback() {
     expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000,
   };
 
-  return { tokens };
+  /** Samma client_id som vid authorize — formuläret är tomt efter omdirigering. */
+  return { tokens, clientId };
 }
 
 function cleanUrl() {
