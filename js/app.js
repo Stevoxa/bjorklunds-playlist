@@ -15,7 +15,7 @@ let vaultData = null;
 
 /**
  * tracks: null = Spotify-sökning ej körd, [] = sökt men inget, annars träfflista
- * @type {{ raw: string, query: string, artist?: string, title?: string, tracks: object[] | null, selectedUri: string | null }[]}
+ * @type {{ raw: string, query: string, artist?: string, title?: string, tracks: object[] | null, selectedUri: string | null, includedInPlaylist?: boolean }[]}
  */
 let resultRows = [];
 
@@ -477,7 +477,8 @@ function renderResults() {
     const chk = document.createElement('input');
     chk.type = 'checkbox';
     const hasHits = row.tracks !== null && row.tracks.length > 0;
-    chk.checked = hasHits;
+    const included = row.includedInPlaylist !== false;
+    chk.checked = hasHits && included;
     chk.disabled = !hasHits;
     chk.dataset.rowIndex = String(idx);
     chk.classList.add('row-select');
@@ -493,6 +494,12 @@ function renderResults() {
     switchLabel.append(chk, track);
     pickCell.append(switchLabel);
     queryRow.append(queryEl, pickCell);
+    article.classList.toggle('match-block--excluded', hasHits && row.includedInPlaylist === false);
+    chk.addEventListener('change', () => {
+      row.includedInPlaylist = chk.checked;
+      article.classList.toggle('match-block--excluded', hasHits && !chk.checked);
+      updateApplyEnabled();
+    });
 
     const hrUnder = document.createElement('hr');
     hrUnder.className = 'results-list__rule';
@@ -574,7 +581,7 @@ async function runSearch() {
     showToast('Inga rader att söka. Klistra in en låtlista först.', true);
     return;
   }
-  resultRows = parsed.map((p) => ({ ...p, tracks: null, selectedUri: null }));
+  resultRows = parsed.map((p) => ({ ...p, tracks: null, selectedUri: null, includedInPlaylist: true }));
   searchInProgress = true;
   searchAbortController = new AbortController();
   const signal = searchAbortController.signal;
@@ -925,13 +932,23 @@ async function boot() {
 
   $('btn-select-all').addEventListener('click', () => {
     document.querySelectorAll('.row-select').forEach((c) => {
-      if (!c.disabled) c.checked = true;
+      if (c.disabled) return;
+      c.checked = true;
+      const idx = Number(c.dataset.rowIndex);
+      if (!Number.isNaN(idx) && resultRows[idx]) resultRows[idx].includedInPlaylist = true;
+      c.closest('.match-block')?.classList.remove('match-block--excluded');
     });
+    updateApplyEnabled();
   });
   $('btn-clear-selection').addEventListener('click', () => {
     document.querySelectorAll('.row-select').forEach((c) => {
+      if (c.disabled) return;
       c.checked = false;
+      const idx = Number(c.dataset.rowIndex);
+      if (!Number.isNaN(idx) && resultRows[idx]) resultRows[idx].includedInPlaylist = false;
+      c.closest('.match-block')?.classList.add('match-block--excluded');
     });
+    updateApplyEnabled();
   });
 
   $('btn-apply-playlist').addEventListener('click', () => applyPlaylist());

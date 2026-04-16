@@ -622,6 +622,21 @@ a:focus-visible {
   gap: 0.4rem;
 }
 
+/* Reglage av: dölj alternativ utom vald rad; grå radio-accent */
+.match-block--excluded .match-option:has(input[type='radio']:not(:checked)) {
+  display: none;
+}
+
+.match-block--excluded .match-option input[type='radio'] {
+  accent-color: var(--text-muted);
+}
+
+.match-block--excluded .match-block__options {
+  gap: 0;
+  padding-top: 0.2rem;
+  padding-bottom: 0.45rem;
+}
+
 .match-block__status {
   margin: 0;
   padding: 0.35rem 0.25rem;
