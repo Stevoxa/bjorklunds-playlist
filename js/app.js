@@ -207,12 +207,14 @@ function setAuthStatus() {
   const el = $('auth-status');
   if (!vaultData?.tokens?.accessToken) {
     el.textContent = 'Inte inloggad på Spotify.';
+    refreshSummary();
     return;
   }
   const cid = (vaultData.clientId || '').trim() || getClientId().trim();
   if (!cid) {
     el.textContent =
       'Tokens finns men Client ID saknas i minnet (vanligt efter omdirigering). Ange Client ID i fältet ovan — det fylls i automatiskt nästa gång du sparar.';
+    refreshSummary();
     return;
   }
   const exp = new Date(vaultData.tokens.expiresAt).toLocaleString('sv-SE');
@@ -231,6 +233,7 @@ function setAuthStatus() {
       '\nOBS: Denna token saknar playlist-modify-public/private — spellistor kan inte skapas eller ändras. Återkalla appen under spotify.com/account/apps och logga in igen i denna app.';
   }
   el.textContent = lines;
+  refreshSummary();
 }
 
 /**
@@ -262,35 +265,188 @@ async function handleOAuthReturn() {
   mergeOAuthTokens(result.tokens, result.clientId);
 }
 
-function setTab(name) {
-  const tracksTab = $('tab-tracks');
-  const settingsTab = $('tab-settings');
-  const tracksPanel = $('panel-tracks');
-  const settingsPanel = $('panel-settings');
-  const isTracks = name === 'tracks';
-  tracksTab.classList.toggle('is-active', isTracks);
-  settingsTab.classList.toggle('is-active', !isTracks);
-  tracksTab.setAttribute('aria-selected', String(isTracks));
-  settingsTab.setAttribute('aria-selected', String(!isTracks));
-  tracksPanel.classList.toggle('is-visible', isTracks);
-  tracksPanel.hidden = !isTracks;
-  settingsPanel.classList.toggle('is-visible', !isTracks);
-  settingsPanel.hidden = isTracks;
+/** @type {'0' | '1' | '2' | '3' | 'settings'} */
+let currentFlowStep = '1';
+
+/**
+ * @param {'0' | '1' | '2' | '3' | 'settings'} step
+ * @param {{ focusPanel?: boolean }} [opts] focusPanel: flytta fokus till aktivt steg (t.ex. efter klick i steglisten), inte vid sidladdning.
+ */
+function setFlowStep(step, opts = {}) {
+  const { focusPanel = false } = opts;
+  currentFlowStep = /** @type {'0' | '1' | '2' | '3' | 'settings'} */ (step);
+  document.querySelectorAll('.flow-step').forEach((el) => {
+    const p = el.getAttribute('data-flow-panel');
+    el.classList.toggle('is-active', p === step);
+  });
+  document.querySelectorAll('.flow-stepper__btn[data-flow-step]').forEach((btn) => {
+    const s = btn.getAttribute('data-flow-step');
+    const on = s === step;
+    btn.classList.toggle('is-active', on);
+    if (on) btn.setAttribute('aria-current', 'step');
+    else btn.removeAttribute('aria-current');
+  });
+  const leads = {
+    '0': 'Logga in med Spotify och spara lokalt med lösenfras.',
+    '1': 'Klistra in lista, sök och välj rätt spår för varje rad.',
+    '2': 'Välj om du skapar en ny spellista eller uppdaterar en befintlig.',
+    '3': 'Fyll i detaljer och klicka Utför när du är redo.',
+    settings: 'Redirect URI, sökcache, prefix och tema.',
+  };
+  const lead = document.getElementById('app-page-lead');
+  if (lead && leads[step]) lead.textContent = leads[step];
+  if (step === '1') {
+    initSpotifyClient();
+    updateApplyEnabled();
+    updateNewPlaylistPreview();
+    if (resultRows.length > 0) renderResults();
+  }
+  updateSummaryTip(step);
+  refreshSummary();
+  if (focusPanel) {
+    const panelId = step === 'settings' ? 'flow-step-settings' : `flow-step-${step}`;
+    const panel = document.getElementById(panelId);
+    if (panel) {
+      requestAnimationFrame(() => {
+        panel.focus({ preventScroll: false });
+      });
+    }
+  }
 }
 
-function wireTabs() {
-  document.querySelectorAll('.tabs__tab').forEach((btn) => {
+function updateSummaryTip(step) {
+  const tip = document.getElementById('sum-tip-text');
+  if (!tip) return;
+  const tips = {
+    '0': 'Logga in under steg 0 innan du söker eller uppdaterar spellistor.',
+    '1': 'Efter sökning: välj spår och gå till steg 2 för spellista.',
+    '2': 'Byt till steg 3 för att ange namn eller befintlig lista.',
+    '3': 'Kontrollera sammanfattningen till höger innan Utför.',
+    settings: 'Kopiera Redirect URI till Spotify Dashboard om du ändrar domän.',
+  };
+  tip.textContent = tips[step] ?? tips['1'];
+}
+
+function refreshSummary() {
+  const sumSpotify = document.getElementById('sum-spotify');
+  const sumTracks = document.getElementById('sum-tracks');
+  const sumPlaylist = document.getElementById('sum-playlist');
+  const sumAction = document.getElementById('sum-action');
+  const sumToken = document.getElementById('sum-token');
+  const sumFoot = document.getElementById('sum-foot');
+  const sumRowExtra = document.getElementById('sum-row-extra');
+  const sumExtra = document.getElementById('sum-extra');
+  const sumExtraLabel = document.getElementById('sum-extra-label');
+  if (!sumSpotify || !sumTracks || !sumPlaylist || !sumAction || !sumToken || !sumFoot) return;
+
+  const hasToken = Boolean(vaultData?.tokens?.accessToken);
+  const cid = (vaultData?.clientId || '').trim() || getClientId().trim();
+  if (hasToken && spotifyClient) {
+    sumSpotify.textContent = 'Inloggad';
+    sumSpotify.classList.add('summary-list__value--ok');
+  } else if (hasToken && !cid) {
+    sumSpotify.textContent = 'Token finns · ange Client ID';
+    sumSpotify.classList.remove('summary-list__value--ok');
+  } else {
+    sumSpotify.textContent = 'Ej inloggad';
+    sumSpotify.classList.remove('summary-list__value--ok');
+  }
+
+  let trackCount = 0;
+  try {
+    trackCount = selectedUrisForPlaylist().length;
+  } catch {
+    trackCount = 0;
+  }
+  sumTracks.textContent = String(trackCount);
+
+  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value ?? 'new';
+  if (mode === 'new') {
+    const suf = $('new-pl-name').value.trim() || '…';
+    sumPlaylist.textContent = `${getPlaylistPrefixFromInput()}${suf}`;
+  } else {
+    const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
+    if (src === 'from-list') {
+      const sel = $('existing-pl-select');
+      sumPlaylist.textContent = sel.value
+        ? (sel.selectedOptions[0]?.textContent?.trim() ?? sel.value)
+        : '— Välj spellista —';
+    } else {
+      const raw = $('existing-pl-id').value.trim();
+      sumPlaylist.textContent = raw || '—';
+    }
+  }
+
+  if (mode === 'new') {
+    sumAction.textContent = 'Skapa ny';
+    if (sumRowExtra) sumRowExtra.hidden = true;
+  } else {
+    const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
+    sumAction.textContent = um === 'replace' ? 'Uppdatera (ersätt)' : 'Uppdatera (lägg till)';
+    if (sumRowExtra && sumExtra && sumExtraLabel) {
+      sumRowExtra.hidden = false;
+      const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
+      sumExtraLabel.textContent = 'Källa';
+      sumExtra.textContent = src === 'from-list' ? 'Mina listor med prefix' : 'ID eller länk';
+    }
+  }
+
+  if (vaultData?.tokens?.expiresAt) {
+    sumToken.textContent = `Giltig till ${new Date(vaultData.tokens.expiresAt).toLocaleString('sv-SE')}`;
+    sumToken.classList.add('summary-list__value--ok');
+  } else {
+    sumToken.textContent = '—';
+    sumToken.classList.remove('summary-list__value--ok');
+  }
+
+  if (!hasToken) {
+    sumFoot.textContent = 'Logga in under steg 0 för att fortsätta.';
+  } else if (trackCount === 0) {
+    sumFoot.textContent = 'Välj minst en låt med träff (steg 1).';
+  } else if (mode === 'existing') {
+    const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
+    if (src === 'from-list' && !$('existing-pl-select').value) {
+      sumFoot.textContent = 'Välj en spellista i listan.';
+    } else if (src === 'from-link' && !$('existing-pl-id').value.trim()) {
+      sumFoot.textContent = 'Ange spelliste-ID eller URI.';
+    } else {
+      sumFoot.textContent = 'Redo att utföra åtgärden.';
+    }
+  } else {
+    sumFoot.textContent = 'Redo att skapa spellista.';
+  }
+}
+
+function wireFlow() {
+  document.querySelectorAll('[data-flow-step]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const name = btn.getAttribute('data-tab') ?? 'tracks';
-      setTab(name);
-      if (name === 'tracks') {
-        initSpotifyClient();
-        updateApplyEnabled();
-        updateNewPlaylistPreview();
-        if (resultRows.length > 0) renderResults();
-      }
+      const s = btn.getAttribute('data-flow-step');
+      if (s) setFlowStep(/** @type {'0' | '1' | '2' | '3' | 'settings'} */ (s), { focusPanel: true });
     });
   });
+  document.querySelectorAll('[data-flow-goto]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const s = btn.getAttribute('data-flow-goto');
+      if (s) setFlowStep(/** @type {'0' | '1' | '2' | '3' | 'settings'} */ (s), { focusPanel: true });
+    });
+  });
+  const back = document.getElementById('app-topbar-back');
+  if (back) {
+    back.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (currentFlowStep === '1') return;
+      setFlowStep('1', { focusPanel: true });
+    });
+  }
+  const n = document.getElementById('app-btn-notify');
+  if (n) n.addEventListener('click', () => showToast('Inga nya notifieringar.'));
+  const h = document.getElementById('app-btn-help');
+  if (h)
+    h.addEventListener('click', () =>
+      showToast(
+        'Arbetsflöde: 0 Logga in → 1 Låtar → 2 Spellista → 3 Åtgärd. Kugghjul = Inställningar (Redirect URI, sökcache, prefix, tema).',
+      ),
+    );
 }
 
 function getPlaylistPrefixFromInput() {
@@ -318,7 +474,7 @@ function updateExistingPlaylistSourceUi() {
 async function refreshExistingPlaylistSelect(opts = {}) {
   const { quiet = false, selectPlaylistId } = opts;
   if (!spotifyClient) {
-    showToast('Logga in på Spotify under Inställningar först.', true);
+    showToast('Logga in på Spotify under steg 0 (Logga in) först.', true);
     return;
   }
   const prefix = getPlaylistPrefixFromInput();
@@ -343,7 +499,7 @@ async function refreshExistingPlaylistSelect(opts = {}) {
   }
 }
 
-/** Undvik för täta Spotify-anrop vid flikbyte */
+/** Undvik för täta Spotify-anrop vid snabba stegbyten */
 let lastVisibilityPlaylistRefresh = 0;
 const VISIBILITY_PLAYLIST_REFRESH_GAP_MS = 25_000;
 
@@ -374,14 +530,19 @@ function wirePlaylistMode() {
         refreshExistingPlaylistSelect({ quiet: true }).catch((e) => showToast(String(e?.message ?? e), true));
       }
     }
+    refreshSummary();
   };
   modes.forEach((r) => r.addEventListener('change', update));
+  document.querySelectorAll('input[name="pl-update"]').forEach((r) => {
+    r.addEventListener('change', () => refreshSummary());
+  });
   document.querySelectorAll('input[name="pl-existing-source"]').forEach((r) => {
     r.addEventListener('change', () => {
       updateExistingPlaylistSourceUi();
       if (r.value === 'from-list' && spotifyClient) {
         refreshExistingPlaylistSelect().catch((e) => showToast(String(e?.message ?? e), true));
       }
+      refreshSummary();
     });
   });
   $('btn-refresh-pl-list').addEventListener('click', () => {
@@ -448,6 +609,7 @@ function renderResults() {
     $('search-progress-line').textContent = '';
     $('search-progress-wrap').hidden = true;
     updateApplyEnabled();
+    refreshSummary();
     return;
   }
   $('results-section').hidden = false;
@@ -546,6 +708,7 @@ function renderResults() {
 
   if (!searchInProgress) finalizeResultsSummary();
   updateApplyEnabled();
+  refreshSummary();
 }
 
 function updateApplyEnabled() {
@@ -569,7 +732,7 @@ function selectedUrisForPlaylist() {
 
 async function runSearch() {
   if (!spotifyClient) {
-    showToast('Logga in på Spotify under Inställningar först.', true);
+    showToast('Logga in på Spotify under steg 0 (Logga in) först.', true);
     return;
   }
   if (searchInProgress) {
@@ -652,6 +815,7 @@ async function runSearch() {
       const done = resultRows.filter((r) => r.tracks !== null).length;
       showToast(`Sökning avbruten. ${done} av ${resultRows.length} rader hann sökas.`);
     }
+    refreshSummary();
   }
 }
 
@@ -743,6 +907,7 @@ async function applyPlaylist() {
     showToast(String(e?.message ?? e), true);
   } finally {
     $('btn-apply-playlist').disabled = false;
+    refreshSummary();
   }
 }
 
@@ -843,9 +1008,14 @@ async function boot() {
     }
   });
 
-  wireTabs();
+  wireFlow();
   wirePlaylistMode();
-  $('new-pl-name').addEventListener('input', updateNewPlaylistPreview);
+  $('new-pl-name').addEventListener('input', () => {
+    updateNewPlaylistPreview();
+    refreshSummary();
+  });
+  $('existing-pl-id').addEventListener('input', () => refreshSummary());
+  $('existing-pl-select').addEventListener('change', () => refreshSummary());
   $('playlist-prefix').addEventListener('input', () => {
     updateNewPlaylistPreview();
     if (playlistPrefixDebounceTimer) clearTimeout(playlistPrefixDebounceTimer);
@@ -968,6 +1138,7 @@ async function boot() {
   applyTheme($('pref-theme').value);
   updateNewPlaylistPreview();
   updateApplyEnabled();
+  setFlowStep('1', { focusPanel: false });
   await registerServiceWorker();
 }
 

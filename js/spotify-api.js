@@ -27,7 +27,7 @@ export function formatSpotifyApiError(status, bodyText) {
   }
   const prefix = spotifyMsg || bodyText?.slice(0, 200)?.trim() || `HTTP ${status}`;
   if (status === 401 || status === 403) {
-    return `${prefix}\n\n→ Öppna fliken Inställningar och expandera: »Om du får Forbidden (403)…« (checklista steg för steg).`;
+    return `${prefix}\n\n→ Gå till steg 0 (Logga in) och expandera »403 Forbidden vid spellista — kort hjälp« om du behöver checklista.`;
   }
   if (status === 429) {
     return `${prefix}\n\n→ Rate limit: Spotify begränsar antal anrop per tidsfönster. Vänta en stund och prova igen; appen pausar och försöker om automatiskt vid tillfälliga 429-svar.`;
@@ -194,7 +194,7 @@ const RETRY_AFTER_COUNTDOWN_MIN_MS = 30_000;
 const SEARCH_INTERNAL_GAP_MS = 3000;
 const SEARCH_INTERNAL_JITTER_MS = 1000;
 
-/** Endast en /search-GET-kedja (inkl. 429-retries) åt gången — undviker överlapp mellan flikar eller dubbelklick */
+/** Endast en /search-GET-kedja (inkl. 429-retries) åt gången — undviker överlapp mellan parallella anrop eller dubbelklick */
 let searchGetChain = Promise.resolve();
 
 /**

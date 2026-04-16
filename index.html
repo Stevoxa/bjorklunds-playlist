@@ -3,301 +3,546 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#1db954" />
+    <meta name="theme-color" content="#0a1628" />
     <meta name="description" content="Lokal PWA för att matcha låtar mot Spotify och hantera spellistor." />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
     <title>Björklund spellista</title>
     <link rel="stylesheet" href="./css/styles.css" />
+    <link rel="stylesheet" href="./css/shell.css" />
   </head>
   <body>
     <a class="skip-link" href="#main">Hoppa till innehåll</a>
 
-    <header class="site-header" role="banner">
-      <div class="site-header__inner">
-        <h1 class="site-title">Björklund spellista</h1>
-        <p class="site-tagline">Lokal klient · PKCE · krypterad lagring</p>
-      </div>
-      <nav class="tabs" aria-label="Huvudsektioner">
-        <button type="button" class="tabs__tab is-active" data-tab="tracks" aria-controls="panel-tracks" id="tab-tracks" aria-selected="true">
-          Låtar
-        </button>
-        <button type="button" class="tabs__tab" data-tab="settings" aria-controls="panel-settings" id="tab-settings" aria-selected="false">
-          Inställningar
-        </button>
-      </nav>
-    </header>
+    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="position: absolute; width: 0; height: 0; overflow: hidden">
+      <symbol id="sym-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" />
+      </symbol>
+      <symbol id="sym-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 8A6 6 0 106 8c0 7-3 7-3 7h18s-3 0-3-7" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M13.73 21a2 2 0 01-3.46 0" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 011.83-.83 3 3 010 4.24 3 3 001.83 1.83M12 17h.01" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3" />
+        <path
+          d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+          stroke-linecap="round"
+        />
+      </symbol>
+      <symbol id="sym-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+        <path d="M14 2v6h6M12 18v-6M9 15h6" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-search-lines" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="6" />
+        <path d="M20 20l-3-3M8 8h6M8 12h4" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-spotify" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="12" fill="#1db954" />
+        <path
+          fill="#fff"
+          d="M17.25 16.5c-.2 0-.4-.05-.58-.14-1.65-.75-3.8-1.15-6.32-1.15-.5 0-1 .02-1.48.06-.12.01-.24-.03-.33-.1a.42.42 0 01-.15-.32v-.8c0-.2.14-.36.34-.38.52-.05 1.06-.08 1.62-.08 2.72 0 5.05.44 6.85 1.26.18.08.3.26.3.46v.8c0 .22-.18.4-.4.4zm.9-3.2c-.25 0-.5-.07-.72-.2-1.9-1.1-4.75-1.7-7.9-1.7-.58 0-1.15.03-1.7.08-.15.02-.3-.04-.42-.15a.5.5 0 01-.18-.38v-.9c0-.24.16-.45.4-.5.6-.06 1.22-.1 1.9-.1 3.45 0 6.55.65 8.65 1.85.22.13.36.36.36.62v.9c0 .28-.22.5-.5.5zM7.5 8.6c-.28 0-.5-.22-.5-.5v-1c0-.26.16-.48.4-.58 1.15-.5 2.95-.85 5.1-.85 2.1 0 4.05.35 5.35.85.24.1.4.32.4.58v1c0 .28-.22.5-.5.5-.1 0-.2-.03-.3-.08-1.2-.5-3-.8-4.95-.8-2 0-3.75.3-4.9.8-.1.05-.2.08-.3.08z"
+        />
+      </symbol>
+      <symbol id="sym-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M7 11V7a5 5 0 0110 0v4" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6l4 2" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-lightning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="sym-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10 13a5 5 0 007.07 0l1-1a5 5 0 00-7.07-7.07l-.77.77M14 11a5 5 0 00-7.07 0l-1 1a5 5 0 007.07 7.07l.77-.77" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 6h12M9 12h12M9 18h12M5 6h.01M5 12h.01M5 18h.01" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-note" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 18V5l12-2v13M9 9l12-2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="sym-bulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 18h6M10 22h4M12 2a7 7 0 017 7c0 2.5-1.5 4.5-3 6H8c-1.5-1.5-3-3.5-3-6a7 7 0 017-7z" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="sym-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 16v-4M12 8h.01" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2H2v10l9.3 9.3a1 1 0 001.4 0l6.6-6.6a1 1 0 000-1.4L12 2zM7 7h.01" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="sym-mag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="7" />
+        <path d="M21 21l-4.3-4.3" stroke-linecap="round" />
+      </symbol>
+    </svg>
 
-    <main id="main" class="main" tabindex="-1">
-      <div id="panel-tracks" class="panel is-visible" role="tabpanel" aria-labelledby="tab-tracks">
-        <section class="card" aria-labelledby="heading-paste">
-          <h2 id="heading-paste" class="card__title">Klistra in låtlista</h2>
-          <p class="help" id="paste-help">
-            En rad per låt. Tips: <kbd>Artist</kbd> – <kbd>Titel</kbd>, <kbd>Artist</kbd>, <kbd>Titel</kbd> eller <kbd>Titel</kbd> av <kbd>Artist</kbd>.
-            <strong>Sök på Spotify</strong> tolkar listan och hämtar träffar (kräver inloggning under Inställningar).
-          </p>
-          <label for="paste-area" class="label">Text</label>
-          <textarea
-            id="paste-area"
-            class="textarea"
-            rows="8"
-            autocomplete="off"
-            spellcheck="false"
-            aria-describedby="paste-help"
-            placeholder="Exempel:&#10;ABBA – Dancing Queen&#10;Waterloo av ABBA"
-          ></textarea>
-          <div class="row row--wrap row--paste-actions">
-            <button type="button" class="btn btn--primary" id="btn-search" disabled>Sök på Spotify</button>
-            <button type="button" class="btn" id="btn-clear-paste">Rensa</button>
-          </div>
-        </section>
-
-        <section class="card" aria-labelledby="heading-results" id="results-section" hidden>
-          <div id="search-progress-wrap" class="results-search-progress" hidden>
-            <div class="circular-progress circular-progress--inline" aria-hidden="true">
-              <svg class="circular-progress__svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle class="circular-progress__track" cx="24" cy="24" r="20" />
-                <circle class="circular-progress__arc" cx="24" cy="24" r="20" transform="rotate(-90 24 24)" />
-              </svg>
-            </div>
-            <p id="search-progress-line" class="results-search-progress__label" role="status" aria-live="polite"></p>
-            <button type="button" class="btn btn--danger results-search-progress__abort" id="btn-abort-search">Avbryt sökning</button>
-          </div>
-          <p class="help" id="results-summary" aria-live="polite"></p>
-          <p class="help" id="match-columns-help">
-            <strong>Match:</strong> Spotify kan returnera flera närliggande spår för samma sökning — välj <em>vilket</em> spår som ska användas (album och år visas så likadana titlar skiljs åt).
-            <strong>Välj:</strong> använd reglaget om sökningen ska tas med när du skapar eller uppdaterar spellistan (du kan lämna det av trots träff).
-          </p>
-          <div class="results-wrap" role="region" aria-label="Resultatlista" tabindex="0">
-            <div class="results-list">
-              <div class="results-list__header">
-                <h2 id="heading-results" class="results-list__title">Matchningar</h2>
-                <span class="results-list__pick-label">Välj</span>
-              </div>
-              <hr class="results-list__rule" aria-hidden="true" />
-              <div id="results-body" class="results-list__blocks"></div>
-            </div>
-          </div>
-          <div class="row row--wrap">
-            <button type="button" class="btn btn--primary" id="btn-select-all">Markera alla med träff</button>
-            <button type="button" class="btn" id="btn-clear-selection">Avmarkera</button>
-          </div>
-        </section>
-
-        <details class="card spotify-log-card" open>
-          <summary class="spotify-log-card__summary">Spotify API-logg (sökning + spelliste-skrivning)</summary>
-          <p class="help">
-            Loggen fylls när sökning eller spelliste-anrop körs (eller vid nätverksfel). Stäng/av med rubriken ovan. Sökning: JSON-rad utan <code>kind</code>. Skapa/lägga till/ersätta spellista: rad med <code>kind: &quot;playlist_write&quot;</code> — metod, path, <code>request</code> (t.ex. namn/publik, <code>playlistId</code>, <code>uriCount</code>, <code>uriSample</code> max 8 st), <code>httpStatus</code>, samt vid JSON-svar <code>spotifyError</code>, <code>snapshotId</code>, ev. <code>playlistId</code> från svar. Icke-JSON-svar: <code>bodyPreview</code>. <strong>Tokens och client secret</strong> loggas inte; känsliga nycklar maskeras.
-          </p>
-          <pre id="spotify-log-pre" class="log-pre" tabindex="0" aria-label="Spotify API-logg"></pre>
-          <button type="button" class="btn" id="btn-clear-spotify-log">Rensa logg</button>
-        </details>
-
-        <div
-          id="rate-limit-countdown-wrap"
-          class="rate-limit-countdown"
-          hidden
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          <p id="rate-limit-countdown-text" class="rate-limit-countdown__text"></p>
+    <div class="app-frame">
+      <header class="app-topbar">
+        <div class="app-topbar__left">
+          <a class="app-topbar__back" href="#" id="app-topbar-back" aria-label="Tillbaka">
+            <svg width="20" height="20" aria-hidden="true"><use href="#sym-back" /></svg>
+          </a>
+          <span class="app-topbar__crumb">Redigera integration</span>
+          <span class="app-topbar__crumb-sep" aria-hidden="true">›</span>
+          <span class="app-topbar__crumb-accent">Spotify</span>
         </div>
+        <div class="app-topbar__actions">
+          <button type="button" class="icon-btn" id="app-btn-notify" aria-label="Notiser">
+            <svg aria-hidden="true"><use href="#sym-bell" /></svg>
+          </button>
+          <button type="button" class="icon-btn" id="app-btn-help" aria-label="Hjälp">
+            <svg aria-hidden="true"><use href="#sym-help" /></svg>
+          </button>
+          <span class="app-topbar__avatar" aria-hidden="true">AB</span>
+        </div>
+      </header>
 
-        <section class="card" aria-labelledby="heading-playlist">
-          <h2 id="heading-playlist" class="card__title">Spellista på Spotify</h2>
-          <fieldset class="fieldset">
-            <legend class="legend">Åtgärd</legend>
-            <div class="radio-row">
-              <label class="radio-label">
-                <input type="radio" name="pl-mode" value="new" checked />
-                Skapa ny spellista
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="pl-mode" value="existing" />
-                Uppdatera befintlig
-              </label>
-            </div>
-          </fieldset>
-
-          <div id="block-new-playlist">
-            <label for="new-pl-name" class="label">Namn (suffix efter prefix)</label>
-            <input type="text" id="new-pl-name" class="input" autocomplete="off" placeholder="t.ex. Sommar 2026" />
-            <p class="help" id="new-pl-preview-help">
-              Hela namnet på Spotify blir: <strong id="new-pl-preview">Björklunds playlist - …</strong> (prefix ställs in under Inställningar.)
-            </p>
-            <div class="checkbox-row">
-              <input type="checkbox" id="new-pl-public" />
-              <label for="new-pl-public">Publik spellista</label>
-            </div>
-          </div>
-
-          <div id="block-existing-playlist" hidden>
-            <fieldset class="fieldset">
-              <legend class="legend">Välj befintlig spellista</legend>
-              <div class="radio-row">
-                <label class="radio-label">
-                  <input type="radio" name="pl-existing-source" value="from-list" />
-                  Mina listor med prefix
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="pl-existing-source" value="from-link" checked />
-                  ID eller Spotify-länk
-                </label>
-              </div>
-            </fieldset>
-            <div id="block-existing-from-list" class="existing-pl-source-block" hidden>
-              <label for="existing-pl-select" class="label">Spellista</label>
-              <select id="existing-pl-select" class="select" aria-describedby="existing-pl-select-help"></select>
-              <p class="help" id="existing-pl-select-help">
-                Listan hämtas från Spotify och visar spellistor <strong>du äger</strong> vars namn börjar med ditt prefix (samma som för nya spellistor). Listan uppdateras automatiskt när du skapar en spellista här, byter till detta läge, ändrar prefix (kort paus efter tangentbordsslut) eller kommer tillbaka till denna webbflik efter att du skapat en lista i Spotify — annars använder du <strong>Hämta om lista</strong>.
-              </p>
-              <button type="button" class="btn" id="btn-refresh-pl-list">Hämta om lista</button>
-            </div>
-            <div id="block-existing-from-link" class="existing-pl-source-block">
-              <label for="existing-pl-id" class="label">Spelliste-ID eller Spotify-URI</label>
-              <input
-                type="text"
-                id="existing-pl-id"
-                class="input"
-                autocomplete="off"
-                placeholder="spotify:playlist:… eller bara ID"
-                aria-describedby="existing-pl-help"
-              />
-              <p class="help" id="existing-pl-help">Klistra in länk eller ID — då gäller <em>inte</em> prefixregeln (valfri spellista du har åtkomst till).</p>
-            </div>
-            <fieldset class="fieldset">
-              <legend class="legend">Uppdatering</legend>
-              <div class="radio-row">
-                <label class="radio-label">
-                  <input type="radio" name="pl-update" value="append" checked />
-                  Lägg till valda låtar
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="pl-update" value="replace" />
-                  Ersätt hela spellistan med valda
-                </label>
-              </div>
-            </fieldset>
-          </div>
-
-          <div class="row row--wrap">
-            <button type="button" class="btn btn--primary" id="btn-apply-playlist" disabled>Utför</button>
-          </div>
-        </section>
+      <div class="app-page-head">
+        <h1 class="app-page-head__title">Björklund spellista</h1>
+        <p class="app-page-head__lead" id="app-page-lead">
+          Matcha låtar mot Spotify och skapa eller uppdatera spellistor — allt sker lokalt i webbläsaren med PKCE och krypterad lagring.
+        </p>
+        <nav class="flow-stepper" aria-label="Arbetsflöde">
+          <button type="button" class="flow-stepper__btn" data-flow-step="0" aria-controls="flow-step-0">0. Logga in</button>
+          <button type="button" class="flow-stepper__btn is-active" data-flow-step="1" aria-controls="flow-step-1" aria-current="step">
+            1. Låtar
+          </button>
+          <button type="button" class="flow-stepper__btn" data-flow-step="2" aria-controls="flow-step-2">2. Spellista</button>
+          <button type="button" class="flow-stepper__btn" data-flow-step="3" aria-controls="flow-step-3">3. Åtgärd</button>
+          <span class="flow-stepper__spacer" aria-hidden="true"></span>
+          <button type="button" class="flow-stepper__btn" data-flow-step="settings" aria-controls="flow-step-settings">
+            <svg width="16" height="16" aria-hidden="true" style="vertical-align: -0.2em"><use href="#sym-gear" /></svg>
+            Inställningar
+          </button>
+        </nav>
       </div>
 
-      <div id="panel-settings" class="panel" role="tabpanel" aria-labelledby="tab-settings" hidden>
-        <section class="card" aria-labelledby="heading-spotify">
-          <h2 id="heading-spotify" class="card__title">Spotify</h2>
-          <p class="help">
-            Ange ditt egna <strong>Client ID</strong> från
-            <a href="https://developer.spotify.com/dashboard" rel="noopener noreferrer" target="_blank">Spotify Developer Dashboard</a>.
-            Med <strong>PKCE</strong> (som denna app använder) ska du <strong>inte</strong> ange någon <em>Client secret</em> i appen eller i källkoden.
-          </p>
-          <p class="help">
-            <strong>Spotify-inloggning:</strong> Du skriver inte ditt Spotify-lösenord här. När du klickar ”Logga in med Spotify” skickas du till Spotifys egen inloggning. Fältet <strong>Lösenfras för lokal kryptering</strong> nedan är bara för att låsa upp/spara krypterad data på din enhet — det är <em>inte</em> ditt Spotify-lösenord.
-          </p>
-          <p class="help" id="redirect-uri-help">
-            I Spotify-appens inställningar, under <strong>Redirect URIs</strong>, måste det finnas exakt en rad som är <strong>identisk</strong> med URI:n nedan (rätt domän, sökväg, <code>https</code> och om appen visar avslutande <code>/</code> ska den också finnas med). Varje plats du kör sidan från (t.ex. olika GitHub Pages-mappar) behöver sin egen rad i listan.
-          </p>
-          <div class="redirect-uri-row">
-            <code id="redirect-uri-display" class="code-block" aria-describedby="redirect-uri-help"></code>
-            <button type="button" class="btn" id="btn-copy-redirect">Kopiera URI</button>
+      <main id="main" class="app-main" tabindex="-1">
+        <div class="app-layout">
+          <div class="app-layout__primary">
+            <section id="flow-step-0" class="flow-step" data-flow-panel="0" tabindex="-1" aria-labelledby="flow-step-0-title">
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-spotify" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="flow-step-0-title">Spotify</h2>
+                    <p class="flow-card__subtitle">Client ID, lösenfras för valv och inloggning mot Spotify.</p>
+                  </div>
+                </div>
+                <p class="help">
+                  Ange ditt egna <strong>Client ID</strong> från
+                  <a href="https://developer.spotify.com/dashboard" rel="noopener noreferrer" target="_blank">Spotify Developer Dashboard</a>.
+                  Med <strong>PKCE</strong> ska du <strong>inte</strong> ange någon <em>Client secret</em> i appen.
+                </p>
+                <p class="help">
+                  <strong>Spotify-inloggning:</strong> du skriver inte ditt Spotify-lösenord här — du skickas till Spotify. <strong>Lösenfras</strong> nedan är bara för lokal kryptering.
+                </p>
+                <label for="client-id" class="label">Client ID</label>
+                <input type="text" id="client-id" class="input" autocomplete="off" spellcheck="false" inputmode="verbatim" aria-describedby="client-id-help" />
+                <p class="help" id="client-id-help">Lagras krypterat lokalt.</p>
+                <label for="crypto-pass" class="label">Lösenfras för lokal kryptering</label>
+                <input type="password" id="crypto-pass" class="input" autocomplete="new-password" aria-describedby="crypto-pass-help" />
+                <p class="help" id="crypto-pass-help">Minst 8 tecken. Glömmer du den måste du logga in på Spotify igen.</p>
+                <div class="row row--wrap">
+                  <button type="button" class="btn btn--primary" id="btn-save-settings">Spara lokalt</button>
+                  <button type="button" class="btn" id="btn-load-vault">Läs in sparad data</button>
+                  <button type="button" class="btn btn--primary" id="btn-spotify-login">Logga in med Spotify</button>
+                  <button type="button" class="btn btn--danger" id="btn-logout">Rensa session</button>
+                </div>
+                <p class="status" id="auth-status" role="status" aria-live="polite"></p>
+                <details class="forbidden-help">
+                  <summary class="forbidden-help__summary">403 Forbidden vid spellista — kort hjälp</summary>
+                  <div class="forbidden-help__body">
+                    <p class="help">
+                      Status ska visa <strong>playlist-modify-public</strong> eller <strong>playlist-modify-private</strong>. Annars:
+                      <a href="https://www.spotify.com/account/apps/" rel="noopener noreferrer" target="_blank">Koppla bort appen</a>
+                      → logga in igen här → <strong>Spara lokalt</strong>.
+                    </p>
+                    <p class="help">
+                      <strong>Utvecklarläge / åtkomst:</strong>
+                      <a href="https://developer.spotify.com/blog/2026-02-06-update-on-developer-access-and-platform-security" rel="noopener noreferrer" target="_blank">Spotify (feb 2026)</a>,
+                      <a href="https://developer.spotify.com/documentation/web-api/references/changes/february-2026" rel="noopener noreferrer" target="_blank">API-ändringar</a>.
+                    </p>
+                  </div>
+                </details>
+                <div class="flow-nav">
+                  <p class="flow-nav__hint">
+                    <svg aria-hidden="true"><use href="#sym-info" /></svg>
+                    Du kan återvända hit när som helst via steg 0.
+                  </p>
+                  <button type="button" class="btn btn--primary" data-flow-goto="1">Nästa: Låtar</button>
+                </div>
+              </div>
+            </section>
+
+            <section id="flow-step-1" class="flow-step is-active" data-flow-panel="1" tabindex="-1" aria-labelledby="heading-paste">
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-doc" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="heading-paste">Klistra in låtlista</h2>
+                    <p class="flow-card__subtitle" id="paste-help">
+                      En rad per låt. <kbd>Artist</kbd> – <kbd>Titel</kbd>, eller <kbd>Titel</kbd> av <kbd>Artist</kbd>. <strong>Sök på Spotify</strong> hämtar träffar.
+                    </p>
+                  </div>
+                </div>
+                <label for="paste-area" class="label">Text</label>
+                <textarea
+                  id="paste-area"
+                  class="textarea"
+                  rows="8"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-describedby="paste-help"
+                  placeholder="Exempel:&#10;ABBA – Dancing Queen&#10;Waterloo av ABBA"
+                ></textarea>
+                <div class="row row--wrap row--paste-actions">
+                  <button type="button" class="btn btn--primary" id="btn-search" disabled>Sök på Spotify</button>
+                  <button type="button" class="btn" id="btn-clear-paste">Rensa</button>
+                </div>
+              </div>
+
+              <div class="flow-card" id="results-section" hidden>
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-search-lines" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title">Matchningar</h2>
+                    <p class="flow-card__subtitle" id="results-summary" aria-live="polite"></p>
+                  </div>
+                </div>
+                <div id="search-progress-wrap" class="results-search-progress" hidden>
+                  <div class="circular-progress circular-progress--inline" aria-hidden="true">
+                    <svg class="circular-progress__svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle class="circular-progress__track" cx="24" cy="24" r="20" />
+                      <circle class="circular-progress__arc" cx="24" cy="24" r="20" transform="rotate(-90 24 24)" />
+                    </svg>
+                  </div>
+                  <p id="search-progress-line" class="results-search-progress__label" role="status" aria-live="polite"></p>
+                  <button type="button" class="btn btn--danger results-search-progress__abort" id="btn-abort-search">Avbryt sökning</button>
+                </div>
+                <p class="help" id="match-columns-help">
+                  <strong>Match:</strong> välj rätt spår om flera liknande finns. <strong>Välj:</strong> reglaget styr om raden tas med på spellistan.
+                </p>
+                <div class="results-wrap" role="region" aria-label="Resultatlista" tabindex="0">
+                  <div class="results-list">
+                    <div class="results-list__header">
+                      <h2 class="results-list__title visually-hidden">Matchningar lista</h2>
+                      <span class="results-list__pick-label">Välj</span>
+                    </div>
+                    <hr class="results-list__rule" aria-hidden="true" />
+                    <div id="results-body" class="results-list__blocks"></div>
+                  </div>
+                </div>
+                <div class="row row--wrap">
+                  <button type="button" class="btn btn--primary" id="btn-select-all">Markera alla med träff</button>
+                  <button type="button" class="btn" id="btn-clear-selection">Avmarkera</button>
+                </div>
+                <div class="flow-nav">
+                  <p class="flow-nav__hint">
+                    <svg aria-hidden="true"><use href="#sym-info" /></svg>
+                    När träffarna ser rätt ut — fortsätt till spellista.
+                  </p>
+                  <button type="button" class="btn btn--primary" data-flow-goto="2">Nästa: Spellista</button>
+                </div>
+              </div>
+
+              <details class="flow-card spotify-log-card">
+                <summary class="spotify-log-card__summary">Spotify API-logg (sökning + spelliste-skrivning)</summary>
+                <p class="help">
+                  Loggen fylls vid anrop. <strong>Tokens</strong> loggas inte.
+                </p>
+                <pre id="spotify-log-pre" class="log-pre" tabindex="0" aria-label="Spotify API-logg"></pre>
+                <button type="button" class="btn" id="btn-clear-spotify-log">Rensa logg</button>
+              </details>
+
+              <div id="rate-limit-countdown-wrap" class="rate-limit-countdown" hidden role="status" aria-live="polite" aria-atomic="true">
+                <p id="rate-limit-countdown-text" class="rate-limit-countdown__text"></p>
+              </div>
+            </section>
+
+            <section id="flow-step-2" class="flow-step" data-flow-panel="2" tabindex="-1" aria-labelledby="heading-pl-mode">
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-note" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="heading-pl-mode">Välj hur låtarna ska sparas</h2>
+                    <p class="flow-card__subtitle">Skapa ny spellista eller uppdatera en du redan har (kräver inloggning).</p>
+                  </div>
+                </div>
+                <div class="choice-grid" role="radiogroup" aria-label="Spellisteläge">
+                  <label class="choice-tile">
+                    <input type="radio" name="pl-mode" value="new" checked />
+                    <span class="choice-tile__body">
+                      <span class="choice-tile__glyph" aria-hidden="true">
+                        <svg><use href="#sym-plus" /></svg>
+                      </span>
+                      <span class="choice-tile__label">Skapa ny spellista</span>
+                    </span>
+                  </label>
+                  <label class="choice-tile">
+                    <input type="radio" name="pl-mode" value="existing" />
+                    <span class="choice-tile__body">
+                      <span class="choice-tile__glyph" aria-hidden="true">
+                        <svg><use href="#sym-clipboard" /></svg>
+                      </span>
+                      <span class="choice-tile__label">Uppdatera befintlig</span>
+                    </span>
+                  </label>
+                </div>
+                <div class="flow-nav">
+                  <button type="button" class="btn" data-flow-goto="1">Tillbaka: Låtar</button>
+                  <button type="button" class="btn btn--primary" data-flow-goto="3">Nästa: Åtgärd</button>
+                </div>
+              </div>
+            </section>
+
+            <section id="flow-step-3" class="flow-step" data-flow-panel="3" tabindex="-1" aria-labelledby="heading-playlist">
+              <div class="flow-card" aria-labelledby="heading-playlist">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-lightning" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="heading-playlist">Spellista — detaljer</h2>
+                    <p class="flow-card__subtitle">Namn eller befintlig lista, och hur uppdateringen ska göras.</p>
+                  </div>
+                </div>
+
+                <div id="block-new-playlist">
+                  <label for="new-pl-name" class="label">Namn (suffix efter prefix)</label>
+                  <input type="text" id="new-pl-name" class="input" autocomplete="off" placeholder="t.ex. Sommar 2026" />
+                  <p class="help" id="new-pl-preview-help">
+                    Hela namnet på Spotify blir: <strong id="new-pl-preview">Björklunds playlist - …</strong> (prefix under Inställningar.)
+                  </p>
+                  <div class="checkbox-row">
+                    <input type="checkbox" id="new-pl-public" />
+                    <label for="new-pl-public">Publik spellista</label>
+                  </div>
+                </div>
+
+                <div id="block-existing-playlist" hidden>
+                  <fieldset class="fieldset">
+                    <legend class="legend">Välj befintlig spellista</legend>
+                    <div class="radio-row">
+                      <label class="radio-label">
+                        <input type="radio" name="pl-existing-source" value="from-list" />
+                        Mina listor med prefix
+                      </label>
+                      <label class="radio-label">
+                        <input type="radio" name="pl-existing-source" value="from-link" checked />
+                        ID eller Spotify-länk
+                      </label>
+                    </div>
+                  </fieldset>
+                  <div id="block-existing-from-list" class="existing-pl-source-block" hidden>
+                    <label for="existing-pl-select" class="label">Spellista</label>
+                    <select id="existing-pl-select" class="select" aria-describedby="existing-pl-select-help"></select>
+                    <p class="help" id="existing-pl-select-help">
+                      Listan hämtas från Spotify. Uppdateras när du skapat lista här, byter läge/prefix eller återvänder till steg 3 — eller <strong>Hämta om lista</strong>.
+                    </p>
+                    <button type="button" class="btn" id="btn-refresh-pl-list">Hämta om lista</button>
+                  </div>
+                  <div id="block-existing-from-link" class="existing-pl-source-block">
+                    <label for="existing-pl-id" class="label">Spelliste-ID eller Spotify-URI</label>
+                    <input
+                      type="text"
+                      id="existing-pl-id"
+                      class="input"
+                      autocomplete="off"
+                      placeholder="spotify:playlist:… eller bara ID"
+                      aria-describedby="existing-pl-help"
+                    />
+                    <p class="help" id="existing-pl-help">Valfri spellista du har åtkomst till — prefix används inte.</p>
+                  </div>
+                  <fieldset class="fieldset">
+                    <legend class="legend">Uppdatering</legend>
+                    <div class="radio-row">
+                      <label class="radio-label">
+                        <input type="radio" name="pl-update" value="append" checked />
+                        Lägg till valda låtar
+                      </label>
+                      <label class="radio-label">
+                        <input type="radio" name="pl-update" value="replace" />
+                        Ersätt hela spellistan med valda
+                      </label>
+                    </div>
+                  </fieldset>
+                </div>
+
+                <div class="row row--wrap" style="margin-top: var(--space-lg)">
+                  <button type="button" class="btn btn--primary" id="btn-apply-playlist" disabled>Utför</button>
+                </div>
+                <div class="flow-nav">
+                  <button type="button" class="btn" data-flow-goto="2">Tillbaka: Spellista</button>
+                  <button type="button" class="btn" data-flow-goto="1">Låtar</button>
+                </div>
+              </div>
+            </section>
+
+            <section id="flow-step-settings" class="flow-step" data-flow-panel="settings" tabindex="-1" aria-labelledby="flow-step-settings-title">
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-link" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="flow-step-settings-title">Omdirigerings-URI</h2>
+                    <p class="flow-card__subtitle">Måste matcha exakt i Spotify Dashboard.</p>
+                  </div>
+                </div>
+                <p class="help" id="redirect-uri-help">
+                  Under <strong>Redirect URIs</strong> i er Spotify-app — en rad identisk med URI:n nedan.
+                </p>
+                <div class="redirect-uri-row">
+                  <code id="redirect-uri-display" class="code-block" aria-describedby="redirect-uri-help"></code>
+                  <button type="button" class="btn" id="btn-copy-redirect">Kopiera URI</button>
+                </div>
+              </div>
+
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-mag" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="heading-search-cache">Sökcache</h2>
+                    <p class="flow-card__subtitle" id="search-cache-help">Samma sökning cachas i ~30 min i sessionStorage.</p>
+                  </div>
+                </div>
+                <button type="button" class="btn" id="btn-clear-search-cache">Rensa sökcache</button>
+              </div>
+
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-tag" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="heading-playlist-prefix">Spelliste-prefix</h2>
+                    <p class="flow-card__subtitle" id="playlist-prefix-help">Prefix + suffix för nya listor och filter för ”Mina listor”.</p>
+                  </div>
+                </div>
+                <label for="playlist-prefix" class="label">Prefix (text före suffix)</label>
+                <input type="text" id="playlist-prefix" class="input" autocomplete="off" spellcheck="false" value="Björklunds playlist - " />
+                <div class="row row--wrap">
+                  <button type="button" class="btn" id="btn-reset-playlist-prefix">Återställ standardprefix</button>
+                </div>
+              </div>
+
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-gear" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="heading-prefs">Appinställningar</h2>
+                    <p class="flow-card__subtitle">Tema sparas i valvet vid <strong>Spara lokalt</strong>.</p>
+                  </div>
+                </div>
+                <label for="pref-theme" class="label">Tema</label>
+                <select id="pref-theme" class="select">
+                  <option value="system">System</option>
+                  <option value="light">Ljust</option>
+                  <option value="dark">Mörkt</option>
+                </select>
+              </div>
+
+              <div class="flow-card" style="background: var(--shell-mint); border-color: var(--shell-mint-strong)">
+                <p class="help" style="margin: 0; display: flex; gap: 0.5rem; align-items: flex-start">
+                  <svg width="20" height="20" aria-hidden="true" style="flex-shrink: 0; color: var(--spotify)"><use href="#sym-lock" /></svg>
+                  <span>All data lagras på din enhet. Ingen server i denna app.</span>
+                </p>
+              </div>
+
+              <div class="flow-nav">
+                <button type="button" class="btn btn--primary" data-flow-goto="1">Tillbaka till flödet</button>
+              </div>
+            </section>
           </div>
-          <label for="client-id" class="label">Client ID</label>
-          <input type="text" id="client-id" class="input" autocomplete="off" spellcheck="false" inputmode="verbatim" aria-describedby="client-id-help" />
-          <p class="help" id="client-id-help">Lagras krypterat lokalt. Ingen client secret används.</p>
 
-          <label for="crypto-pass" class="label">Lösenfras för lokal kryptering</label>
-          <input type="password" id="crypto-pass" class="input" autocomplete="new-password" aria-describedby="crypto-pass-help" />
-          <p class="help" id="crypto-pass-help">
-            Används för att kryptera tokens och inställningar i IndexedDB. Om du glömmer den måste du logga in på Spotify igen och spara om.
-          </p>
-
-          <div class="row row--wrap">
-            <button type="button" class="btn btn--primary" id="btn-save-settings">Spara lokalt</button>
-            <button type="button" class="btn" id="btn-load-vault">Läs in sparad data</button>
-            <button type="button" class="btn" id="btn-spotify-login">Logga in med Spotify</button>
-            <button type="button" class="btn btn--danger" id="btn-logout">Rensa session</button>
-          </div>
-          <p class="status" id="auth-status" role="status" aria-live="polite"></p>
-
-          <details class="forbidden-help">
-            <summary class="forbidden-help__summary">Om du får Forbidden (403) när du skapar spellista eller lägger till låtar</summary>
-            <div class="forbidden-help__body">
-              <p class="help">
-                <strong>Ingen lista med kryssrutor för rättigheter?</strong> Det är normalt: Spotify kan lägga samtycke i inloggning/avtal/kod utan att visa varje scope på en egen rad. Det viktiga är vad Spotify <em>faktiskt skickar tillbaka i token-svaret</em>. Efter inloggning ska statusraden här visa raden <strong>Beviljade rättigheter (från Spotify): …</strong> — där måste <code>playlist-modify-public</code> och/eller <code>playlist-modify-private</code> synas för spellistor.
-              </p>
-              <p class="help">
-                <strong>Tvinga nytt samtycke mot Spotify:</strong> öppna
-                <a href="https://www.spotify.com/account/apps/" rel="noopener noreferrer" target="_blank">spotify.com/account/apps</a>,
-                hitta denna app och välj <strong>Ta bort åtkomst</strong>. Logga sedan in igen via <strong>Logga in med Spotify</strong> i denna app och <strong>Spara lokalt</strong>.
-              </p>
-              <p class="help">
-                <strong>Vad det betyder:</strong> Spotify svarar ”du får inte göra detta” (HTTP 403). Det är <em>inte</em> ett fel i lösenfras-fältet. Vanligast är att din <strong>inloggningstoken</strong> saknar behörighet för spellistor, eller att du inte fått en <strong>ny</strong> token efter att appen begär fler rättigheter.
-              </p>
-              <p class="help"><strong>Gör så här i denna app (i ordning):</strong></p>
-              <ol class="forbidden-help__list">
-                <li>Klicka <strong>Rensa session</strong> (knappen med röd kant). Då rensas Spotify-tokens (och sparas utan tokens om du har lösenfras ifylld).</li>
-                <li>Fyll i <strong>Client ID</strong> och <strong>Lösenfras</strong> som tidigare.</li>
-                <li>Klicka <strong>Logga in med Spotify</strong>. Du ska då se Spotifys sida (konto + godkänn rättigheter). Om du <em>inte</em> ser någon Spotify-sida kan webbläsaren redan vara inloggad på spotify.com — öppna då <a href="https://accounts.spotify.com/logout" rel="noopener noreferrer" target="_blank">accounts.spotify.com/logout</a> i samma webbläsare, gå tillbaka till appen och prova Logga in igen. Appen skickar <code>show_dialog=true</code> så godkännande oftast visas igen.</li>
-                <li>Klicka <strong>Spara lokalt</strong> så den nya token sparas krypterat.</li>
-                <li>Gå tillbaka till <strong>Låtar</strong> och prova <strong>Utför</strong> igen.</li>
-              </ol>
-              <p class="help">
-                <strong>I Spotify Developer Dashboard</strong> (din app): om läget är <strong>Development</strong> måste ditt Spotify-konto finnas med som testanvändare, annars kan API neka vissa steg. Kontrollera också att <strong>Redirect URI</strong> fortfarande stämmer exakt med den URI som visas högst upp här.
-              </p>
-              <p class="help">
-                <strong>Varför stramar Spotify åt?</strong> I <em>Development mode</em> gäller bland annat krav på <strong>Spotify Premium</strong> för den som använder API:et, begränsning till <strong>ett</strong> Development-Client-ID per utvecklare, max <strong>fem</strong> auktoriserade användare per app och ett smalare API-utbud — se Spotifys egen sammanfattning och uppdateringar i
-                <a href="https://developer.spotify.com/blog/2026-02-06-update-on-developer-access-and-platform-security" rel="noopener noreferrer" target="_blank">Update on Developer Access and Platform Security</a>
-                (feb 2026). För endpoint- och fältändringar, se
-                <a href="https://developer.spotify.com/documentation/web-api/references/changes/february-2026" rel="noopener noreferrer" target="_blank">Web API Changelog – February 2026</a>.
-              </p>
-              <p class="help">
-                Om du ska skapa <strong>publik</strong> spellista måste du kryssa i ”Publik spellista” och token måste inkludera rättighet för det. Vid tvekan: lämna den <strong>urkryssad</strong> (privat spellista) och testa igen.
-              </p>
+          <aside class="app-summary" aria-label="Sammanfattning">
+            <div class="summary-card">
+              <div class="summary-card__head">
+                <svg aria-hidden="true"><use href="#sym-clipboard" /></svg>
+                <div>
+                  <h2 class="summary-card__title">Sammanfattning</h2>
+                  <p class="summary-card__lead">Kontrollera val innan du utför åtgärden.</p>
+                </div>
+              </div>
+              <ul class="summary-list">
+                <li class="summary-list__item">
+                  <svg class="summary-list__icon summary-list__icon--spotify" aria-hidden="true"><use href="#sym-spotify" /></svg>
+                  <span class="summary-list__label">Spotify</span>
+                  <span class="summary-list__value summary-list__value--ok" id="sum-spotify">—</span>
+                </li>
+                <li class="summary-list__item">
+                  <svg class="summary-list__icon" aria-hidden="true"><use href="#sym-note" /></svg>
+                  <span class="summary-list__label">Valda låtar</span>
+                  <span class="summary-list__value" id="sum-tracks">—</span>
+                </li>
+                <li class="summary-list__item">
+                  <svg class="summary-list__icon" aria-hidden="true"><use href="#sym-list" /></svg>
+                  <span class="summary-list__label">Spellista</span>
+                  <span class="summary-list__value" id="sum-playlist">—</span>
+                </li>
+                <li class="summary-list__item">
+                  <svg class="summary-list__icon" aria-hidden="true"><use href="#sym-lightning" /></svg>
+                  <span class="summary-list__label">Åtgärd</span>
+                  <span class="summary-list__value" id="sum-action">—</span>
+                </li>
+                <li class="summary-list__item" id="sum-row-extra" hidden>
+                  <svg class="summary-list__icon" aria-hidden="true"><use href="#sym-link" /></svg>
+                  <span class="summary-list__label" id="sum-extra-label">Källa</span>
+                  <span class="summary-list__value" id="sum-extra">—</span>
+                </li>
+                <li class="summary-list__item">
+                  <svg class="summary-list__icon" aria-hidden="true"><use href="#sym-clock" /></svg>
+                  <span class="summary-list__label">Token</span>
+                  <span class="summary-list__value" id="sum-token">—</span>
+                </li>
+              </ul>
+              <div class="summary-foot">
+                <svg aria-hidden="true"><use href="#sym-lock" /></svg>
+                <span id="sum-foot">Välj låtar och spellista för att fortsätta.</span>
+              </div>
             </div>
-          </details>
-        </section>
+            <div class="summary-tip">
+              <div class="summary-tip__head">
+                <svg aria-hidden="true"><use href="#sym-bulb" /></svg>
+                Tips
+              </div>
+              <p style="margin: 0" id="sum-tip-text">Efter sökning: välj spår och gå till steg 2 för spellista.</p>
+            </div>
+          </aside>
+        </div>
+      </main>
 
-        <section class="card" aria-labelledby="heading-search-cache">
-          <h2 id="heading-search-cache" class="card__title">Sökcache</h2>
-          <p class="help" id="search-cache-help">
-            Träfflistor för <strong>samma</strong> söksträng (inkl. artist/titel-hjälp) sparas i denna webbläsare i <strong>30 minuter</strong> så upprepade sökningar mot Spotify minskar.
-            Cachen försvinner när du stänger fliken (sessionStorage). Knappen nedan rensar all sparad sökdata manuellt.
-          </p>
-          <button type="button" class="btn" id="btn-clear-search-cache">Rensa sökcache</button>
-        </section>
-
-        <section class="card" aria-labelledby="heading-playlist-prefix">
-          <h2 id="heading-playlist-prefix" class="card__title">Spelliste-prefix</h2>
-          <p class="help" id="playlist-prefix-help">
-            Nya spellistor får namnet <strong>prefix + det du skriver</strong> under ”Skapa ny spellista”. Listan ”Mina listor med prefix” vid uppdatering använder samma prefix för att filtrera dina egna spellistor.
-          </p>
-          <label for="playlist-prefix" class="label">Prefix (text före suffix)</label>
-          <input type="text" id="playlist-prefix" class="input" autocomplete="off" spellcheck="false" value="Björklunds playlist - " />
-          <div class="row row--wrap">
-            <button type="button" class="btn" id="btn-reset-playlist-prefix">Återställ standardprefix</button>
-          </div>
-        </section>
-
-        <section class="card" aria-labelledby="heading-prefs">
-          <h2 id="heading-prefs" class="card__title">Appinställningar</h2>
-          <label for="pref-theme" class="label">Tema</label>
-          <select id="pref-theme" class="select">
-            <option value="system">System</option>
-            <option value="light">Ljust</option>
-            <option value="dark">Mörkt</option>
-          </select>
-          <p class="help">Tema sparas i den krypterade valvet tillsammans med övriga inställningar när du klickar Spara lokalt.</p>
-        </section>
-      </div>
-    </main>
-
-    <footer class="site-footer" role="contentinfo">
-      <p>All data lagras på din enhet. Ingen server i denna app.</p>
-    </footer>
+      <footer class="site-footer" role="contentinfo">
+        <p>Björklund spellista · lokal PWA · PKCE · krypterad lagring</p>
+      </footer>
+    </div>
 
     <div id="toast" class="toast" role="alert" aria-live="assertive" hidden></div>
 
