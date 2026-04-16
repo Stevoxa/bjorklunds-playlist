@@ -72,6 +72,49 @@ function logPlaylistWrite(method, path, requestMeta, res, bodyText) {
   logSpotify(entry);
 }
 
+/**
+ * Spotify sök-svar: vanligast `tracks.items`. Undvik `tracks ?? items` om `tracks` finns men är tomt
+ * medan träffar ligger i `items` (API-/migreringskantfall).
+ * @param {Record<string, unknown>} data
+ * @returns {{ items: object[], tracksTotal?: number }}
+ */
+function pickTrackSearchResults(data) {
+  const tracks = data?.tracks;
+  const itemsRoot = data?.items;
+  const fromTracks = Array.isArray(tracks?.items) ? tracks.items : null;
+  const fromItemsPaging =
+    itemsRoot && typeof itemsRoot === 'object' && !Array.isArray(itemsRoot) && Array.isArray(itemsRoot.items)
+      ? itemsRoot.items
+      : null;
+  const fromItemsArray = Array.isArray(itemsRoot) ? itemsRoot : null;
+
+  if (fromTracks?.length) {
+    return { items: fromTracks, tracksTotal: typeof tracks.total === 'number' ? tracks.total : undefined };
+  }
+  if (fromItemsPaging?.length) {
+    return {
+      items: fromItemsPaging,
+      tracksTotal: typeof itemsRoot.total === 'number' ? itemsRoot.total : undefined,
+    };
+  }
+  if (fromItemsArray?.length) {
+    return { items: fromItemsArray, tracksTotal: fromItemsArray.length };
+  }
+  if (fromTracks) {
+    return { items: fromTracks, tracksTotal: typeof tracks.total === 'number' ? tracks.total : undefined };
+  }
+  if (fromItemsPaging) {
+    return {
+      items: fromItemsPaging,
+      tracksTotal: typeof itemsRoot.total === 'number' ? itemsRoot.total : undefined,
+    };
+  }
+  if (fromItemsArray) {
+    return { items: fromItemsArray, tracksTotal: fromItemsArray.length };
+  }
+  return { items: [], tracksTotal: undefined };
+}
+
 function buildSearchQueries(q, artist, title) {
   const queries = [];
   const a = artist?.trim();
@@ -87,21 +130,43 @@ function buildSearchQueries(q, artist, title) {
   return queries;
 }
 
+/** Om nätverket hänger: annars kan sök-kön + searchInProgress låsa tills sidladdning */
+const API_FETCH_TIMEOUT_MS = 45_000;
+
 /**
  * @param {string} accessToken
  * @param {string} path
  * @param {RequestInit} [init]
  */
 async function api(accessToken, path, init = {}) {
-  const res = await fetch(`${SPOTIFY_API_BASE}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...(init.body && typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
-      ...init.headers,
-    },
-  });
-  return res;
+  const { signal: userSignal, ...rest } = init;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT_MS);
+  const onUserAbort = () => {
+    clearTimeout(timer);
+    controller.abort();
+  };
+  if (userSignal) {
+    if (userSignal.aborted) {
+      clearTimeout(timer);
+      throw new DOMException('Aborted', 'AbortError');
+    }
+    userSignal.addEventListener('abort', onUserAbort, { once: true });
+  }
+  try {
+    return await fetch(`${SPOTIFY_API_BASE}${path}`, {
+      ...rest,
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(rest.body && typeof rest.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
+        ...rest.headers,
+      },
+    });
+  } finally {
+    clearTimeout(timer);
+    if (userSignal) userSignal.removeEventListener('abort', onUserAbort);
+  }
 }
 
 /** Max väntan per 429 (ms) — Spotify kan skicka stora Retry-After; annars känns UI “fryst”. */
@@ -330,8 +395,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             });
             throw new Error('Ogiltigt JSON-svar från Spotify');
           }
-          const trackPage = data.tracks ?? data.items;
-          const items = Array.isArray(trackPage?.items) ? trackPage.items : [];
+          const { items, tracksTotal } = pickTrackSearchResults(data);
           logSpotify({
             t: new Date().toISOString(),
             endpoint: 'GET /v1/search',
@@ -339,7 +403,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             market: market ?? '(ingen)',
             httpStatus: res.status,
             ok: res.ok,
-            tracksTotal: trackPage?.total,
+            tracksTotal,
             itemsReturned: items.length,
             sample: items.slice(0, 5).map((t) => ({
               name: t.name,
