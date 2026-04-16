@@ -538,55 +538,80 @@
           <aside class="app-summary" aria-label="Sammanfattning">
             <div class="summary-card">
               <div class="summary-card__head">
-                <svg aria-hidden="true"><use href="#sym-clipboard" /></svg>
-                <div>
+                <span class="summary-card__head-ring" aria-hidden="true">
+                  <svg class="summary-card__head-icon"><use href="#sym-clipboard" /></svg>
+                </span>
+                <div class="summary-card__head-text">
                   <h2 class="summary-card__title">Sammanfattning</h2>
                   <p class="summary-card__lead">Kontrollera val innan du utför åtgärden.</p>
                 </div>
               </div>
               <ul class="summary-list">
                 <li class="summary-list__item">
-                  <svg class="summary-list__icon summary-list__icon--spotify" aria-hidden="true"><use href="#sym-spotify" /></svg>
-                  <span class="summary-list__label">Spotify</span>
-                  <span class="summary-list__value summary-list__value--ok" id="sum-spotify">—</span>
+                  <span class="summary-list__icon-wrap summary-list__icon-wrap--spotify" aria-hidden="true">
+                    <svg class="summary-list__glyph summary-list__glyph--spotify"><use href="#sym-spotify" /></svg>
+                  </span>
+                  <div class="summary-list__body">
+                    <span class="summary-list__label">Spotify</span>
+                    <span class="summary-list__value summary-list__value--ok" id="sum-spotify">—</span>
+                  </div>
                 </li>
                 <li class="summary-list__item">
-                  <svg class="summary-list__icon" aria-hidden="true"><use href="#sym-note" /></svg>
-                  <span class="summary-list__label">Valda låtar</span>
-                  <span class="summary-list__value" id="sum-tracks">—</span>
+                  <span class="summary-list__icon-wrap" aria-hidden="true">
+                    <svg class="summary-list__glyph"><use href="#sym-note" /></svg>
+                  </span>
+                  <div class="summary-list__body">
+                    <span class="summary-list__label">Valda låtar</span>
+                    <span class="summary-list__value" id="sum-tracks">—</span>
+                  </div>
                 </li>
                 <li class="summary-list__item">
-                  <svg class="summary-list__icon" aria-hidden="true"><use href="#sym-list" /></svg>
-                  <span class="summary-list__label">Spellista</span>
-                  <span class="summary-list__value" id="sum-playlist">—</span>
+                  <span class="summary-list__icon-wrap" aria-hidden="true">
+                    <svg class="summary-list__glyph"><use href="#sym-list" /></svg>
+                  </span>
+                  <div class="summary-list__body">
+                    <span class="summary-list__label">Spellista</span>
+                    <span class="summary-list__value" id="sum-playlist">—</span>
+                  </div>
                 </li>
                 <li class="summary-list__item">
-                  <svg class="summary-list__icon" aria-hidden="true"><use href="#sym-lightning" /></svg>
-                  <span class="summary-list__label">Åtgärd</span>
-                  <span class="summary-list__value" id="sum-action">—</span>
+                  <span class="summary-list__icon-wrap" aria-hidden="true">
+                    <svg class="summary-list__glyph"><use href="#sym-lightning" /></svg>
+                  </span>
+                  <div class="summary-list__body">
+                    <span class="summary-list__label">Åtgärd</span>
+                    <span class="summary-list__value" id="sum-action">—</span>
+                  </div>
                 </li>
                 <li class="summary-list__item" id="sum-row-extra" hidden>
-                  <svg class="summary-list__icon" aria-hidden="true"><use href="#sym-link" /></svg>
-                  <span class="summary-list__label" id="sum-extra-label">Källa</span>
-                  <span class="summary-list__value" id="sum-extra">—</span>
+                  <span class="summary-list__icon-wrap" aria-hidden="true">
+                    <svg class="summary-list__glyph"><use href="#sym-link" /></svg>
+                  </span>
+                  <div class="summary-list__body">
+                    <span class="summary-list__label" id="sum-extra-label">Källa</span>
+                    <span class="summary-list__value" id="sum-extra">—</span>
+                  </div>
                 </li>
                 <li class="summary-list__item">
-                  <svg class="summary-list__icon" aria-hidden="true"><use href="#sym-clock" /></svg>
-                  <span class="summary-list__label">Token</span>
-                  <span class="summary-list__value" id="sum-token">—</span>
+                  <span class="summary-list__icon-wrap" aria-hidden="true">
+                    <svg class="summary-list__glyph"><use href="#sym-clock" /></svg>
+                  </span>
+                  <div class="summary-list__body">
+                    <span class="summary-list__label">Token</span>
+                    <span class="summary-list__value" id="sum-token">—</span>
+                  </div>
                 </li>
               </ul>
               <div class="summary-foot">
-                <svg aria-hidden="true"><use href="#sym-lock" /></svg>
-                <span id="sum-foot">Välj låtar och spellista för att fortsätta.</span>
+                <p class="summary-foot__text" id="sum-foot">Välj låtar och spellista för att fortsätta.</p>
               </div>
-            </div>
-            <div class="summary-tip">
-              <div class="summary-tip__head">
-                <svg aria-hidden="true"><use href="#sym-bulb" /></svg>
-                Tips
+              <div class="summary-tip">
+                <div class="summary-tip__head">
+                  <svg class="summary-tip__bulb" aria-hidden="true"><use href="#sym-bulb" /></svg>
+                  <span class="summary-tip__title">Tips</span>
+                </div>
+                <p class="summary-tip__text" id="sum-tip-text">Efter sökning: välj spår och gå till steg 2 för spellista.</p>
               </div>
-              <p style="margin: 0" id="sum-tip-text">Efter sökning: välj spår och gå till steg 2 för spellista.</p>
             </div>
           </aside>
         </div>
