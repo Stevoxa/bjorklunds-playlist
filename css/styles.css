@@ -222,6 +222,18 @@ body {
   max-width: min(20rem, 100%);
 }
 
+#existing-pl-select.select {
+  max-width: 100%;
+}
+
+.existing-pl-source-block {
+  margin-bottom: var(--space);
+}
+
+.existing-pl-source-block:last-child {
+  margin-bottom: 0;
+}
+
 .textarea:focus-visible,
 .input:focus-visible,
 .select:focus-visible {

@@ -110,8 +110,11 @@
           </fieldset>
 
           <div id="block-new-playlist">
-            <label for="new-pl-name" class="label">Namn på ny spellista</label>
-            <input type="text" id="new-pl-name" class="input" autocomplete="off" />
+            <label for="new-pl-name" class="label">Namn (suffix efter prefix)</label>
+            <input type="text" id="new-pl-name" class="input" autocomplete="off" placeholder="t.ex. Sommar 2026" />
+            <p class="help" id="new-pl-preview-help">
+              Hela namnet på Spotify blir: <strong id="new-pl-preview">Björklunds playlist - …</strong> (prefix ställs in under Inställningar.)
+            </p>
             <div class="checkbox-row">
               <input type="checkbox" id="new-pl-public" />
               <label for="new-pl-public">Publik spellista</label>
@@ -119,16 +122,39 @@
           </div>
 
           <div id="block-existing-playlist" hidden>
-            <label for="existing-pl-id" class="label">Spelliste-ID eller Spotify-URI</label>
-            <input
-              type="text"
-              id="existing-pl-id"
-              class="input"
-              autocomplete="off"
-              placeholder="spotify:playlist:… eller bara ID"
-              aria-describedby="existing-pl-help"
-            />
-            <p class="help" id="existing-pl-help">Du kan klistra in en länk från Spotify; appen plockar ut ID automatiskt.</p>
+            <fieldset class="fieldset">
+              <legend class="legend">Välj befintlig spellista</legend>
+              <div class="radio-row">
+                <label class="radio-label">
+                  <input type="radio" name="pl-existing-source" value="from-list" />
+                  Mina listor med prefix
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="pl-existing-source" value="from-link" checked />
+                  ID eller Spotify-länk
+                </label>
+              </div>
+            </fieldset>
+            <div id="block-existing-from-list" class="existing-pl-source-block" hidden>
+              <label for="existing-pl-select" class="label">Spellista</label>
+              <select id="existing-pl-select" class="select" aria-describedby="existing-pl-select-help"></select>
+              <p class="help" id="existing-pl-select-help">
+                Listan hämtas från Spotify och visar spellistor <strong>du äger</strong> vars namn börjar med ditt prefix (samma som för nya spellistor). Klicka ”Hämta om” om du ändrat prefix eller skapat nya listor.
+              </p>
+              <button type="button" class="btn" id="btn-refresh-pl-list">Hämta om lista</button>
+            </div>
+            <div id="block-existing-from-link" class="existing-pl-source-block">
+              <label for="existing-pl-id" class="label">Spelliste-ID eller Spotify-URI</label>
+              <input
+                type="text"
+                id="existing-pl-id"
+                class="input"
+                autocomplete="off"
+                placeholder="spotify:playlist:… eller bara ID"
+                aria-describedby="existing-pl-help"
+              />
+              <p class="help" id="existing-pl-help">Klistra in länk eller ID — då gäller <em>inte</em> prefixregeln (valfri spellista du har åtkomst till).</p>
+            </div>
             <fieldset class="fieldset">
               <legend class="legend">Uppdatering</legend>
               <div class="radio-row">
@@ -231,6 +257,18 @@
             Cachen försvinner när du stänger fliken (sessionStorage). Knappen nedan rensar all sparad sökdata manuellt.
           </p>
           <button type="button" class="btn" id="btn-clear-search-cache">Rensa sökcache</button>
+        </section>
+
+        <section class="card" aria-labelledby="heading-playlist-prefix">
+          <h2 id="heading-playlist-prefix" class="card__title">Spelliste-prefix</h2>
+          <p class="help" id="playlist-prefix-help">
+            Nya spellistor får namnet <strong>prefix + det du skriver</strong> under ”Skapa ny spellista”. Listan ”Mina listor med prefix” vid uppdatering använder samma prefix för att filtrera dina egna spellistor.
+          </p>
+          <label for="playlist-prefix" class="label">Prefix (text före suffix)</label>
+          <input type="text" id="playlist-prefix" class="input" autocomplete="off" spellcheck="false" value="Björklunds playlist - " />
+          <div class="row row--wrap">
+            <button type="button" class="btn" id="btn-reset-playlist-prefix">Återställ standardprefix</button>
+          </div>
         </section>
 
         <section class="card" aria-labelledby="heading-prefs">

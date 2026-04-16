@@ -19,5 +19,8 @@ export const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
 export const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
 export const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 
+/** Standardprefix för nya spellistor (användaren skriver bara suffix i appen). */
+export const DEFAULT_PLAYLIST_NAME_PREFIX = 'Björklunds playlist - ';
+
 /** PKCE verifier length (bytes) → ~43+ chars when base64url. */
 export const PKCE_VERIFIER_LENGTH = 64;

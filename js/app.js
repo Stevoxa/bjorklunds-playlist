@@ -1,3 +1,4 @@
+import { DEFAULT_PLAYLIST_NAME_PREFIX } from './config.js';
 import { getRedirectUri, beginLogin, consumeOAuthCallback } from './auth.js';
 import { loadVault, saveVault, VAULT_KEY } from './vault.js';
 import { idbGet } from './db.js';
@@ -55,7 +56,7 @@ function defaultVault() {
     v: 1,
     clientId: '',
     tokens: null,
-    settings: { theme: 'system' },
+    settings: { theme: 'system', playlistNamePrefix: DEFAULT_PLAYLIST_NAME_PREFIX },
     selectedPlaylist: null,
   };
 }
@@ -140,7 +141,12 @@ async function saveEncryptedVault() {
   }
   vaultData = vaultData ?? defaultVault();
   vaultData.clientId = cid;
-  vaultData.settings = { theme: $('pref-theme').value };
+  vaultData.settings = {
+    ...defaultVault().settings,
+    ...vaultData.settings,
+    theme: $('pref-theme').value,
+    playlistNamePrefix: $('playlist-prefix').value,
+  };
   persistTokensFromClient();
   await saveVault(vaultData, pass);
   showToast('Sparat krypterat i IndexedDB.');
@@ -161,9 +167,15 @@ async function loadEncryptedVault() {
       return;
     }
     vaultData = { ...defaultVault(), ...data };
+    vaultData.settings = { ...defaultVault().settings, ...vaultData.settings };
     $('client-id').value = vaultData.clientId ?? '';
     $('pref-theme').value = vaultData.settings?.theme ?? 'system';
+    $('playlist-prefix').value =
+      vaultData.settings?.playlistNamePrefix != null && String(vaultData.settings.playlistNamePrefix).length > 0
+        ? String(vaultData.settings.playlistNamePrefix)
+        : DEFAULT_PLAYLIST_NAME_PREFIX;
     applyTheme($('pref-theme').value);
+    updateNewPlaylistPreview();
     initSpotifyClient();
     showToast('Data läst in.');
     setAuthStatus();
@@ -229,7 +241,9 @@ function mergeOAuthTokens(tokens, clientIdFromOAuth) {
   const cid = (clientIdFromOAuth || '').trim() || getClientId().trim() || (vaultData.clientId || '').trim();
   vaultData.clientId = cid;
   $('client-id').value = cid;
+  vaultData.settings = { ...defaultVault().settings, ...vaultData.settings };
   initSpotifyClient();
+  updateNewPlaylistPreview();
   showToast('Spotify-inloggning klar. Spara lokalt med din lösenfras för att behålla tokens.');
   setAuthStatus();
   updateApplyEnabled();
@@ -269,10 +283,52 @@ function wireTabs() {
       if (name === 'tracks') {
         initSpotifyClient();
         updateApplyEnabled();
+        updateNewPlaylistPreview();
         if (resultRows.length > 0) renderResults();
       }
     });
   });
+}
+
+function getPlaylistPrefixFromInput() {
+  const raw = $('playlist-prefix').value;
+  return raw.length > 0 ? raw : DEFAULT_PLAYLIST_NAME_PREFIX;
+}
+
+function updateNewPlaylistPreview() {
+  const pre = getPlaylistPrefixFromInput();
+  const suf = $('new-pl-name').value.trim() || '…';
+  $('new-pl-preview').textContent = `${pre}${suf}`;
+}
+
+function updateExistingPlaylistSourceUi() {
+  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value;
+  if (mode !== 'existing') return;
+  const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
+  $('block-existing-from-list').hidden = !fromList;
+  $('block-existing-from-link').hidden = fromList;
+}
+
+async function refreshExistingPlaylistSelect() {
+  if (!spotifyClient) {
+    showToast('Logga in på Spotify under Inställningar först.', true);
+    return;
+  }
+  const prefix = getPlaylistPrefixFromInput();
+  const sel = $('existing-pl-select');
+  sel.replaceChildren();
+  const ph = document.createElement('option');
+  ph.value = '';
+  ph.textContent = '— Välj spellista —';
+  sel.append(ph);
+  const list = await spotifyClient.listMyPlaylistsByPrefix(prefix);
+  for (const p of list) {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.append(opt);
+  }
+  showToast(list.length ? `${list.length} spellistor med prefix.` : 'Inga spellistor matchar prefixet.');
 }
 
 function wirePlaylistMode() {
@@ -284,8 +340,22 @@ function wirePlaylistMode() {
     const isNew = v === 'new';
     blockNew.hidden = !isNew;
     blockEx.hidden = isNew;
+    if (!isNew) {
+      updateExistingPlaylistSourceUi();
+    }
   };
   modes.forEach((r) => r.addEventListener('change', update));
+  document.querySelectorAll('input[name="pl-existing-source"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      updateExistingPlaylistSourceUi();
+      if (r.value === 'from-list' && spotifyClient) {
+        refreshExistingPlaylistSelect().catch((e) => showToast(String(e?.message ?? e), true));
+      }
+    });
+  });
+  $('btn-refresh-pl-list').addEventListener('click', () => {
+    refreshExistingPlaylistSelect().catch((e) => showToast(String(e?.message ?? e), true));
+  });
   update();
 }
 
@@ -543,7 +613,8 @@ async function applyPlaylist() {
   $('btn-apply-playlist').disabled = true;
   try {
     if (mode === 'new') {
-      const name = $('new-pl-name').value.trim() || 'Ny spellista';
+      const suffix = $('new-pl-name').value.trim() || 'Ny spellista';
+      const name = `${getPlaylistPrefixFromInput()}${suffix}`;
       const isPublic = $('new-pl-public').checked;
       const gs = (vaultData.tokens?.grantedScopeRaw || '').trim();
       if (gs) {
@@ -573,11 +644,22 @@ async function applyPlaylist() {
       if (pass.length >= 8) await saveVault(vaultData, pass);
       showToast(`Spellistan ”${pl.name}” skapades med ${uris.length} låtar.`);
     } else {
-      const rawId = $('existing-pl-id').value;
-      const plId = parsePlaylistIdFromInput(rawId);
-      if (!plId) {
-        showToast('Ogiltigt spelliste-ID.', true);
-        return;
+      const source =
+        document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
+      let plId = null;
+      if (source === 'from-list') {
+        plId = $('existing-pl-select').value.trim();
+        if (!plId) {
+          showToast('Välj en spellista i listan (eller byt till ID/länk).', true);
+          return;
+        }
+      } else {
+        const rawId = $('existing-pl-id').value;
+        plId = parsePlaylistIdFromInput(rawId);
+        if (!plId) {
+          showToast('Ogiltigt spelliste-ID.', true);
+          return;
+        }
       }
       const updateMode = document.querySelector('input[name="pl-update"]:checked')?.value;
       if (updateMode === 'replace' && uris.length > SPOTIFY_CHUNK) {
@@ -591,7 +673,11 @@ async function applyPlaylist() {
           await spotifyClient.appendPlaylistTracks(plId, uris.slice(i, i + SPOTIFY_CHUNK));
         }
       }
-      vaultData.selectedPlaylist = { id: plId, name: vaultData.selectedPlaylist?.name ?? plId };
+      const plLabel =
+        source === 'from-list'
+          ? ($('existing-pl-select').selectedOptions[0]?.textContent ?? plId)
+          : plId;
+      vaultData.selectedPlaylist = { id: plId, name: plLabel };
       const pass = getPassphrase();
       if (pass.length >= 8) await saveVault(vaultData, pass);
       showToast(updateMode === 'replace' ? 'Spellistan ersattes.' : 'Låtar tillagda på spellistan.');
@@ -660,6 +746,13 @@ async function boot() {
 
   wireTabs();
   wirePlaylistMode();
+  $('new-pl-name').addEventListener('input', updateNewPlaylistPreview);
+  $('playlist-prefix').addEventListener('input', updateNewPlaylistPreview);
+  $('btn-reset-playlist-prefix').addEventListener('click', () => {
+    $('playlist-prefix').value = DEFAULT_PLAYLIST_NAME_PREFIX;
+    updateNewPlaylistPreview();
+    showToast('Prefix återställt. Spara lokalt om det ska sparas i valvet.');
+  });
 
   $('pref-theme').addEventListener('change', () => {
     applyTheme($('pref-theme').value);
@@ -695,7 +788,12 @@ async function boot() {
   $('btn-logout').addEventListener('click', async () => {
     vaultData = vaultData ?? defaultVault();
     vaultData.clientId = getClientId();
-    vaultData.settings = { theme: $('pref-theme').value };
+    vaultData.settings = {
+      ...defaultVault().settings,
+      ...vaultData.settings,
+      theme: $('pref-theme').value,
+      playlistNamePrefix: $('playlist-prefix').value,
+    };
     vaultData.tokens = null;
     spotifyClient = null;
     const pass = getPassphrase();
@@ -743,6 +841,7 @@ async function boot() {
   }
 
   applyTheme($('pref-theme').value);
+  updateNewPlaylistPreview();
   updateApplyEnabled();
   await registerServiceWorker();
 }

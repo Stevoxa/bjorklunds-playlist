@@ -233,6 +233,45 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     },
 
     /**
+     * Spellistor som ägs av inloggad användare och vars namn börjar med prefix (GET /me/playlists, paginerat).
+     * @param {string} prefix
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<{ id: string, name: string }[]>}
+     */
+    async listMyPlaylistsByPrefix(prefix, signal) {
+      const me = await this.me();
+      const myId = me.id;
+      const pref = String(prefix ?? '');
+      /** @type {{ id: string, name: string }[]} */
+      const out = [];
+      let offset = 0;
+      const page = 50;
+      while (true) {
+        const access = await ensureAccess();
+        const path = `/me/playlists?limit=${page}&offset=${offset}`;
+        const res = await apiGetWith429Retry(access, path, 5, signal);
+        const bodyText = await res.text();
+        if (!res.ok) throw new Error(formatSpotifyApiError(res.status, bodyText));
+        let data;
+        try {
+          data = bodyText ? JSON.parse(bodyText) : {};
+        } catch {
+          throw new Error('Ogiltigt JSON-svar från Spotify (spellistor)');
+        }
+        const items = data.items ?? [];
+        for (const item of items) {
+          if (item?.owner?.id === myId && typeof item.name === 'string' && item.name.startsWith(pref)) {
+            out.push({ id: item.id, name: item.name });
+          }
+        }
+        if (items.length < page) break;
+        offset += page;
+      }
+      out.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+      return out;
+    },
+
+    /**
      * @param {string} q
      * @param {number} [limit]
      * @param {{ artist?: string, title?: string, signal?: AbortSignal }} [hints] Om satta: prova fält-sökningar först (bättre träffar). signal avbryter nätverksanrop.
