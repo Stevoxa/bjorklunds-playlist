@@ -21,11 +21,34 @@ let resultRows = [];
 /** När true: rader utan `tracks` visar ”Söker…” i stället för inaktiv hjälptext */
 let searchInProgress = false;
 
+/** @type {AbortController | null} */
+let searchAbortController = null;
+
 const SPOTIFY_CHUNK = 100;
 
 /** Paus mellan rader efter svar (ms), med liten jitter — minskar risk för 429 i rullande 30 s-fönster */
 const SEARCH_ROW_GAP_MS = 600;
 const SEARCH_ROW_JITTER_MS = 250;
+
+/**
+ * @param {number} ms
+ * @param {AbortSignal | undefined} signal
+ */
+function sleepAbortable(ms, signal) {
+  if (!signal) return new Promise((r) => setTimeout(r, ms));
+  if (signal.aborted) return Promise.reject(new DOMException('Aborted', 'AbortError'));
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(t);
+        reject(new DOMException('Aborted', 'AbortError'));
+      },
+      { once: true },
+    );
+  });
+}
 
 function defaultVault() {
   return {
@@ -445,11 +468,14 @@ async function runSearch() {
   }
   resultRows = parsed.map((p) => ({ ...p, tracks: null, selectedUri: null }));
   searchInProgress = true;
+  searchAbortController = new AbortController();
+  const signal = searchAbortController.signal;
   renderResults();
   setSearchProgress(true);
   try {
     let cacheHits = 0;
     for (let i = 0; i < resultRows.length; i += 1) {
+      if (signal.aborted) break;
       $('search-progress-line').textContent = `Söker ${i + 1} av ${resultRows.length} …`;
       const row = resultRows[i];
       const cacheKey = makeSearchCacheKey(row.query, row.artist, row.title);
@@ -468,25 +494,38 @@ async function runSearch() {
         row.tracks = await spotifyClient.searchTracks(row.query, 5, {
           artist: row.artist,
           title: row.title,
+          signal,
         });
-        setSearchCache(cacheKey, row.tracks);
+        if (!signal.aborted) setSearchCache(cacheKey, row.tracks);
       }
+      if (signal.aborted) break;
       row.selectedUri = row.tracks[0]?.uri ?? null;
       renderResults();
-      await new Promise((r) => setTimeout(r, SEARCH_ROW_GAP_MS + Math.random() * SEARCH_ROW_JITTER_MS));
+      if (i < resultRows.length - 1) {
+        await sleepAbortable(SEARCH_ROW_GAP_MS + Math.random() * SEARCH_ROW_JITTER_MS, signal);
+      }
     }
-    showToast(
-      cacheHits > 0
-        ? `Sökning klar. ${cacheHits} av ${resultRows.length} rader från cache, övriga från Spotify.`
-        : 'Sökning klar.',
-    );
+    if (!signal.aborted) {
+      showToast(
+        cacheHits > 0
+          ? `Sökning klar. ${cacheHits} av ${resultRows.length} rader från cache, övriga från Spotify.`
+          : 'Sökning klar.',
+      );
+    }
   } catch (e) {
-    showToast(String(e?.message ?? e), true);
+    if (!signal.aborted) {
+      showToast(String(e?.message ?? e), true);
+    }
   } finally {
     searchInProgress = false;
+    searchAbortController = null;
     setSearchProgress(false);
     renderResults();
     updateApplyEnabled();
+    if (signal.aborted) {
+      const done = resultRows.filter((r) => r.tracks !== null).length;
+      showToast(`Sökning avbruten. ${done} av ${resultRows.length} rader hann sökas.`);
+    }
   }
 }
 
@@ -593,6 +632,10 @@ async function boot() {
   $('btn-clear-search-cache').addEventListener('click', () => {
     clearSearchCache();
     showToast('Sökcache rensad.');
+  });
+
+  $('btn-abort-search').addEventListener('click', () => {
+    searchAbortController?.abort();
   });
 
   window.addEventListener('bjorklund-spotify-wait', (ev) => {

@@ -114,8 +114,32 @@ const RATE_LIMIT_TOTAL_WAIT_CAP_MS = 120_000;
 const SEARCH_INTERNAL_GAP_MS = 550;
 const SEARCH_INTERNAL_JITTER_MS = 220;
 
-async function sleepBetweenSearchTries() {
-  await new Promise((r) => setTimeout(r, SEARCH_INTERNAL_GAP_MS + Math.floor(Math.random() * SEARCH_INTERNAL_JITTER_MS)));
+/**
+ * @param {number} ms
+ * @param {AbortSignal | undefined} signal
+ */
+function sleepAbortable(ms, signal) {
+  if (!signal) return new Promise((r) => setTimeout(r, ms));
+  if (signal.aborted) return Promise.reject(new DOMException('Aborted', 'AbortError'));
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(t);
+        reject(new DOMException('Aborted', 'AbortError'));
+      },
+      { once: true },
+    );
+  });
+}
+
+/**
+ * @param {AbortSignal | undefined} signal
+ */
+async function sleepBetweenSearchTries(signal) {
+  const ms = SEARCH_INTERNAL_GAP_MS + Math.floor(Math.random() * SEARCH_INTERNAL_JITTER_MS);
+  await sleepAbortable(ms, signal);
 }
 
 /**
@@ -135,12 +159,14 @@ function parseRetryAfterMs(raw) {
  * @param {string} accessToken
  * @param {string} path
  * @param {number} [maxRetries]
+ * @param {AbortSignal | undefined} [signal]
  */
-async function apiGetWith429Retry(accessToken, path, maxRetries = 5) {
+async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
   let lastRes = /** @type {Response | null} */ (null);
   let totalWaited = 0;
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-    const res = await api(accessToken, path, { method: 'GET' });
+    signal?.throwIfAborted();
+    const res = await api(accessToken, path, { method: 'GET', signal });
     lastRes = res;
     if (res.status !== 429) return res;
     if (attempt === maxRetries) return res;
@@ -173,9 +199,10 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5) {
     );
 
     await res.text().catch(() => {});
-    await new Promise((r) => setTimeout(r, waitMs));
+    await sleepAbortable(waitMs, signal);
   }
-  return lastRes ?? (await api(accessToken, path, { method: 'GET' }));
+  signal?.throwIfAborted();
+  return lastRes ?? (await api(accessToken, path, { method: 'GET', signal }));
 }
 
 /**
@@ -208,17 +235,18 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     /**
      * @param {string} q
      * @param {number} [limit]
-     * @param {{ artist?: string, title?: string }} [hints] Om satta: prova fält-sökningar först (bättre träffar).
+     * @param {{ artist?: string, title?: string, signal?: AbortSignal }} [hints] Om satta: prova fält-sökningar först (bättre träffar). signal avbryter nätverksanrop.
      */
     async searchTracks(q, limit = 5, hints = {}) {
+      const { signal, ...hintRest } = hints || {};
       const access = await ensureAccess();
-      const queries = buildSearchQueries(q, hints.artist, hints.title);
+      const queries = buildSearchQueries(q, hintRest.artist, hintRest.title);
       /** @type {('from_token' | null)[]} */
       const markets = ['from_token', null];
       let firstSearchGet = true;
       for (const query of queries) {
         for (const market of markets) {
-          if (!firstSearchGet) await sleepBetweenSearchTries();
+          if (!firstSearchGet) await sleepBetweenSearchTries(signal);
           firstSearchGet = false;
           const params = new URLSearchParams({
             q: query,
@@ -227,7 +255,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
           });
           if (market) params.set('market', market);
           const path = `/search?${params.toString()}`;
-          const res = await apiGetWith429Retry(access, path);
+          const res = await apiGetWith429Retry(access, path, 5, signal);
           const bodyText = await res.text();
           let data;
           try {
