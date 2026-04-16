@@ -34,13 +34,28 @@ function redactForLog(value) {
  * Känsliga nycklar (t.ex. access_token) maskeras alltid — logga aldrig hemligheter manuellt i strängar.
  */
 export function logSpotify(entry) {
-  const safe = typeof entry === 'string' ? entry : redactForLog(entry);
-  const line =
-    typeof safe === 'string' ? safe : JSON.stringify(safe, (_, v) => (typeof v === 'bigint' ? String(v) : v));
+  let line;
+  try {
+    const safe = typeof entry === 'string' ? entry : redactForLog(entry);
+    line =
+      typeof safe === 'string' ? safe : JSON.stringify(safe, (_, v) => (typeof v === 'bigint' ? String(v) : v));
+  } catch (e) {
+    line = JSON.stringify({
+      t: new Date().toISOString(),
+      kind: 'log_format_error',
+      message: String(e?.message ?? e),
+    });
+  }
   buffer.push(line);
   while (buffer.length > MAX_LINES) buffer.shift();
-  console.log('[Spotify API]', safe);
-  listeners.forEach((fn) => fn(line));
+  console.log('[Spotify API]', line);
+  listeners.forEach((fn) => {
+    try {
+      fn(line);
+    } catch {
+      /* åhörare får inte stoppa logg */
+    }
+  });
 }
 
 export function clearSpotifyLog() {
@@ -54,5 +69,10 @@ export function clearSpotifyLog() {
  */
 export function subscribeSpotifyLog(fn) {
   listeners.add(fn);
+  try {
+    for (const line of buffer) fn(line);
+  } catch {
+    /* samma som vid notify */
+  }
   return () => listeners.delete(fn);
 }

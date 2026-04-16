@@ -28,8 +28,8 @@ let searchAbortController = null;
 const SPOTIFY_CHUNK = 100;
 
 /** Paus mellan rader efter svar (ms), med liten jitter — minskar risk för 429 i rullande 30 s-fönster */
-const SEARCH_ROW_GAP_MS = 750;
-const SEARCH_ROW_JITTER_MS = 300;
+const SEARCH_ROW_GAP_MS = 3000;
+const SEARCH_ROW_JITTER_MS = 1000;
 
 /**
  * @param {number} ms
@@ -588,7 +588,15 @@ async function runSearch() {
     }
   } catch (e) {
     if (!signal.aborted) {
-      showToast(String(e?.message ?? e), true);
+      const msg = String(e?.message ?? e);
+      showToast(msg, true);
+      logSpotify({
+        t: new Date().toISOString(),
+        kind: 'client',
+        phase: 'runSearch',
+        message: msg,
+        name: e?.name,
+      });
     }
   } finally {
     searchInProgress = false;

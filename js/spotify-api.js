@@ -154,15 +154,27 @@ async function api(accessToken, path, init = {}) {
     userSignal.addEventListener('abort', onUserAbort, { once: true });
   }
   try {
-    return await fetch(`${SPOTIFY_API_BASE}${path}`, {
-      ...rest,
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        ...(rest.body && typeof rest.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
-        ...rest.headers,
-      },
-    });
+    try {
+      return await fetch(`${SPOTIFY_API_BASE}${path}`, {
+        ...rest,
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          ...(rest.body && typeof rest.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
+          ...rest.headers,
+        },
+      });
+    } catch (err) {
+      logSpotify({
+        t: new Date().toISOString(),
+        kind: 'fetch_error',
+        path,
+        method: rest.method ?? 'GET',
+        name: err?.name,
+        message: String(err?.message ?? err),
+      });
+      throw err;
+    }
   } finally {
     clearTimeout(timer);
     if (userSignal) userSignal.removeEventListener('abort', onUserAbort);
@@ -176,8 +188,8 @@ const RATE_LIMIT_WAIT_MIN_MS = 900;
 const RATE_LIMIT_TOTAL_WAIT_CAP_MS = 120_000;
 
 /** Min tid mellan två /search-anrop (olika query/market) — undvik burst inom Spotifys rullande fönster */
-const SEARCH_INTERNAL_GAP_MS = 800;
-const SEARCH_INTERNAL_JITTER_MS = 280;
+const SEARCH_INTERNAL_GAP_MS = 3000;
+const SEARCH_INTERNAL_JITTER_MS = 1000;
 
 /** Endast en /search-GET-kedja (inkl. 429-retries) åt gången — undviker överlapp mellan flikar eller dubbelklick */
 let searchGetChain = Promise.resolve();
@@ -253,12 +265,14 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
       if (attempt === maxRetries) return res;
 
       const fromHeader = parseRetryAfterMs(res.headers.get('Retry-After'));
-      /** Utan header: kort backoff (2.5s, 5s, … cappad) */
-      const fallbackMs = Math.min(RATE_LIMIT_WAIT_CAP_MS, 2500 * 2 ** attempt);
+      /** Utan Retry-After: /search straffas hårt av snabba omförsök — längre backoff än övriga GET */
+      const fallbackBase = isSearch ? 12_000 : 2_500;
+      const fallbackMs = Math.min(RATE_LIMIT_WAIT_CAP_MS, fallbackBase * 2 ** attempt);
+      const minNoHeader = isSearch ? 2_000 : RATE_LIMIT_WAIT_MIN_MS;
       let waitMs =
         fromHeader != null
           ? Math.min(RATE_LIMIT_WAIT_CAP_MS, Math.max(RATE_LIMIT_WAIT_MIN_MS, fromHeader))
-          : Math.max(RATE_LIMIT_WAIT_MIN_MS, fallbackMs);
+          : Math.max(minNoHeader, fallbackMs);
 
       const remaining = RATE_LIMIT_TOTAL_WAIT_CAP_MS - totalWaited;
       if (remaining <= 0) {
@@ -364,8 +378,9 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       const { signal, ...hintRest } = hints || {};
       const access = await ensureAccess();
       const queries = buildSearchQueries(q, hintRest.artist, hintRest.title);
-      /** @type {('from_token' | null)[]} */
-      const markets = ['from_token', null];
+      /** Endast from_token: halverar antal /search-anrop per rad (mindre 429-belastning); marknad följer kontot. */
+      /** @type {('from_token')[]} */
+      const markets = ['from_token'];
       let firstSearchGet = true;
       for (const query of queries) {
         for (const market of markets) {
@@ -378,7 +393,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
           });
           if (market) params.set('market', market);
           const path = `/search?${params.toString()}`;
-          const res = await apiGetWith429Retry(access, path, 5, signal);
+          const res = await apiGetWith429Retry(access, path, 3, signal);
           const bodyText = await res.text();
           let data;
           try {
@@ -406,9 +421,9 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             tracksTotal,
             itemsReturned: items.length,
             sample: items.slice(0, 5).map((t) => ({
-              name: t.name,
-              artists: (t.artists || []).map((a) => a.name),
-              uri: t.uri,
+              name: t?.name,
+              artists: Array.isArray(t?.artists) ? t.artists.map((a) => a?.name) : [],
+              uri: t?.uri,
             })),
           });
           if (!res.ok) {

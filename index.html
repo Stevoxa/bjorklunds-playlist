@@ -84,10 +84,10 @@
           </div>
         </section>
 
-        <details class="card spotify-log-card">
+        <details class="card spotify-log-card" open>
           <summary class="spotify-log-card__summary">Spotify API-logg (sökning + spelliste-skrivning)</summary>
           <p class="help">
-            Sökning: JSON-rad utan <code>kind</code>. Skapa/lägga till/ersätta spellista: rad med <code>kind: &quot;playlist_write&quot;</code> — metod, path, <code>request</code> (t.ex. namn/publik, <code>playlistId</code>, <code>uriCount</code>, <code>uriSample</code> max 8 st), <code>httpStatus</code>, samt vid JSON-svar <code>spotifyError</code>, <code>snapshotId</code>, ev. <code>playlistId</code> från svar. Icke-JSON-svar: <code>bodyPreview</code>. <strong>Tokens och client secret</strong> loggas inte; känsliga nycklar maskeras.
+            Loggen fylls när sökning eller spelliste-anrop körs (eller vid nätverksfel). Stäng/av med rubriken ovan. Sökning: JSON-rad utan <code>kind</code>. Skapa/lägga till/ersätta spellista: rad med <code>kind: &quot;playlist_write&quot;</code> — metod, path, <code>request</code> (t.ex. namn/publik, <code>playlistId</code>, <code>uriCount</code>, <code>uriSample</code> max 8 st), <code>httpStatus</code>, samt vid JSON-svar <code>spotifyError</code>, <code>snapshotId</code>, ev. <code>playlistId</code> från svar. Icke-JSON-svar: <code>bodyPreview</code>. <strong>Tokens och client secret</strong> loggas inte; känsliga nycklar maskeras.
           </p>
           <pre id="spotify-log-pre" class="log-pre" tabindex="0" aria-label="Spotify API-logg"></pre>
           <button type="button" class="btn" id="btn-clear-spotify-log">Rensa logg</button>
