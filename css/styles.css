@@ -26,7 +26,7 @@
   --danger: #c62828;
   --text: #0f1419;
   --text-muted: #3d4f5f;
-  --bg: #f4f7fa;
+  --bg: #f4f7f9;
   --surface: #ffffff;
   --border: #c5d0db;
   --link: #0b5cab;
@@ -535,6 +535,17 @@ a:focus-visible {
 .row--paste-actions {
   align-items: center;
   gap: var(--space-sm) var(--space);
+}
+
+.row--apply {
+  margin-top: var(--space-lg);
+  align-items: flex-start;
+}
+
+.row--apply__hint {
+  flex: 1 1 14rem;
+  min-width: 0;
+  margin: 0.25rem 0 0;
 }
 
 .results-search-progress {

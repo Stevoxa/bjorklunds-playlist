@@ -25,7 +25,7 @@
       <!-- Hjälp: ? i cirkel (bild 8 / produktikoner) -->
       <symbol id="sym-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10" />
-        <path d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3" />
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
         <path d="M12 17h.01" />
       </symbol>
       <symbol id="sym-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -37,6 +37,10 @@
       </symbol>
       <symbol id="sym-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke-linecap="round" />
+      </symbol>
+      <symbol id="sym-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
       </symbol>
       <!-- Spellista: lista + not (bild 8) -->
       <symbol id="sym-playlist" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -457,8 +461,9 @@
                   </fieldset>
                 </div>
 
-                <div class="row row--wrap" style="margin-top: var(--space-lg)">
+                <div class="row row--wrap row--apply">
                   <button type="button" class="btn btn--primary" id="btn-apply-playlist" disabled>Utför</button>
+                  <p class="help row--apply__hint" id="apply-hint" aria-live="polite"></p>
                 </div>
                 <div class="flow-nav">
                   <button type="button" class="btn" data-flow-goto="2">Tillbaka: Spellista</button>
@@ -483,7 +488,12 @@
                 </p>
                 <div class="redirect-uri-row">
                   <code id="redirect-uri-display" class="code-block" aria-describedby="redirect-uri-help"></code>
-                  <button type="button" class="btn" id="btn-copy-redirect">Kopiera URI</button>
+                  <button type="button" class="btn btn--with-icon" id="btn-copy-redirect">
+                    <span class="btn__icon-wrap" aria-hidden="true">
+                      <svg class="btn__icon" width="18" height="18"><use href="#sym-copy" /></svg>
+                    </span>
+                    <span>Kopiera URI</span>
+                  </button>
                 </div>
               </div>
 
@@ -497,7 +507,12 @@
                     <p class="flow-card__subtitle" id="search-cache-help">Samma sökning cachas i ~30 min i sessionStorage.</p>
                   </div>
                 </div>
-                <button type="button" class="btn" id="btn-clear-search-cache">Rensa sökcache</button>
+                <button type="button" class="btn btn--with-icon" id="btn-clear-search-cache">
+                  <span class="btn__icon-wrap" aria-hidden="true">
+                    <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
+                  </span>
+                  <span>Rensa sökcache</span>
+                </button>
               </div>
 
               <div class="flow-card">
@@ -535,9 +550,9 @@
                 </select>
               </div>
 
-              <div class="flow-card" style="background: var(--shell-mint); border-color: var(--shell-mint-strong)">
-                <p class="help" style="margin: 0; display: flex; gap: 0.5rem; align-items: flex-start">
-                  <svg width="20" height="20" aria-hidden="true" style="flex-shrink: 0; color: var(--spotify)"><use href="#sym-lock" /></svg>
+              <div class="flow-card flow-card--privacy">
+                <p class="flow-card--privacy__text help">
+                  <svg width="20" height="20" aria-hidden="true" class="flow-card--privacy__icon"><use href="#sym-lock" /></svg>
                   <span>All data lagras på din enhet. Ingen server i denna app.</span>
                 </p>
               </div>
@@ -556,7 +571,7 @@
                 </span>
                 <div class="summary-card__head-text">
                   <h2 class="summary-card__title">Sammanfattning</h2>
-                  <p class="summary-card__subtitle" id="summary-card-subtitle"></p>
+                  <p class="summary-card__subtitle" id="summary-card-subtitle">Status för inloggning och nästa steg.</p>
                 </div>
               </div>
               <ul class="summary-list">
@@ -632,7 +647,9 @@
                   <svg class="summary-tip__bulb" aria-hidden="true"><use href="#sym-bulb" /></svg>
                   <span class="summary-tip__title">Tips</span>
                 </div>
-                <p class="summary-tip__text" id="sum-tip-text"></p>
+                <p class="summary-tip__text" id="sum-tip-text">
+                  Spotify-inloggning: du skriver inte ditt Spotify-lösenord här — du skickas till Spotify. Lösenfrasen är bara för lokal kryptering (IndexedDB).
+                </p>
               </div>
             </div>
           </aside>

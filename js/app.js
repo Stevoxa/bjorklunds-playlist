@@ -620,6 +620,7 @@ function refreshSummary() {
     sumFootToken.hidden = !(hasToken && cid && spotifyClient);
   }
   updateSummaryCta();
+  syncApplyHint();
   updateSummaryTip(currentFlowStep);
 }
 
@@ -901,11 +902,35 @@ function renderResults() {
   refreshSummary();
 }
 
+function syncApplyHint() {
+  const el = document.getElementById('apply-hint');
+  if (!el) return;
+  if (!spotifyClient) {
+    el.textContent = 'Logga in under steg 0 för att kunna utföra åtgärden.';
+    return;
+  }
+  if (resultRows.length === 0) {
+    el.textContent = 'Välj låtar med träff under steg 1 först.';
+    return;
+  }
+  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value ?? 'new';
+  if (mode === 'new') {
+    el.textContent = 'Skapar en ny spellista i ditt Spotify-konto med prefix + suffix.';
+    return;
+  }
+  const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
+  el.textContent =
+    um === 'replace'
+      ? 'Ersätter alla spår i vald spellista med de valda låtarna.'
+      : 'Lägger till valda låtar sist i vald spellista utan att ta bort befintliga.';
+}
+
 function updateApplyEnabled() {
   $('btn-apply-playlist').disabled = resultRows.length === 0 || !spotifyClient;
   const busy = searchInProgress;
   $('btn-search').disabled = !spotifyClient || busy;
   $('btn-clear-paste').disabled = busy;
+  syncApplyHint();
 }
 
 function selectedUrisForPlaylist() {

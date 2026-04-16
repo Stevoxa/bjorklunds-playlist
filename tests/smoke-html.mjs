@@ -43,6 +43,7 @@ const REQUIRED_IDS = [
   'sum-foot-token',
   'summary-cta',
   'summary-cta-btn',
+  'apply-hint',
 ];
 
 function main() {

@@ -37,12 +37,21 @@ test.describe('UI screenshots (headless)', () => {
     await page.screenshot({ path: join(outDir, '03-step-2-playlist.png'), fullPage: true });
   });
 
+  test('steg 3 — åtgärd', async ({ page }) => {
+    ensureOut();
+    await page.goto('/');
+    await page.getByRole('button', { name: '3. Åtgärd' }).click();
+    await page.locator('#flow-step-3').waitFor({ state: 'visible' });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: join(outDir, '04-step-3-action.png'), fullPage: true });
+  });
+
   test('inställningar', async ({ page }) => {
     ensureOut();
     await page.goto('/');
     await page.getByRole('button', { name: /Inställningar/i }).click();
     await page.locator('#flow-step-settings').waitFor({ state: 'visible' });
     await page.waitForTimeout(300);
-    await page.screenshot({ path: join(outDir, '04-settings.png'), fullPage: true });
+    await page.screenshot({ path: join(outDir, '05-settings.png'), fullPage: true });
   });
 });

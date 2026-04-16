@@ -220,6 +220,35 @@ body {
   margin-bottom: 0;
 }
 
+.flow-card--privacy {
+  background: var(--shell-mint);
+  border-color: var(--shell-mint-strong);
+}
+
+.flow-card--privacy__text {
+  margin: 0;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.flow-card--privacy__icon {
+  flex-shrink: 0;
+  color: var(--spotify);
+}
+
+[data-theme='dark'] .flow-card--privacy {
+  background: color-mix(in srgb, var(--spotify) 14%, var(--surface));
+  border-color: var(--border);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .flow-card--privacy {
+    background: color-mix(in srgb, var(--spotify) 14%, var(--surface));
+    border-color: var(--border);
+  }
+}
+
 .flow-card__head {
   display: flex;
   align-items: flex-start;
