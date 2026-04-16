@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0a1628" />
+    <meta name="theme-color" content="#eef2f7" />
     <meta name="description" content="Lokal PWA för att matcha låtar mot Spotify och hantera spellistor." />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
@@ -52,6 +52,12 @@
         <circle cx="12" cy="12" r="12" fill="#1db954" />
         <path
           fill="#fff"
+          d="M17.25 16.5c-.2 0-.4-.05-.58-.14-1.65-.75-3.8-1.15-6.32-1.15-.5 0-1 .02-1.48.06-.12.01-.24-.03-.33-.1a.42.42 0 01-.15-.32v-.8c0-.2.14-.36.34-.38.52-.05 1.06-.08 1.62-.08 2.72 0 5.05.44 6.85 1.26.18.08.3.26.3.46v.8c0 .22-.18.4-.4.4zm.9-3.2c-.25 0-.5-.07-.72-.2-1.9-1.1-4.75-1.7-7.9-1.7-.58 0-1.15.03-1.7.08-.15.02-.3-.04-.42-.15a.5.5 0 01-.18-.38v-.9c0-.24.16-.45.4-.5.6-.06 1.22-.1 1.9-.1 3.45 0 6.55.65 8.65 1.85.22.13.36.36.36.62v.9c0 .28-.22.5-.5.5zM7.5 8.6c-.28 0-.5-.22-.5-.5v-1c0-.26.16-.48.4-.58 1.15-.5 2.95-.85 5.1-.85 2.1 0 4.05.35 5.35.85.24.1.4.32.4.58v1c0 .28-.22.5-.5.5-.1 0-.2-.03-.3-.08-1.2-.5-3-.8-4.95-.8-2 0-3.75.3-4.9.8-.1.05-.2.08-.3.08z"
+        />
+      </symbol>
+      <symbol id="sym-spotify-mark" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
           d="M17.25 16.5c-.2 0-.4-.05-.58-.14-1.65-.75-3.8-1.15-6.32-1.15-.5 0-1 .02-1.48.06-.12.01-.24-.03-.33-.1a.42.42 0 01-.15-.32v-.8c0-.2.14-.36.34-.38.52-.05 1.06-.08 1.62-.08 2.72 0 5.05.44 6.85 1.26.18.08.3.26.3.46v.8c0 .22-.18.4-.4.4zm.9-3.2c-.25 0-.5-.07-.72-.2-1.9-1.1-4.75-1.7-7.9-1.7-.58 0-1.15.03-1.7.08-.15.02-.3-.04-.42-.15a.5.5 0 01-.18-.38v-.9c0-.24.16-.45.4-.5.6-.06 1.22-.1 1.9-.1 3.45 0 6.55.65 8.65 1.85.22.13.36.36.36.62v.9c0 .28-.22.5-.5.5zM7.5 8.6c-.28 0-.5-.22-.5-.5v-1c0-.26.16-.48.4-.58 1.15-.5 2.95-.85 5.1-.85 2.1 0 4.05.35 5.35.85.24.1.4.32.4.58v1c0 .28-.22.5-.5.5-.1 0-.2-.03-.3-.08-1.2-.5-3-.8-4.95-.8-2 0-3.75.3-4.9.8-.1.05-.2.08-.3.08z"
         />
       </symbol>
@@ -114,49 +120,27 @@
     </svg>
 
     <div class="app-frame">
-      <header class="app-topbar">
-        <div class="app-topbar__left">
-          <a class="app-topbar__back" href="#" id="app-topbar-back" aria-label="Tillbaka">
-            <svg width="20" height="20" aria-hidden="true"><use href="#sym-back" /></svg>
-          </a>
-          <span class="app-topbar__crumb">Redigera integration</span>
-          <span class="app-topbar__crumb-sep" aria-hidden="true">›</span>
-          <span class="app-topbar__crumb-accent">Spotify</span>
-        </div>
-        <div class="app-topbar__actions">
-          <button type="button" class="icon-btn" id="app-btn-notify" aria-label="Notiser">
-            <svg aria-hidden="true"><use href="#sym-bell" /></svg>
-          </button>
-          <button type="button" class="icon-btn" id="app-btn-help" aria-label="Hjälp">
-            <svg aria-hidden="true"><use href="#sym-help" /></svg>
-          </button>
-          <span class="app-topbar__avatar" aria-hidden="true">AB</span>
-        </div>
-      </header>
-
-      <div class="app-page-head">
-        <h1 class="app-page-head__title">Björklund spellista</h1>
-        <p class="app-page-head__lead" id="app-page-lead">
-          Matcha låtar mot Spotify och skapa eller uppdatera spellistor — allt sker lokalt i webbläsaren med PKCE och krypterad lagring.
-        </p>
-        <nav class="flow-stepper" aria-label="Arbetsflöde">
-          <button type="button" class="flow-stepper__btn" data-flow-step="0" aria-controls="flow-step-0">0. Logga in</button>
-          <button type="button" class="flow-stepper__btn is-active" data-flow-step="1" aria-controls="flow-step-1" aria-current="step">
-            1. Låtar
-          </button>
-          <button type="button" class="flow-stepper__btn" data-flow-step="2" aria-controls="flow-step-2">2. Spellista</button>
-          <button type="button" class="flow-stepper__btn" data-flow-step="3" aria-controls="flow-step-3">3. Åtgärd</button>
-          <button type="button" class="flow-stepper__btn flow-stepper__btn--settings" data-flow-step="settings" aria-controls="flow-step-settings">
-            <svg width="16" height="16" aria-hidden="true" style="vertical-align: -0.2em"><use href="#sym-gear" /></svg>
-            Inställningar
-          </button>
-        </nav>
-      </div>
-
       <main id="main" class="app-main" tabindex="-1">
         <div class="app-layout">
           <div class="app-layout__primary">
-            <section id="flow-step-0" class="flow-step" data-flow-panel="0" tabindex="-1" aria-labelledby="flow-step-0-title">
+            <header class="app-page-head">
+              <h1 class="app-page-head__title">Björklund spellista</h1>
+              <p class="app-page-head__lead" id="app-page-lead">Logga in med Spotify och spara lokalt med lösenfras.</p>
+              <nav class="flow-stepper" aria-label="Arbetsflöde">
+                <button type="button" class="flow-stepper__btn is-active" data-flow-step="0" aria-controls="flow-step-0" aria-current="step">
+                  0. Logga in
+                </button>
+                <button type="button" class="flow-stepper__btn" data-flow-step="1" aria-controls="flow-step-1">1. Låtar</button>
+                <button type="button" class="flow-stepper__btn" data-flow-step="2" aria-controls="flow-step-2">2. Spellista</button>
+                <button type="button" class="flow-stepper__btn" data-flow-step="3" aria-controls="flow-step-3">3. Åtgärd</button>
+                <button type="button" class="flow-stepper__btn flow-stepper__btn--settings" data-flow-step="settings" aria-controls="flow-step-settings">
+                  <svg width="16" height="16" aria-hidden="true" style="vertical-align: -0.2em"><use href="#sym-gear" /></svg>
+                  Inställningar
+                </button>
+              </nav>
+            </header>
+
+            <section id="flow-step-0" class="flow-step is-active" data-flow-panel="0" tabindex="-1" aria-labelledby="flow-step-0-title">
               <div class="flow-card">
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
@@ -164,19 +148,25 @@
                   </div>
                   <div class="flow-card__titles">
                     <h2 class="flow-card__title" id="flow-step-0-title">Spotify</h2>
-                    <p class="flow-card__subtitle">Client ID, lösenfras för valv och inloggning mot Spotify.</p>
+                    <p class="flow-card__subtitle">Client ID, lösenfras och inloggning mot Spotify.</p>
                   </div>
                 </div>
-                <p class="help">
-                  Ange ditt egna <strong>Client ID</strong> från
+                <p class="help help--tight" id="client-id-intro">
+                  Ange ditt <strong>eget</strong> <strong>Client ID</strong> från
                   <a href="https://developer.spotify.com/dashboard" rel="noopener noreferrer" target="_blank">Spotify Developer Dashboard</a>.
-                  Med <strong>PKCE</strong> ska du <strong>inte</strong> ange någon <em>Client secret</em> i appen.
-                </p>
-                <p class="help">
-                  <strong>Spotify-inloggning:</strong> du skriver inte ditt Spotify-lösenord här — du skickas till Spotify. <strong>Lösenfras</strong> nedan är bara för lokal kryptering.
+                  <strong>PKCE</strong> används för säker autentisering, så något <em>Client secret</em> behövs inte.
                 </p>
                 <label for="client-id" class="label">Client ID</label>
-                <input type="text" id="client-id" class="input" autocomplete="off" spellcheck="false" inputmode="verbatim" aria-describedby="client-id-help" />
+                <input
+                  type="text"
+                  id="client-id"
+                  class="input"
+                  autocomplete="off"
+                  spellcheck="false"
+                  inputmode="verbatim"
+                  aria-describedby="client-id-intro client-id-help"
+                  placeholder="Skapa ett Client ID i Spotify Developer Dashboard"
+                />
                 <p class="help" id="client-id-help">Lagras krypterat lokalt.</p>
                 <label for="crypto-pass" class="label">Lösenfras för lokal kryptering</label>
                 <div class="password-field">
@@ -203,8 +193,8 @@
                   <button type="button" class="btn btn--primary" id="btn-save-settings">Spara lokalt</button>
                   <button type="button" class="btn btn--secondary" id="btn-load-vault">Läs in sparad data</button>
                   <button type="button" class="btn btn--primary btn--with-icon" id="btn-spotify-login">
-                    <span class="btn__icon-wrap" aria-hidden="true">
-                      <svg class="btn__icon btn__icon--spotify" width="20" height="20"><use href="#sym-spotify" /></svg>
+                    <span class="btn__icon-wrap btn__icon-wrap--spotify" aria-hidden="true">
+                      <svg class="btn__icon" width="22" height="22"><use href="#sym-spotify-mark" /></svg>
                     </span>
                     <span>Logga in med Spotify</span>
                   </button>
@@ -237,14 +227,14 @@
                 <div class="flow-nav">
                   <p class="flow-nav__hint">
                     <svg aria-hidden="true"><use href="#sym-info" /></svg>
-                    Du kan återvända hit när som helst via steg 0.
+                    När Client ID är ifyllt och du är inloggad: spara lokalt och gå till låtar.
                   </p>
                   <button type="button" class="btn btn--primary" data-flow-goto="1">Nästa: Låtar</button>
                 </div>
               </div>
             </section>
 
-            <section id="flow-step-1" class="flow-step is-active" data-flow-panel="1" tabindex="-1" aria-labelledby="heading-paste">
+            <section id="flow-step-1" class="flow-step" data-flow-panel="1" tabindex="-1" aria-labelledby="heading-paste">
               <div class="flow-card">
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
@@ -543,7 +533,6 @@
                 </span>
                 <div class="summary-card__head-text">
                   <h2 class="summary-card__title">Sammanfattning</h2>
-                  <p class="summary-card__lead">Kontrollera val innan du utför åtgärden.</p>
                 </div>
               </div>
               <ul class="summary-list">
@@ -610,7 +599,7 @@
                   <svg class="summary-tip__bulb" aria-hidden="true"><use href="#sym-bulb" /></svg>
                   <span class="summary-tip__title">Tips</span>
                 </div>
-                <p class="summary-tip__text" id="sum-tip-text">Efter sökning: välj spår och gå till steg 2 för spellista.</p>
+                <p class="summary-tip__text" id="sum-tip-text"></p>
               </div>
             </div>
           </aside>

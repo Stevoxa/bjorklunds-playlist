@@ -147,6 +147,11 @@ body {
   font-size: 0.9rem;
 }
 
+.help--tight {
+  margin-bottom: var(--space-sm);
+  line-height: 1.55;
+}
+
 .help kbd {
   font: inherit;
   font-size: 0.85em;
@@ -244,9 +249,8 @@ body {
   flex-shrink: 0;
 }
 
-.btn__icon--spotify {
-  filter: brightness(0) invert(1);
-  opacity: 0.95;
+.btn__icon-wrap--spotify {
+  color: var(--btn-primary-fg);
 }
 
 .btn:disabled {

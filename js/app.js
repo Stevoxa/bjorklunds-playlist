@@ -388,7 +388,7 @@ async function handleOAuthReturn() {
 }
 
 /** @type {'0' | '1' | '2' | '3' | 'settings'} */
-let currentFlowStep = '1';
+let currentFlowStep = '0';
 
 /**
  * @param {'0' | '1' | '2' | '3' | 'settings'} step
@@ -417,6 +417,10 @@ function setFlowStep(step, opts = {}) {
   };
   const lead = document.getElementById('app-page-lead');
   if (lead && leads[step]) lead.textContent = leads[step];
+  if (step === '0') {
+    initSpotifyClient();
+    void refreshSpotifyUserDisplay().then(() => setAuthStatus());
+  }
   if (step === '1') {
     initSpotifyClient();
     updateApplyEnabled();
@@ -440,14 +444,20 @@ function setFlowStep(step, opts = {}) {
 function updateSummaryTip(step) {
   const tip = document.getElementById('sum-tip-text');
   if (!tip) return;
+  const plMode = document.querySelector('input[name="pl-mode"]:checked')?.value;
+  if ((step === '2' || step === '3') && plMode === 'existing') {
+    tip.textContent = 'Listan visar bara spellistor du äger och som matchar ditt prefix.';
+    return;
+  }
   const tips = {
-    '0': 'Logga in under steg 0 innan du söker eller uppdaterar spellistor.',
+    '0':
+      'Spotify-inloggning: du skriver inte ditt Spotify-lösenord här — du skickas till Spotify. Lösenfrasen är bara för lokal kryptering (IndexedDB).\n\nAnge Client ID, logga in med Spotify och spara lokalt innan du går vidare till låtar.',
     '1': 'Efter sökning: välj spår och gå till steg 2 för spellista.',
     '2': 'Byt till steg 3 för att ange namn eller befintlig lista.',
     '3': 'Kontrollera sammanfattningen till höger innan Utför.',
     settings: 'Kopiera Redirect URI till Spotify Dashboard om du ändrar domän.',
   };
-  tip.textContent = tips[step] ?? tips['1'];
+  tip.textContent = tips[step] ?? tips['0'];
 }
 
 function refreshSummary() {
@@ -529,7 +539,7 @@ function refreshSummary() {
   } else if (mode === 'existing') {
     const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
     if (src === 'from-list' && !$('existing-pl-select').value) {
-      sumFoot.textContent = 'Välj en spellista i listan.';
+      sumFoot.textContent = 'Välj en spellista för att kunna fortsätta.';
     } else if (src === 'from-link' && !$('existing-pl-id').value.trim()) {
       sumFoot.textContent = 'Ange spelliste-ID eller URI.';
     } else {
@@ -538,6 +548,8 @@ function refreshSummary() {
   } else {
     sumFoot.textContent = 'Redo att skapa spellista.';
   }
+
+  updateSummaryTip(currentFlowStep);
 }
 
 function wireFlow() {
@@ -1279,7 +1291,7 @@ async function boot() {
   applyTheme($('pref-theme').value);
   updateNewPlaylistPreview();
   updateApplyEnabled();
-  setFlowStep('1', { focusPanel: false });
+  setFlowStep('0', { focusPanel: false });
   await registerServiceWorker();
 }
 
