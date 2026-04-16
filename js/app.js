@@ -327,7 +327,7 @@ function setAuthStatus(extraHint = '') {
 
   const meta = document.createElement('p');
   meta.className = 'auth-status-card__meta';
-  meta.textContent = `Access token giltig till cirka ${exp}.`;
+  meta.textContent = `Access token giltig till ${exp}.`;
 
   body.append(title, meta);
   if (gs) {
@@ -350,7 +350,7 @@ function setAuthStatus(extraHint = '') {
   const foot = document.createElement('p');
   foot.className = 'auth-status-card__note';
   foot.textContent =
-    'Rättigheterna kommer från Spotify vid inloggning. Spara lokalt med din lösenfras om du vill behålla tokens på enheten.';
+    'Token är tidsbegränsad och måste vara giltig för att flödet ska kunna skapa eller uppdatera din spellista.';
   body.append(foot);
 
   card.append(iconWrap, body);
@@ -390,6 +390,16 @@ async function handleOAuthReturn() {
 /** @type {'0' | '1' | '2' | '3' | 'settings'} */
 let currentFlowStep = '0';
 
+function syncPageLeadStep3() {
+  const lead = document.getElementById('app-page-lead');
+  if (!lead || currentFlowStep !== '3') return;
+  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value ?? 'new';
+  lead.textContent =
+    mode === 'new'
+      ? 'Skapa och publicera din spellista på Spotify. Följ stegen nedan och utför åtgärden när du är redo.'
+      : 'Välj hur spellistan ska uppdateras och ange vilken befintlig spellista som ska användas.';
+}
+
 /**
  * @param {'0' | '1' | '2' | '3' | 'settings'} step
  * @param {{ focusPanel?: boolean }} [opts] focusPanel: flytta fokus till aktivt steg (t.ex. efter klick i steglisten), inte vid sidladdning.
@@ -397,6 +407,8 @@ let currentFlowStep = '0';
 function setFlowStep(step, opts = {}) {
   const { focusPanel = false } = opts;
   currentFlowStep = /** @type {'0' | '1' | '2' | '3' | 'settings'} */ (step);
+  const accent = step === '0' || step === 'settings' ? 'spotify' : 'navy';
+  document.documentElement.setAttribute('data-flow-accent', accent);
   document.querySelectorAll('.flow-step').forEach((el) => {
     const p = el.getAttribute('data-flow-panel');
     el.classList.toggle('is-active', p === step);
@@ -409,14 +421,20 @@ function setFlowStep(step, opts = {}) {
     else btn.removeAttribute('aria-current');
   });
   const leads = {
-    '0': 'Logga in med Spotify och spara lokalt med lösenfras.',
-    '1': 'Klistra in lista, sök och välj rätt spår för varje rad.',
-    '2': 'Välj om du skapar en ny spellista eller uppdaterar en befintlig.',
-    '3': 'Fyll i detaljer och klicka Utför när du är redo.',
-    settings: 'Redirect URI, sökcache, prefix och tema.',
+    '0': 'Konfigurera och logga in på Spotify så att flödet kan skapa eller uppdatera din spellista.',
+    '1': 'Klistra in låtar, hitta rätt spår på Spotify och välj vilka som ska läggas till i spellistan.',
+    '2': 'Välj hur låtarna ska sparas och ange vilken befintlig spellista som ska användas.',
+    '3': '',
+    settings: 'Konfigurera hur appen beter sig lokalt på din enhet.',
   };
   const lead = document.getElementById('app-page-lead');
-  if (lead && leads[step]) lead.textContent = leads[step];
+  if (lead) {
+    if (step === '3') {
+      syncPageLeadStep3();
+    } else if (leads[step]) {
+      lead.textContent = leads[step];
+    }
+  }
   if (step === '0') {
     initSpotifyClient();
     void refreshSpotifyUserDisplay().then(() => setAuthStatus());
@@ -428,6 +446,7 @@ function setFlowStep(step, opts = {}) {
     if (resultRows.length > 0) renderResults();
     void refreshSpotifyUserDisplay().then(() => setAuthStatus());
   }
+  updateSummarySubtitle(step);
   updateSummaryTip(step);
   refreshSummary();
   if (focusPanel) {
@@ -441,6 +460,19 @@ function setFlowStep(step, opts = {}) {
   }
 }
 
+function updateSummarySubtitle(step) {
+  const el = document.getElementById('summary-card-subtitle');
+  if (!el) return;
+  const lines = {
+    '0': 'Status för inloggning och nästa steg.',
+    '1': 'Kontrollera dina val innan du går vidare till spellista.',
+    '2': 'Kontrollera dina val innan du fortsätter.',
+    '3': 'Kontrollera dina val innan du utför åtgärden.',
+    settings: 'Kontrollera dina val innan du fortsätter.',
+  };
+  el.textContent = lines[step] ?? '';
+}
+
 function updateSummaryTip(step) {
   const tip = document.getElementById('sum-tip-text');
   if (!tip) return;
@@ -449,15 +481,43 @@ function updateSummaryTip(step) {
     tip.textContent = 'Listan visar bara spellistor du äger och som matchar ditt prefix.';
     return;
   }
+  if (step === '3' && plMode === 'new') {
+    tip.textContent = 'Prefixet hämtas från Inställningar och läggs till automatiskt.';
+    return;
+  }
   const tips = {
     '0':
       'Spotify-inloggning: du skriver inte ditt Spotify-lösenord här — du skickas till Spotify. Lösenfrasen är bara för lokal kryptering (IndexedDB).\n\nAnge Client ID, logga in med Spotify och spara lokalt innan du går vidare till låtar.',
-    '1': 'Efter sökning: välj spår och gå till steg 2 för spellista.',
-    '2': 'Byt till steg 3 för att ange namn eller befintlig lista.',
-    '3': 'Kontrollera sammanfattningen till höger innan Utför.',
-    settings: 'Kopiera Redirect URI till Spotify Dashboard om du ändrar domän.',
+    '1':
+      'Använd brytarna för att ta med en rad i spellistan och radioknapparna för att välja rätt version av spåret.',
+    '2': 'Du måste vara inloggad via Spotify för att fortsätta.',
+    '3': 'Kontrollera sammanfattningen till höger innan du klickar Utför.',
+    settings: 'Prefixet används när du skapar nya spellistor och när listor filtreras på prefix.',
   };
   tip.textContent = tips[step] ?? tips['0'];
+}
+
+function updateSummaryCta() {
+  const wrap = document.getElementById('summary-cta');
+  const btn = document.getElementById('summary-cta-btn');
+  if (!wrap || !btn) return;
+  const hasToken = Boolean(vaultData?.tokens?.accessToken);
+  const cid = (vaultData?.clientId || '').trim() || getClientId().trim();
+  const ok = hasToken && Boolean(spotifyClient) && Boolean(cid);
+  const step = currentFlowStep;
+  if (step === '0' && ok) {
+    wrap.hidden = false;
+    btn.textContent = 'Nästa: Låtar';
+    btn.setAttribute('data-flow-goto', '1');
+    return;
+  }
+  if (step === 'settings' && ok) {
+    wrap.hidden = false;
+    btn.textContent = 'Tillbaka till flödet';
+    btn.setAttribute('data-flow-goto', '1');
+    return;
+  }
+  wrap.hidden = true;
 }
 
 function refreshSummary() {
@@ -470,6 +530,7 @@ function refreshSummary() {
   const sumRowExtra = document.getElementById('sum-row-extra');
   const sumExtra = document.getElementById('sum-extra');
   const sumExtraLabel = document.getElementById('sum-extra-label');
+  const sumFootToken = document.getElementById('sum-foot-token');
   if (!sumSpotify || !sumTracks || !sumPlaylist || !sumAction || !sumToken || !sumFoot) return;
 
   const hasToken = Boolean(vaultData?.tokens?.accessToken);
@@ -491,37 +552,41 @@ function refreshSummary() {
   } catch {
     trackCount = 0;
   }
-  sumTracks.textContent = String(trackCount);
+  sumTracks.textContent = trackCount === 0 ? '—' : String(trackCount);
 
   const mode = document.querySelector('input[name="pl-mode"]:checked')?.value ?? 'new';
   if (mode === 'new') {
-    const suf = $('new-pl-name').value.trim() || '…';
-    sumPlaylist.textContent = `${getPlaylistPrefixFromInput()}${suf}`;
+    const suf = $('new-pl-name').value.trim();
+    sumPlaylist.textContent = suf ? `${getPlaylistPrefixFromInput()}${suf}` : '—';
   } else {
     const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
     if (src === 'from-list') {
       const sel = $('existing-pl-select');
       sumPlaylist.textContent = sel.value
         ? (sel.selectedOptions[0]?.textContent?.trim() ?? sel.value)
-        : '— Välj spellista —';
+        : '—';
     } else {
       const raw = $('existing-pl-id').value.trim();
       sumPlaylist.textContent = raw || '—';
     }
   }
 
-  if (mode === 'new') {
+  if (trackCount === 0) {
+    sumAction.textContent = '—';
+  } else if (mode === 'new') {
     sumAction.textContent = 'Skapa ny';
-    if (sumRowExtra) sumRowExtra.hidden = true;
   } else {
     const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
     sumAction.textContent = um === 'replace' ? 'Uppdatera (ersätt)' : 'Uppdatera (lägg till)';
-    if (sumRowExtra && sumExtra && sumExtraLabel) {
-      sumRowExtra.hidden = false;
-      const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
-      sumExtraLabel.textContent = 'Källa';
-      sumExtra.textContent = src === 'from-list' ? 'Mina listor med prefix' : 'ID eller länk';
-    }
+  }
+
+  if (mode === 'new') {
+    if (sumRowExtra) sumRowExtra.hidden = true;
+  } else if (sumRowExtra && sumExtra && sumExtraLabel) {
+    sumRowExtra.hidden = false;
+    const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
+    sumExtraLabel.textContent = 'Källa';
+    sumExtra.textContent = src === 'from-list' ? 'Mina listor med prefix' : 'ID eller länk';
   }
 
   if (vaultData?.tokens?.expiresAt) {
@@ -534,21 +599,27 @@ function refreshSummary() {
 
   if (!hasToken) {
     sumFoot.textContent = 'Logga in under steg 0 för att fortsätta.';
-  } else if (trackCount === 0) {
-    sumFoot.textContent = 'Välj minst en låt med träff (steg 1).';
   } else if (mode === 'existing') {
     const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
     if (src === 'from-list' && !$('existing-pl-select').value) {
       sumFoot.textContent = 'Välj en spellista för att kunna fortsätta.';
     } else if (src === 'from-link' && !$('existing-pl-id').value.trim()) {
       sumFoot.textContent = 'Ange spelliste-ID eller URI.';
+    } else if (trackCount === 0) {
+      sumFoot.textContent = 'Välj minst en låt med träff (steg 1).';
     } else {
       sumFoot.textContent = 'Redo att utföra åtgärden.';
     }
+  } else if (trackCount === 0) {
+    sumFoot.textContent = 'Välj låtar under steg 1 för att fortsätta.';
   } else {
     sumFoot.textContent = 'Redo att skapa spellista.';
   }
 
+  if (sumFootToken) {
+    sumFootToken.hidden = !(hasToken && cid && spotifyClient);
+  }
+  updateSummaryCta();
   updateSummaryTip(currentFlowStep);
 }
 
@@ -565,23 +636,6 @@ function wireFlow() {
       if (s) setFlowStep(/** @type {'0' | '1' | '2' | '3' | 'settings'} */ (s), { focusPanel: true });
     });
   });
-  const back = document.getElementById('app-topbar-back');
-  if (back) {
-    back.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (currentFlowStep === '1') return;
-      setFlowStep('1', { focusPanel: true });
-    });
-  }
-  const n = document.getElementById('app-btn-notify');
-  if (n) n.addEventListener('click', () => showToast('Inga nya notifieringar.'));
-  const h = document.getElementById('app-btn-help');
-  if (h)
-    h.addEventListener('click', () =>
-      showToast(
-        'Arbetsflöde: 0 Logga in → 1 Låtar → 2 Spellista → 3 Åtgärd. Kugghjul = Inställningar (Redirect URI, sökcache, prefix, tema).',
-      ),
-    );
 }
 
 function getPlaylistPrefixFromInput() {
@@ -666,6 +720,7 @@ function wirePlaylistMode() {
       }
     }
     refreshSummary();
+    syncPageLeadStep3();
   };
   modes.forEach((r) => r.addEventListener('change', update));
   document.querySelectorAll('input[name="pl-update"]').forEach((r) => {

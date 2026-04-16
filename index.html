@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="sv" data-flow-accent="spotify">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#eef2f7" />
+    <meta name="theme-color" content="#f4f7f9" />
     <meta name="description" content="Lokal PWA för att matcha låtar mot Spotify och hantera spellistor." />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
@@ -22,13 +22,11 @@
         <path d="M18 8A6 6 0 106 8c0 7-3 7-3 7h18s-3 0-3-7" stroke-linecap="round" stroke-linejoin="round" />
         <path d="M13.73 21a2 2 0 01-3.46 0" stroke-linecap="round" />
       </symbol>
-      <symbol id="sym-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <!-- Hjälp: ? i cirkel (bild 8 / produktikoner) -->
+      <symbol id="sym-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10" />
-        <path
-          d="M9.5 9.5a2.5 2.5 0 0 1 5 0c0 1.5-2.5 3-2.5 3M12 17v.01"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
+        <path d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3" />
+        <path d="M12 17h.01" />
       </symbol>
       <symbol id="sym-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="3" />
@@ -40,13 +38,29 @@
       <symbol id="sym-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke-linecap="round" />
       </symbol>
-      <symbol id="sym-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-        <path d="M14 2v6h6M12 18v-6M9 15h6" stroke-linecap="round" />
+      <!-- Spellista: lista + not (bild 8) -->
+      <symbol id="sym-playlist" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 7h9M7 12h9M7 17h6" />
+        <circle cx="4.5" cy="7" r="1" fill="currentColor" stroke="none" />
+        <circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none" />
+        <circle cx="4.5" cy="17" r="1" fill="currentColor" stroke="none" />
+        <path d="M15 5v12l4-1V6l-4-1z" />
+        <path d="M15 8.5l4-1" />
       </symbol>
-      <symbol id="sym-search-lines" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="11" cy="11" r="6" />
-        <path d="M20 20l-3-3M8 8h6M8 12h4" stroke-linecap="round" />
+      <!-- Redigera (bild 8) -->
+      <symbol id="sym-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+      </symbol>
+      <!-- Sökcache: sök + uppdateringspil (bild 8) -->
+      <symbol id="sym-mag-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="10.5" cy="10.5" r="5.5" />
+        <path d="M15 15l4.5 4.5" />
+        <path d="M19 11v4h-4" />
+        <path d="M17.5 8.5a5.5 5.5 0 0 1 1 3" />
+      </symbol>
+      <symbol id="sym-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 0 0-15.54-3L3 8M3 12a9 9 0 0 0 15.54 3L21 16" />
+        <path d="M3 8v4h4M21 16v-4h-4" />
       </symbol>
       <symbol id="sym-spotify" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="12" fill="#1db954" />
@@ -125,7 +139,7 @@
           <div class="app-layout__primary">
             <header class="app-page-head">
               <h1 class="app-page-head__title">Björklund spellista</h1>
-              <p class="app-page-head__lead" id="app-page-lead">Logga in med Spotify och spara lokalt med lösenfras.</p>
+              <p class="app-page-head__lead" id="app-page-lead">Konfigurera och logga in på Spotify så att flödet kan skapa eller uppdatera din spellista.</p>
               <nav class="flow-stepper" aria-label="Arbetsflöde">
                 <button type="button" class="flow-stepper__btn is-active" data-flow-step="0" aria-controls="flow-step-0" aria-current="step">
                   0. Logga in
@@ -143,18 +157,17 @@
             <section id="flow-step-0" class="flow-step is-active" data-flow-panel="0" tabindex="-1" aria-labelledby="flow-step-0-title">
               <div class="flow-card">
                 <div class="flow-card__head">
-                  <div class="flow-card__icon-ring" aria-hidden="true">
+                  <div class="flow-card__icon-ring flow-card__icon-ring--spotify" aria-hidden="true">
                     <svg><use href="#sym-spotify" /></svg>
                   </div>
                   <div class="flow-card__titles">
                     <h2 class="flow-card__title" id="flow-step-0-title">Spotify</h2>
-                    <p class="flow-card__subtitle">Client ID, lösenfras och inloggning mot Spotify.</p>
                   </div>
                 </div>
                 <p class="help help--tight" id="client-id-intro">
-                  Ange ditt <strong>eget</strong> <strong>Client ID</strong> från
+                  Ange ditt eget <strong>Client ID</strong> från
                   <a href="https://developer.spotify.com/dashboard" rel="noopener noreferrer" target="_blank">Spotify Developer Dashboard</a>.
-                  <strong>PKCE</strong> används för säker autentisering, så något <em>Client secret</em> behövs inte.
+                  <strong>PKCE</strong> används för säker inloggning — inget <em>Client secret</em> behövs.
                 </p>
                 <label for="client-id" class="label">Client ID</label>
                 <input
@@ -188,7 +201,7 @@
                     <svg width="22" height="22" aria-hidden="true"><use href="#sym-eye" /></svg>
                   </button>
                 </div>
-                <p class="help" id="crypto-pass-help">Minst 8 tecken. Glömmer du den måste du logga in på Spotify igen.</p>
+                <p class="help" id="crypto-pass-help">Minst 8 tecken. Krävs för lokal kryptering (IndexedDB).</p>
                 <div class="row row--wrap row--auth-actions">
                   <button type="button" class="btn btn--primary" id="btn-save-settings">Spara lokalt</button>
                   <button type="button" class="btn btn--secondary" id="btn-load-vault">Läs in sparad data</button>
@@ -238,7 +251,7 @@
               <div class="flow-card">
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
-                    <svg><use href="#sym-doc" /></svg>
+                    <svg><use href="#sym-clipboard" /></svg>
                   </div>
                   <div class="flow-card__titles">
                     <h2 class="flow-card__title" id="heading-paste">Klistra in låtlista</h2>
@@ -258,7 +271,12 @@
                   placeholder="Exempel:&#10;ABBA – Dancing Queen&#10;Waterloo av ABBA"
                 ></textarea>
                 <div class="row row--wrap row--paste-actions">
-                  <button type="button" class="btn btn--primary" id="btn-search" disabled>Sök på Spotify</button>
+                  <button type="button" class="btn btn--primary btn--with-icon" id="btn-search" disabled>
+                    <span class="btn__icon-wrap btn__icon-wrap--spotify" aria-hidden="true">
+                      <svg class="btn__icon" width="20" height="20"><use href="#sym-spotify-mark" /></svg>
+                    </span>
+                    <span>Sök på Spotify</span>
+                  </button>
                   <button type="button" class="btn" id="btn-clear-paste">Rensa</button>
                 </div>
               </div>
@@ -266,7 +284,7 @@
               <div class="flow-card" id="results-section" hidden>
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
-                    <svg><use href="#sym-search-lines" /></svg>
+                    <svg><use href="#sym-mag" /></svg>
                   </div>
                   <div class="flow-card__titles">
                     <h2 class="flow-card__title">Matchningar</h2>
@@ -327,7 +345,7 @@
               <div class="flow-card">
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
-                    <svg><use href="#sym-note" /></svg>
+                    <svg><use href="#sym-playlist" /></svg>
                   </div>
                   <div class="flow-card__titles">
                     <h2 class="flow-card__title" id="heading-pl-mode">Välj hur låtarna ska sparas</h2>
@@ -348,7 +366,7 @@
                     <input type="radio" name="pl-mode" value="existing" />
                     <span class="choice-tile__body">
                       <span class="choice-tile__glyph" aria-hidden="true">
-                        <svg><use href="#sym-clipboard" /></svg>
+                        <svg><use href="#sym-pencil" /></svg>
                       </span>
                       <span class="choice-tile__label">Uppdatera befintlig</span>
                     </span>
@@ -405,7 +423,12 @@
                     <p class="help" id="existing-pl-select-help">
                       Listan hämtas från Spotify. Uppdateras när du skapat lista här, byter läge/prefix eller återvänder till steg 3 — eller <strong>Hämta om lista</strong>.
                     </p>
-                    <button type="button" class="btn" id="btn-refresh-pl-list">Hämta om lista</button>
+                    <button type="button" class="btn btn--with-icon" id="btn-refresh-pl-list">
+                      <span class="btn__icon-wrap" aria-hidden="true">
+                        <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
+                      </span>
+                      <span>Hämta om lista</span>
+                    </button>
                   </div>
                   <div id="block-existing-from-link" class="existing-pl-source-block">
                     <label for="existing-pl-id" class="label">Spelliste-ID eller Spotify-URI</label>
@@ -467,7 +490,7 @@
               <div class="flow-card">
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
-                    <svg><use href="#sym-mag" /></svg>
+                    <svg><use href="#sym-mag-refresh" /></svg>
                   </div>
                   <div class="flow-card__titles">
                     <h2 class="flow-card__title" id="heading-search-cache">Sökcache</h2>
@@ -533,6 +556,7 @@
                 </span>
                 <div class="summary-card__head-text">
                   <h2 class="summary-card__title">Sammanfattning</h2>
+                  <p class="summary-card__subtitle" id="summary-card-subtitle"></p>
                 </div>
               </div>
               <ul class="summary-list">
@@ -542,7 +566,7 @@
                   </span>
                   <div class="summary-list__body">
                     <span class="summary-list__label">Spotify</span>
-                    <span class="summary-list__value summary-list__value--ok" id="sum-spotify">—</span>
+                    <span class="summary-list__value" id="sum-spotify">Ej inloggad</span>
                   </div>
                 </li>
                 <li class="summary-list__item">
@@ -556,7 +580,7 @@
                 </li>
                 <li class="summary-list__item">
                   <span class="summary-list__icon-wrap" aria-hidden="true">
-                    <svg class="summary-list__glyph"><use href="#sym-list" /></svg>
+                    <svg class="summary-list__glyph summary-list__glyph--playlist"><use href="#sym-playlist" /></svg>
                   </span>
                   <div class="summary-list__body">
                     <span class="summary-list__label">Spellista</span>
@@ -592,7 +616,16 @@
                 </li>
               </ul>
               <div class="summary-foot">
-                <p class="summary-foot__text" id="sum-foot">Välj låtar och spellista för att fortsätta.</p>
+                <p class="summary-foot__text" id="sum-foot">Logga in under steg 0 för att fortsätta.</p>
+                <p class="summary-foot__token" id="sum-foot-token" hidden>
+                  <svg class="summary-foot__lock" width="18" height="18" aria-hidden="true"><use href="#sym-lock" /></svg>
+                  Giltig Spotify-token finns.
+                </p>
+              </div>
+              <div class="summary-cta" id="summary-cta" hidden>
+                <button type="button" class="btn btn--primary summary-cta__btn" id="summary-cta-btn" data-flow-goto="1">
+                  Nästa: Låtar
+                </button>
               </div>
               <div class="summary-tip">
                 <div class="summary-tip__head">

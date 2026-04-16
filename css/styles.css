@@ -4,11 +4,12 @@
   --radius: 12px;
   --radius-sm: 8px;
   --btn-radius: 6px;
-  --btn-primary-bg: #146c3a;
-  --btn-primary-border: #0f5132;
-  --btn-primary-fg: #f4fcf6;
+  /* Spotify-grön primär (målbild / krav) */
+  --btn-primary-bg: #1db954;
+  --btn-primary-border: #159348;
+  --btn-primary-fg: #ffffff;
   --auth-success-bg: #e8f6ed;
-  --auth-success-border: #9dceb0;
+  --auth-success-border: #5aa87a;
   --auth-muted-bg: #eef1f7;
   --auth-muted-border: #c5d0db;
   --auth-warning-bg: #fff8e6;
@@ -41,9 +42,9 @@
   --border: #2e3c4a;
   --link: #7ec8ff;
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
-  --btn-primary-bg: #1d7a4a;
+  --btn-primary-bg: #1db954;
   --btn-primary-border: #2a9d5f;
-  --btn-primary-fg: #f4fcf6;
+  --btn-primary-fg: #ffffff;
   --auth-success-bg: color-mix(in srgb, #1d7a4a 22%, var(--surface));
   --auth-success-border: color-mix(in srgb, var(--spotify) 45%, var(--border));
   --auth-muted-bg: color-mix(in srgb, var(--surface) 88%, var(--bg));
@@ -64,9 +65,9 @@
     --border: #2e3c4a;
     --link: #7ec8ff;
     --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
-    --btn-primary-bg: #1d7a4a;
+    --btn-primary-bg: #1db954;
     --btn-primary-border: #2a9d5f;
-    --btn-primary-fg: #f4fcf6;
+    --btn-primary-fg: #ffffff;
     --auth-success-bg: color-mix(in srgb, #1d7a4a 22%, var(--surface));
     --auth-success-border: color-mix(in srgb, var(--spotify) 45%, var(--border));
     --auth-muted-bg: color-mix(in srgb, var(--surface) 88%, var(--bg));
@@ -386,6 +387,11 @@ body {
   color: var(--text-muted);
 }
 
+.auth-status-card--success .auth-status-card__meta {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .auth-status-card__body {
   flex: 1;
   min-width: 0;
@@ -435,8 +441,8 @@ body {
   letter-spacing: 0.01em;
   line-height: 1.35;
   color: var(--text);
-  background: color-mix(in srgb, var(--auth-success-border) 35%, var(--auth-success-bg));
-  border: 1px solid color-mix(in srgb, var(--auth-success-border) 55%, transparent);
+  background: color-mix(in srgb, var(--spotify) 14%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--spotify) 28%, var(--auth-success-bg));
   border-radius: 999px;
 }
 

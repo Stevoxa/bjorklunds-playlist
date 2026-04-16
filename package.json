@@ -1,0 +1,16 @@
+{
+  "name": "bjorklund-playlist",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "playwright install chromium",
+    "test": "node tests/smoke-html.mjs",
+    "test:e2e": "playwright test",
+    "verify": "node tests/smoke-html.mjs && playwright test",
+    "screenshots": "playwright test tests/screenshots.spec.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "serve": "^14.2.4"
+  }
+}
