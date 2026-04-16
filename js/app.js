@@ -10,6 +10,9 @@ import { makeSearchCacheKey, getSearchCache, setSearchCache, clearSearchCache } 
 /** @type {ReturnType<createSpotifyClient> | null} */
 let spotifyClient = null;
 
+/** Visningsnamn eller e-post från GET /me (tom tills hämtat). */
+let spotifyUserDisplay = '';
+
 /** @type {object | null} */
 let vaultData = null;
 
@@ -180,6 +183,7 @@ async function loadEncryptedVault() {
     applyTheme($('pref-theme').value);
     updateNewPlaylistPreview();
     initSpotifyClient();
+    await refreshSpotifyUserDisplay();
     showToast('Data läst in.');
     setAuthStatus();
     updateApplyEnabled();
@@ -190,6 +194,7 @@ async function loadEncryptedVault() {
 
 function initSpotifyClient() {
   spotifyClient = null;
+  spotifyUserDisplay = '';
   if (!vaultData?.tokens?.accessToken) return;
   const cid = (vaultData.clientId || '').trim() || getClientId().trim();
   if (!cid) return;
@@ -203,36 +208,153 @@ function initSpotifyClient() {
   });
 }
 
-function setAuthStatus() {
-  const el = $('auth-status');
+/**
+ * @param {string} symbolId t.ex. "#sym-info"
+ * @param {number} [size]
+ */
+function svgUseEl(symbolId, size = 24) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', String(size));
+  svg.setAttribute('height', String(size));
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', symbolId);
+  svg.append(use);
+  return svg;
+}
+
+/**
+ * @param {HTMLElement} container
+ * @param {string} gs
+ */
+function appendScopePills(container, gs) {
+  const parts = String(gs).trim().split(/[\s,]+/).filter(Boolean);
+  if (parts.length === 0) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'scope-pills';
+  for (const p of parts) {
+    const span = document.createElement('span');
+    span.className = 'scope-pill';
+    span.textContent = p;
+    wrap.append(span);
+  }
+  container.append(wrap);
+}
+
+async function refreshSpotifyUserDisplay() {
+  spotifyUserDisplay = '';
+  if (!spotifyClient) return;
+  try {
+    const me = await spotifyClient.me();
+    const raw = me && (me.email || me.display_name);
+    spotifyUserDisplay = raw ? String(raw).trim() : '';
+  } catch {
+    spotifyUserDisplay = '';
+  }
+}
+
+/**
+ * @param {string} [extraHint] Extra rad när valv finns men ingen session (vid första laddning).
+ */
+function setAuthStatus(extraHint = '') {
+  const host = $('auth-status');
+  host.replaceChildren();
+
   if (!vaultData?.tokens?.accessToken) {
-    el.textContent = 'Inte inloggad på Spotify.';
+    const card = document.createElement('div');
+    card.className = 'auth-status-card auth-status-card--muted';
+    const icon = document.createElement('div');
+    icon.className = 'auth-status-card__icon';
+    icon.append(svgUseEl('#sym-info', 26));
+    const body = document.createElement('div');
+    body.className = 'auth-status-card__body';
+    const title = document.createElement('p');
+    title.className = 'auth-status-card__title';
+    title.textContent = 'Inte inloggad på Spotify.';
+    body.append(title);
+    if (extraHint) {
+      const note = document.createElement('p');
+      note.className = 'auth-status-card__note';
+      note.textContent = extraHint;
+      body.append(note);
+    }
+    card.append(icon, body);
+    host.append(card);
     refreshSummary();
     return;
   }
+
   const cid = (vaultData.clientId || '').trim() || getClientId().trim();
   if (!cid) {
-    el.textContent =
-      'Tokens finns men Client ID saknas i minnet (vanligt efter omdirigering). Ange Client ID i fältet ovan — det fylls i automatiskt nästa gång du sparar.';
+    const card = document.createElement('div');
+    card.className = 'auth-status-card auth-status-card--warning';
+    const icon = document.createElement('div');
+    icon.className = 'auth-status-card__icon';
+    icon.append(svgUseEl('#sym-info', 26));
+    const body = document.createElement('div');
+    body.className = 'auth-status-card__body';
+    const title = document.createElement('p');
+    title.className = 'auth-status-card__title';
+    title.textContent = 'Tokens finns men Client ID saknas';
+    const note = document.createElement('p');
+    note.className = 'auth-status-card__note';
+    note.textContent =
+      'Vanligt efter omdirigering. Ange Client ID i fältet ovan — det sparas nästa gång du klickar Spara lokalt.';
+    body.append(title, note);
+    card.append(icon, body);
+    host.append(card);
     refreshSummary();
     return;
   }
+
   const exp = new Date(vaultData.tokens.expiresAt).toLocaleString('sv-SE');
   const gs = (vaultData.tokens.grantedScopeRaw || '').trim();
   const hasPlaylistScope =
     gs.includes('playlist-modify-public') || gs.includes('playlist-modify-private');
-  let lines = `Inloggad. Access token giltig till cirka ${exp}.`;
+
+  const card = document.createElement('div');
+  card.className = 'auth-status-card auth-status-card--success';
+  const iconWrap = document.createElement('div');
+  iconWrap.className = 'auth-status-card__icon';
+  iconWrap.append(svgUseEl('#sym-check-circle', 28));
+
+  const body = document.createElement('div');
+  body.className = 'auth-status-card__body';
+
+  const title = document.createElement('p');
+  title.className = 'auth-status-card__title';
+  title.textContent = spotifyUserDisplay ? `Inloggad som ${spotifyUserDisplay}` : 'Inloggad på Spotify.';
+
+  const meta = document.createElement('p');
+  meta.className = 'auth-status-card__meta';
+  meta.textContent = `Access token giltig till cirka ${exp}.`;
+
+  body.append(title, meta);
   if (gs) {
-    lines += `\nBeviljade rättigheter (från Spotify): ${gs}`;
+    appendScopePills(body, gs);
   } else {
-    lines +=
-      '\nOBS: Spotify skickade ingen scope-lista i token-svaret (ovanligt). Om spellistor nekas, logga in igen efter att du återkallat appen (länk i checklistan nedan).';
+    const alert = document.createElement('p');
+    alert.className = 'auth-status-card__alert';
+    alert.textContent =
+      'Spotify skickade ingen scope-lista i token-svaret (ovanligt). Om spellistor nekas: logga in igen efter att du återkallat appen (403-hjälpen nedan).';
+    body.append(alert);
   }
   if (gs && !hasPlaylistScope) {
-    lines +=
-      '\nOBS: Denna token saknar playlist-modify-public/private — spellistor kan inte skapas eller ändras. Återkalla appen under spotify.com/account/apps och logga in igen i denna app.';
+    const alert = document.createElement('p');
+    alert.className = 'auth-status-card__alert';
+    alert.textContent =
+      'Denna token saknar playlist-modify-public/private — spellistor kan inte skapas eller ändras. Återkalla appen på spotify.com/account/apps och logga in igen.';
+    body.append(alert);
   }
-  el.textContent = lines;
+
+  const foot = document.createElement('p');
+  foot.className = 'auth-status-card__note';
+  foot.textContent =
+    'Rättigheterna kommer från Spotify vid inloggning. Spara lokalt med din lösenfras om du vill behålla tokens på enheten.';
+  body.append(foot);
+
+  card.append(iconWrap, body);
+  host.append(card);
   refreshSummary();
 }
 
@@ -251,8 +373,8 @@ function mergeOAuthTokens(tokens, clientIdFromOAuth) {
   initSpotifyClient();
   updateNewPlaylistPreview();
   showToast('Spotify-inloggning klar. Spara lokalt med din lösenfras för att behålla tokens.');
-  setAuthStatus();
   updateApplyEnabled();
+  void refreshSpotifyUserDisplay().then(() => setAuthStatus());
 }
 
 async function handleOAuthReturn() {
@@ -300,6 +422,7 @@ function setFlowStep(step, opts = {}) {
     updateApplyEnabled();
     updateNewPlaylistPreview();
     if (resultRows.length > 0) renderResults();
+    void refreshSpotifyUserDisplay().then(() => setAuthStatus());
   }
   updateSummaryTip(step);
   refreshSummary();
@@ -1052,9 +1175,11 @@ async function boot() {
     if (!cid) return;
     vaultData.clientId = cid;
     initSpotifyClient();
-    setAuthStatus();
     updateApplyEnabled();
-    if (resultRows.length > 0) renderResults();
+    void refreshSpotifyUserDisplay().then(() => {
+      setAuthStatus();
+      if (resultRows.length > 0) renderResults();
+    });
   });
 
   $('btn-spotify-login').addEventListener('click', async () => {
@@ -1081,6 +1206,7 @@ async function boot() {
     };
     vaultData.tokens = null;
     spotifyClient = null;
+    spotifyUserDisplay = '';
     const pass = getPassphrase();
     if (pass.length >= 8) {
       await saveVault(vaultData, pass);
@@ -1129,10 +1255,25 @@ async function boot() {
   await handleOAuthReturn();
 
   const exists = await idbGet(VAULT_KEY);
-  setAuthStatus();
-  if (exists && !vaultData?.tokens?.accessToken) {
-    $('auth-status').textContent +=
-      ' Det finns sparad krypterad data. Ange lösenfras och klicka ”Läs in sparad data”.';
+  initSpotifyClient();
+  await refreshSpotifyUserDisplay();
+  const vaultHint =
+    exists && !vaultData?.tokens?.accessToken
+      ? 'Det finns sparad krypterad data. Ange lösenfras och klicka ”Läs in sparad data”.'
+      : '';
+  setAuthStatus(vaultHint);
+
+  const passInp = $('crypto-pass');
+  const passTog = $('btn-toggle-pass-visibility');
+  const passUse = passTog.querySelector('use');
+  if (passUse) {
+    passTog.addEventListener('click', () => {
+      const show = passInp.type === 'password';
+      passInp.type = show ? 'text' : 'password';
+      passTog.setAttribute('aria-pressed', show ? 'true' : 'false');
+      passTog.setAttribute('aria-label', show ? 'Dölj lösenfras' : 'Visa lösenfras');
+      passUse.setAttribute('href', show ? '#sym-eye-off' : '#sym-eye');
+    });
   }
 
   applyTheme($('pref-theme').value);

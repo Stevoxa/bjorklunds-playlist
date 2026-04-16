@@ -92,6 +92,25 @@
         <circle cx="11" cy="11" r="7" />
         <path d="M21 21l-4.3-4.3" stroke-linecap="round" />
       </symbol>
+      <symbol id="sym-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M8 12.5l2.2 2L16 9" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="sym-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="sym-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="12" cy="12" r="3" />
+      </symbol>
+      <symbol id="sym-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M2 2l20 20" stroke-linecap="round" />
+        <path
+          d="M10.5 10.5c.5-.3 1.1-.5 1.7-.5 1.7 0 3 1.3 3 3 0 .6-.2 1.2-.5 1.7M6.1 6.1C3.8 7.4 2 9.1 1.3 11c1.8 4.2 5.9 7 10.7 7 1.6 0 3.1-.3 4.5-.9"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </symbol>
     </svg>
 
     <div class="app-frame">
@@ -160,17 +179,48 @@
                 <input type="text" id="client-id" class="input" autocomplete="off" spellcheck="false" inputmode="verbatim" aria-describedby="client-id-help" />
                 <p class="help" id="client-id-help">Lagras krypterat lokalt.</p>
                 <label for="crypto-pass" class="label">Lösenfras för lokal kryptering</label>
-                <input type="password" id="crypto-pass" class="input" autocomplete="new-password" aria-describedby="crypto-pass-help" />
+                <div class="password-field">
+                  <input
+                    type="password"
+                    id="crypto-pass"
+                    class="input password-field__input"
+                    autocomplete="new-password"
+                    aria-describedby="crypto-pass-help"
+                    placeholder="Ange en lösenfras som bara du vet om"
+                  />
+                  <button
+                    type="button"
+                    class="password-field__toggle"
+                    id="btn-toggle-pass-visibility"
+                    aria-label="Visa lösenfras"
+                    aria-pressed="false"
+                  >
+                    <svg width="22" height="22" aria-hidden="true"><use href="#sym-eye" /></svg>
+                  </button>
+                </div>
                 <p class="help" id="crypto-pass-help">Minst 8 tecken. Glömmer du den måste du logga in på Spotify igen.</p>
-                <div class="row row--wrap">
+                <div class="row row--wrap row--auth-actions">
                   <button type="button" class="btn btn--primary" id="btn-save-settings">Spara lokalt</button>
-                  <button type="button" class="btn" id="btn-load-vault">Läs in sparad data</button>
-                  <button type="button" class="btn btn--primary" id="btn-spotify-login">Logga in med Spotify</button>
+                  <button type="button" class="btn btn--secondary" id="btn-load-vault">Läs in sparad data</button>
+                  <button type="button" class="btn btn--primary btn--with-icon" id="btn-spotify-login">
+                    <span class="btn__icon-wrap" aria-hidden="true">
+                      <svg class="btn__icon btn__icon--spotify" width="20" height="20"><use href="#sym-spotify" /></svg>
+                    </span>
+                    <span>Logga in med Spotify</span>
+                  </button>
                   <button type="button" class="btn btn--danger" id="btn-logout">Rensa session</button>
                 </div>
-                <p class="status" id="auth-status" role="status" aria-live="polite"></p>
+                <div id="auth-status" class="auth-status-host" role="status" aria-live="polite"></div>
                 <details class="forbidden-help">
-                  <summary class="forbidden-help__summary">403 Forbidden vid spellista — kort hjälp</summary>
+                  <summary class="forbidden-help__summary">
+                    <span class="forbidden-help__summary-icon" aria-hidden="true">
+                      <svg width="22" height="22"><use href="#sym-info" /></svg>
+                    </span>
+                    <span class="forbidden-help__summary-text">Om du får Forbidden (403) när du skapar spellista eller lägger till låtar</span>
+                    <span class="forbidden-help__chevron" aria-hidden="true">
+                      <svg width="20" height="20"><use href="#sym-chevron-down" /></svg>
+                    </span>
+                  </summary>
                   <div class="forbidden-help__body">
                     <p class="help">
                       Status ska visa <strong>playlist-modify-public</strong> eller <strong>playlist-modify-private</strong>. Annars:
