@@ -123,6 +123,21 @@
   max-width: var(--layout-max);
   margin: 0 auto;
   padding: var(--space-lg) var(--space) var(--space);
+  text-align: start;
+}
+
+/* Linjera rubrik + steg med primärkolumnen (samma tvåspalt som .app-layout) */
+@media (min-width: 960px) {
+  .app-page-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--aside-width);
+    column-gap: var(--space-lg);
+    align-items: start;
+  }
+
+  .app-page-head > * {
+    grid-column: 1;
+  }
 }
 
 .app-page-head__title {
@@ -149,15 +164,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.15rem 0.5rem;
+  justify-content: flex-start;
+  gap: 0.5rem 1rem;
   margin-top: var(--space-lg);
-  padding-bottom: 2px;
+  padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--border);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .flow-stepper__btn {
   position: relative;
-  padding: 0.55rem 0.65rem 0.65rem;
+  padding: 0.55rem 0.85rem 0.7rem;
   border: none;
   background: transparent;
   font: inherit;
@@ -193,9 +211,8 @@
   background: var(--spotify);
 }
 
-.flow-stepper__spacer {
-  flex: 1 1 2rem;
-  min-width: 0;
+.flow-stepper__btn--settings {
+  margin-inline-start: auto;
 }
 
 .app-main {
