@@ -622,19 +622,13 @@ a:focus-visible {
   gap: 0.4rem;
 }
 
-/* Reglage av: dölj alternativ utom vald rad; grå radio-accent */
-.match-block--excluded .match-option:has(input[type='radio']:not(:checked)) {
+/* Reglage av: fäll ihop hela träfflistan (som höger i mockup) — statusrader utan .match-option påverkas inte */
+.match-block--excluded > .results-list__rule {
   display: none;
 }
 
-.match-block--excluded .match-option input[type='radio'] {
-  accent-color: var(--text-muted);
-}
-
-.match-block--excluded .match-block__options {
-  gap: 0;
-  padding-top: 0.2rem;
-  padding-bottom: 0.45rem;
+.match-block--excluded .match-block__options:has(.match-option) {
+  display: none;
 }
 
 .match-block__status {

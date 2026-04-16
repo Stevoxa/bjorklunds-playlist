@@ -595,6 +595,8 @@ async function runSearch() {
       const row = resultRows[i];
       const cacheKey = makeSearchCacheKey(row.query, row.artist, row.title);
       const cached = getSearchCache(cacheKey);
+      /** Paus mellan rader ska bara följa efter Spotify-anrop — cache är lokalt och ska inte fördröja nästa rad */
+      let rowFetchedFromSpotify = false;
       if (cached != null) {
         cacheHits += 1;
         row.tracks = cached;
@@ -606,6 +608,7 @@ async function runSearch() {
           itemsReturned: cached.length,
         });
       } else {
+        rowFetchedFromSpotify = true;
         row.tracks = await spotifyClient.searchTracks(row.query, 5, {
           artist: row.artist,
           title: row.title,
@@ -616,7 +619,7 @@ async function runSearch() {
       if (signal.aborted) break;
       row.selectedUri = row.tracks[0]?.uri ?? null;
       renderResults();
-      if (i < resultRows.length - 1) {
+      if (i < resultRows.length - 1 && rowFetchedFromSpotify) {
         await sleepAbortable(SEARCH_ROW_GAP_MS + Math.random() * SEARCH_ROW_JITTER_MS, signal);
       }
     }
