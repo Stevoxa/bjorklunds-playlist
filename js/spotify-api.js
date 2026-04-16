@@ -104,26 +104,74 @@ async function api(accessToken, path, init = {}) {
   return res;
 }
 
+/** Max väntan per 429 (ms) — Spotify kan skicka stora Retry-After; annars känns UI “fryst”. */
+const RATE_LIMIT_WAIT_CAP_MS = 45_000;
+const RATE_LIMIT_WAIT_MIN_MS = 900;
+/** Max total väntetid för alla 429 på samma GET innan vi ger upp */
+const RATE_LIMIT_TOTAL_WAIT_CAP_MS = 120_000;
+
+/** Min tid mellan två /search-anrop (olika query/market) — undvik burst inom Spotifys rullande fönster */
+const SEARCH_INTERNAL_GAP_MS = 550;
+const SEARCH_INTERNAL_JITTER_MS = 220;
+
+async function sleepBetweenSearchTries() {
+  await new Promise((r) => setTimeout(r, SEARCH_INTERNAL_GAP_MS + Math.floor(Math.random() * SEARCH_INTERNAL_JITTER_MS)));
+}
+
 /**
- * GET med 429-retry enligt Spotify (Retry-After i sekunder).
+ * Tolka Retry-After (sekunder som heltal). Ignorar HTTP-datumformat här.
+ * @param {string | null} raw
+ */
+function parseRetryAfterMs(raw) {
+  if (raw == null || raw === '') return null;
+  const t = String(raw).trim();
+  const sec = Number.parseInt(t, 10);
+  if (Number.isNaN(sec) || sec < 0) return null;
+  return sec * 1000;
+}
+
+/**
+ * GET med 429-retry. Använder Retry-After om siffra (cappad), annars kort exponentiell backoff — aldrig minuter långa väntor per runda.
  * @param {string} accessToken
  * @param {string} path
  * @param {number} [maxRetries]
  */
-async function apiGetWith429Retry(accessToken, path, maxRetries = 8) {
+async function apiGetWith429Retry(accessToken, path, maxRetries = 5) {
   let lastRes = /** @type {Response | null} */ (null);
+  let totalWaited = 0;
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     const res = await api(accessToken, path, { method: 'GET' });
     lastRes = res;
     if (res.status !== 429) return res;
     if (attempt === maxRetries) return res;
-    const ra = res.headers.get('Retry-After');
-    let waitMs = 1500 * 2 ** attempt;
-    if (ra != null) {
-      const s = Number.parseInt(ra, 10);
-      if (!Number.isNaN(s) && s >= 0) waitMs = Math.max(waitMs, s * 1000);
+
+    const fromHeader = parseRetryAfterMs(res.headers.get('Retry-After'));
+    /** Utan header: kort backoff (2s, 4s, … cappad), inte 1.5s·2^n som snabbt blir minuter */
+    const fallbackMs = Math.min(RATE_LIMIT_WAIT_CAP_MS, 2000 * 2 ** attempt);
+    let waitMs =
+      fromHeader != null
+        ? Math.min(RATE_LIMIT_WAIT_CAP_MS, Math.max(RATE_LIMIT_WAIT_MIN_MS, fromHeader))
+        : Math.max(RATE_LIMIT_WAIT_MIN_MS, fallbackMs);
+
+    const remaining = RATE_LIMIT_TOTAL_WAIT_CAP_MS - totalWaited;
+    if (remaining <= 0) {
+      await res.text().catch(() => {});
+      return res;
     }
-    waitMs += Math.floor(Math.random() * 500);
+    waitMs = Math.min(waitMs, remaining);
+    waitMs += Math.floor(Math.random() * 350);
+    totalWaited += waitMs;
+
+    window.dispatchEvent(
+      new CustomEvent('bjorklund-spotify-wait', {
+        detail: {
+          waitSec: Math.max(1, Math.ceil(waitMs / 1000)),
+          attempt: attempt + 1,
+          maxAttempts: maxRetries + 1,
+        },
+      }),
+    );
+
     await res.text().catch(() => {});
     await new Promise((r) => setTimeout(r, waitMs));
   }
@@ -167,8 +215,11 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       const queries = buildSearchQueries(q, hints.artist, hints.title);
       /** @type {('from_token' | null)[]} */
       const markets = ['from_token', null];
+      let firstSearchGet = true;
       for (const query of queries) {
         for (const market of markets) {
+          if (!firstSearchGet) await sleepBetweenSearchTries();
+          firstSearchGet = false;
           const params = new URLSearchParams({
             q: query,
             type: 'track',

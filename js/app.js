@@ -595,6 +595,15 @@ async function boot() {
     showToast('Sökcache rensad.');
   });
 
+  window.addEventListener('bjorklund-spotify-wait', (ev) => {
+    if (!searchInProgress) return;
+    const d = /** @type {CustomEvent} */ (ev).detail;
+    if (!d || typeof d.waitSec !== 'number') return;
+    const line = $('search-progress-line');
+    const base = line.textContent?.replace(/\s*—.*$/, '') ?? '';
+    line.textContent = `${base} — väntar ${d.waitSec}s (rate limit, försök ${d.attempt}/${d.maxAttempts})`;
+  });
+
   $('btn-copy-redirect').addEventListener('click', async () => {
     const text = getRedirectUri();
     $('redirect-uri-display').textContent = text;
