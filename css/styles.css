@@ -758,6 +758,22 @@ a:focus-visible {
   font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
 }
 
+.rate-limit-countdown {
+  margin: 0 0 var(--space);
+  padding: var(--space-sm) var(--space);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-muted, inherit);
+  background: var(--surface-elevated, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.rate-limit-countdown__text {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

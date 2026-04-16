@@ -745,6 +745,48 @@ async function boot() {
     line.textContent = `${base} — väntar ${d.waitSec}s (rate limit, försök ${d.attempt}/${d.maxAttempts})`;
   });
 
+  /** Nedräkning under API-loggen vid lång Retry-After (429), styrs från spotify-api.js */
+  let retryAfterCountdownTimer = /** @type {ReturnType<typeof setInterval> | null} */ (null);
+  function clearRetryAfterCountdown() {
+    if (retryAfterCountdownTimer != null) {
+      clearInterval(retryAfterCountdownTimer);
+      retryAfterCountdownTimer = null;
+    }
+    const wrap = $('rate-limit-countdown-wrap');
+    const text = $('rate-limit-countdown-text');
+    wrap.hidden = true;
+    text.textContent = '';
+  }
+  window.addEventListener('bjorklund-retry-after-countdown', (ev) => {
+    const d = /** @type {CustomEvent} */ (ev).detail;
+    if (!d || d.mode === 'clear') {
+      clearRetryAfterCountdown();
+      return;
+    }
+    if (d.mode !== 'start' || typeof d.endAt !== 'number') return;
+    clearRetryAfterCountdown();
+    const wrap = $('rate-limit-countdown-wrap');
+    const text = $('rate-limit-countdown-text');
+    const retrySec = typeof d.retryAfterParsedMs === 'number' ? Math.round(d.retryAfterParsedMs / 1000) : null;
+    const raw = typeof d.retryAfterRaw === 'string' ? d.retryAfterRaw.trim() : '';
+    wrap.hidden = false;
+    const tick = () => {
+      const leftMs = d.endAt - Date.now();
+      if (leftMs <= 0) {
+        clearRetryAfterCountdown();
+        return;
+      }
+      const leftSec = Math.max(1, Math.ceil(leftMs / 1000));
+      const hdr =
+        retrySec != null
+          ? `Spotify Retry-After: ${retrySec} s (header ”${raw || '?'}”). `
+          : '';
+      text.textContent = `${hdr}Kvar av denna paus: ${leftSec} s.`;
+    };
+    tick();
+    retryAfterCountdownTimer = setInterval(tick, 1000);
+  });
+
   $('btn-copy-redirect').addEventListener('click', async () => {
     const text = getRedirectUri();
     $('redirect-uri-display').textContent = text;

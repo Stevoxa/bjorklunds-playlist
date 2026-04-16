@@ -93,6 +93,17 @@
           <button type="button" class="btn" id="btn-clear-spotify-log">Rensa logg</button>
         </details>
 
+        <div
+          id="rate-limit-countdown-wrap"
+          class="rate-limit-countdown"
+          hidden
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <p id="rate-limit-countdown-text" class="rate-limit-countdown__text"></p>
+        </div>
+
         <section class="card" aria-labelledby="heading-playlist">
           <h2 id="heading-playlist" class="card__title">Spellista på Spotify</h2>
           <fieldset class="fieldset">

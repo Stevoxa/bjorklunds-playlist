@@ -187,6 +187,9 @@ const RATE_LIMIT_WAIT_MIN_MS = 900;
 /** Max total väntetid för alla 429 på samma GET innan vi ger upp */
 const RATE_LIMIT_TOTAL_WAIT_CAP_MS = 120_000;
 
+/** Visa nedräkning under API-loggen när Spotify skickar Retry-After (parsad) längre än detta. */
+const RETRY_AFTER_COUNTDOWN_MIN_MS = 30_000;
+
 /** Min tid mellan två /search-anrop (olika query/market) — undvik burst inom Spotifys rullande fönster */
 const SEARCH_INTERNAL_GAP_MS = 3000;
 const SEARCH_INTERNAL_JITTER_MS = 1000;
@@ -262,9 +265,23 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
       const res = await api(accessToken, path, { method: 'GET', signal });
       lastRes = res;
       if (res.status !== 429) return res;
-      if (attempt === maxRetries) return res;
+      if (attempt === maxRetries) {
+        const retryAfterRawFinal = res.headers.get('Retry-After');
+        logSpotify({
+          t: new Date().toISOString(),
+          kind: 'http_429',
+          path,
+          phase: 'max_retries_reached',
+          attempt: attempt + 1,
+          maxAttempts: maxRetries + 1,
+          retryAfterRaw: retryAfterRawFinal,
+          retryAfterParsedMs: parseRetryAfterMs(retryAfterRawFinal),
+        });
+        return res;
+      }
 
-      const fromHeader = parseRetryAfterMs(res.headers.get('Retry-After'));
+      const retryAfterRaw = res.headers.get('Retry-After');
+      const fromHeader = parseRetryAfterMs(retryAfterRaw);
       /** Utan Retry-After: /search straffas hårt av snabba omförsök — längre backoff än övriga GET */
       const fallbackBase = isSearch ? 12_000 : 2_500;
       const fallbackMs = Math.min(RATE_LIMIT_WAIT_CAP_MS, fallbackBase * 2 ** attempt);
@@ -277,24 +294,74 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
       const remaining = RATE_LIMIT_TOTAL_WAIT_CAP_MS - totalWaited;
       if (remaining <= 0) {
         await res.text().catch(() => {});
+        logSpotify({
+          t: new Date().toISOString(),
+          kind: 'http_429',
+          path,
+          phase: 'total_wait_budget_exhausted',
+          attempt: attempt + 1,
+          maxAttempts: maxRetries + 1,
+          totalWaitedBefore: totalWaited,
+          retryAfterRaw,
+          retryAfterParsedMs: fromHeader,
+        });
         return res;
       }
-      waitMs = Math.min(waitMs, remaining);
-      waitMs += Math.floor(Math.random() * 400);
-      totalWaited += waitMs;
+      const waitMsCappedToBudget = Math.min(waitMs, remaining);
+      const jitterMs = Math.floor(Math.random() * 400);
+      const waitMsApplied = waitMsCappedToBudget + jitterMs;
+      totalWaited += waitMsApplied;
+
+      logSpotify({
+        t: new Date().toISOString(),
+        kind: 'http_429',
+        path,
+        phase: 'backoff',
+        attempt: attempt + 1,
+        maxAttempts: maxRetries + 1,
+        retryAfterRaw,
+        retryAfterParsedMs: fromHeader,
+        backoffSource: fromHeader != null ? 'retry-after' : 'fallback',
+        fallbackMsSuggested: fromHeader == null ? fallbackMs : undefined,
+        waitMsFromPolicy: waitMs,
+        remainingBudgetMs: remaining,
+        waitMsAfterCap: waitMsCappedToBudget,
+        jitterMs,
+        waitMsApplied,
+        totalWaitedAfter: totalWaited,
+      });
 
       window.dispatchEvent(
         new CustomEvent('bjorklund-spotify-wait', {
           detail: {
-            waitSec: Math.max(1, Math.ceil(waitMs / 1000)),
+            waitSec: Math.max(1, Math.ceil(waitMsApplied / 1000)),
             attempt: attempt + 1,
             maxAttempts: maxRetries + 1,
           },
         }),
       );
 
-      await res.text().catch(() => {});
-      await sleepAbortable(waitMs, signal);
+      const showLongRetryCountdown = fromHeader != null && fromHeader > RETRY_AFTER_COUNTDOWN_MIN_MS;
+      if (showLongRetryCountdown) {
+        window.dispatchEvent(
+          new CustomEvent('bjorklund-retry-after-countdown', {
+            detail: {
+              mode: 'start',
+              endAt: Date.now() + waitMsApplied,
+              retryAfterParsedMs: fromHeader,
+              retryAfterRaw,
+            },
+          }),
+        );
+      }
+      try {
+        await res.text().catch(() => {});
+        await sleepAbortable(waitMsApplied, signal);
+      } finally {
+        if (showLongRetryCountdown) {
+          window.dispatchEvent(new CustomEvent('bjorklund-retry-after-countdown', { detail: { mode: 'clear' } }));
+        }
+      }
     }
     signal?.throwIfAborted();
     return lastRes ?? (await api(accessToken, path, { method: 'GET', signal }));
