@@ -28,8 +28,8 @@ let searchAbortController = null;
 const SPOTIFY_CHUNK = 100;
 
 /** Paus mellan rader efter svar (ms), med liten jitter — minskar risk för 429 i rullande 30 s-fönster */
-const SEARCH_ROW_GAP_MS = 600;
-const SEARCH_ROW_JITTER_MS = 250;
+const SEARCH_ROW_GAP_MS = 750;
+const SEARCH_ROW_JITTER_MS = 300;
 
 /**
  * @param {number} ms
@@ -529,6 +529,10 @@ function selectedUrisForPlaylist() {
 async function runSearch() {
   if (!spotifyClient) {
     showToast('Logga in på Spotify under Inställningar först.', true);
+    return;
+  }
+  if (searchInProgress) {
+    showToast('En sökning pågår redan — vänta eller tryck ”Avbryt sökning”.', true);
     return;
   }
   const parsed = parseTrackList($('paste-area').value);

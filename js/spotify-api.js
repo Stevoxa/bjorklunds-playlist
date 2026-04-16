@@ -111,8 +111,22 @@ const RATE_LIMIT_WAIT_MIN_MS = 900;
 const RATE_LIMIT_TOTAL_WAIT_CAP_MS = 120_000;
 
 /** Min tid mellan två /search-anrop (olika query/market) — undvik burst inom Spotifys rullande fönster */
-const SEARCH_INTERNAL_GAP_MS = 550;
-const SEARCH_INTERNAL_JITTER_MS = 220;
+const SEARCH_INTERNAL_GAP_MS = 800;
+const SEARCH_INTERNAL_JITTER_MS = 280;
+
+/** Endast en /search-GET-kedja (inkl. 429-retries) åt gången — undviker överlapp mellan flikar eller dubbelklick */
+let searchGetChain = Promise.resolve();
+
+/**
+ * @template T
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+function scheduleSearchGetChain(fn) {
+  const next = searchGetChain.then(() => fn());
+  searchGetChain = next.catch(() => {});
+  return next;
+}
 
 /**
  * @param {number} ms
@@ -143,15 +157,15 @@ async function sleepBetweenSearchTries(signal) {
 }
 
 /**
- * Tolka Retry-After (sekunder som heltal). Ignorar HTTP-datumformat här.
+ * Tolka Retry-After som sekunder (tal, t.ex. 9 eller 0.5). Ignorar HTTP-datumformat här.
  * @param {string | null} raw
  */
 function parseRetryAfterMs(raw) {
   if (raw == null || raw === '') return null;
   const t = String(raw).trim();
-  const sec = Number.parseInt(t, 10);
-  if (Number.isNaN(sec) || sec < 0) return null;
-  return sec * 1000;
+  const sec = Number.parseFloat(t);
+  if (!Number.isFinite(sec) || sec < 0) return null;
+  return Math.ceil(sec * 1000);
 }
 
 /**
@@ -162,47 +176,52 @@ function parseRetryAfterMs(raw) {
  * @param {AbortSignal | undefined} [signal]
  */
 async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
-  let lastRes = /** @type {Response | null} */ (null);
-  let totalWaited = 0;
-  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-    signal?.throwIfAborted();
-    const res = await api(accessToken, path, { method: 'GET', signal });
-    lastRes = res;
-    if (res.status !== 429) return res;
-    if (attempt === maxRetries) return res;
+  const isSearch = path.startsWith('/search?');
+  const run = async () => {
+    let lastRes = /** @type {Response | null} */ (null);
+    let totalWaited = 0;
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      signal?.throwIfAborted();
+      const res = await api(accessToken, path, { method: 'GET', signal });
+      lastRes = res;
+      if (res.status !== 429) return res;
+      if (attempt === maxRetries) return res;
 
-    const fromHeader = parseRetryAfterMs(res.headers.get('Retry-After'));
-    /** Utan header: kort backoff (2s, 4s, … cappad), inte 1.5s·2^n som snabbt blir minuter */
-    const fallbackMs = Math.min(RATE_LIMIT_WAIT_CAP_MS, 2000 * 2 ** attempt);
-    let waitMs =
-      fromHeader != null
-        ? Math.min(RATE_LIMIT_WAIT_CAP_MS, Math.max(RATE_LIMIT_WAIT_MIN_MS, fromHeader))
-        : Math.max(RATE_LIMIT_WAIT_MIN_MS, fallbackMs);
+      const fromHeader = parseRetryAfterMs(res.headers.get('Retry-After'));
+      /** Utan header: kort backoff (2.5s, 5s, … cappad) */
+      const fallbackMs = Math.min(RATE_LIMIT_WAIT_CAP_MS, 2500 * 2 ** attempt);
+      let waitMs =
+        fromHeader != null
+          ? Math.min(RATE_LIMIT_WAIT_CAP_MS, Math.max(RATE_LIMIT_WAIT_MIN_MS, fromHeader))
+          : Math.max(RATE_LIMIT_WAIT_MIN_MS, fallbackMs);
 
-    const remaining = RATE_LIMIT_TOTAL_WAIT_CAP_MS - totalWaited;
-    if (remaining <= 0) {
+      const remaining = RATE_LIMIT_TOTAL_WAIT_CAP_MS - totalWaited;
+      if (remaining <= 0) {
+        await res.text().catch(() => {});
+        return res;
+      }
+      waitMs = Math.min(waitMs, remaining);
+      waitMs += Math.floor(Math.random() * 400);
+      totalWaited += waitMs;
+
+      window.dispatchEvent(
+        new CustomEvent('bjorklund-spotify-wait', {
+          detail: {
+            waitSec: Math.max(1, Math.ceil(waitMs / 1000)),
+            attempt: attempt + 1,
+            maxAttempts: maxRetries + 1,
+          },
+        }),
+      );
+
       await res.text().catch(() => {});
-      return res;
+      await sleepAbortable(waitMs, signal);
     }
-    waitMs = Math.min(waitMs, remaining);
-    waitMs += Math.floor(Math.random() * 350);
-    totalWaited += waitMs;
-
-    window.dispatchEvent(
-      new CustomEvent('bjorklund-spotify-wait', {
-        detail: {
-          waitSec: Math.max(1, Math.ceil(waitMs / 1000)),
-          attempt: attempt + 1,
-          maxAttempts: maxRetries + 1,
-        },
-      }),
-    );
-
-    await res.text().catch(() => {});
-    await sleepAbortable(waitMs, signal);
-  }
-  signal?.throwIfAborted();
-  return lastRes ?? (await api(accessToken, path, { method: 'GET', signal }));
+    signal?.throwIfAborted();
+    return lastRes ?? (await api(accessToken, path, { method: 'GET', signal }));
+  };
+  if (isSearch) return scheduleSearchGetChain(run);
+  return run();
 }
 
 /**
@@ -311,7 +330,8 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             });
             throw new Error('Ogiltigt JSON-svar från Spotify');
           }
-          const items = data.tracks?.items ?? [];
+          const trackPage = data.tracks ?? data.items;
+          const items = Array.isArray(trackPage?.items) ? trackPage.items : [];
           logSpotify({
             t: new Date().toISOString(),
             endpoint: 'GET /v1/search',
@@ -319,7 +339,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             market: market ?? '(ingen)',
             httpStatus: res.status,
             ok: res.ok,
-            tracksTotal: data.tracks?.total,
+            tracksTotal: trackPage?.total,
             itemsReturned: items.length,
             sample: items.slice(0, 5).map((t) => ({
               name: t.name,
