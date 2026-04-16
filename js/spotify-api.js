@@ -29,6 +29,9 @@ export function formatSpotifyApiError(status, bodyText) {
   if (status === 401 || status === 403) {
     return `${prefix}\n\n→ Öppna fliken Inställningar och expandera: »Om du får Forbidden (403)…« (checklista steg för steg).`;
   }
+  if (status === 429) {
+    return `${prefix}\n\n→ Rate limit: Spotify begränsar antal anrop per tidsfönster. Vänta en stund och prova igen; appen pausar och försöker om automatiskt vid tillfälliga 429-svar.`;
+  }
   return prefix;
 }
 
@@ -102,6 +105,32 @@ async function api(accessToken, path, init = {}) {
 }
 
 /**
+ * GET med 429-retry enligt Spotify (Retry-After i sekunder).
+ * @param {string} accessToken
+ * @param {string} path
+ * @param {number} [maxRetries]
+ */
+async function apiGetWith429Retry(accessToken, path, maxRetries = 8) {
+  let lastRes = /** @type {Response | null} */ (null);
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    const res = await api(accessToken, path, { method: 'GET' });
+    lastRes = res;
+    if (res.status !== 429) return res;
+    if (attempt === maxRetries) return res;
+    const ra = res.headers.get('Retry-After');
+    let waitMs = 1500 * 2 ** attempt;
+    if (ra != null) {
+      const s = Number.parseInt(ra, 10);
+      if (!Number.isNaN(s) && s >= 0) waitMs = Math.max(waitMs, s * 1000);
+    }
+    waitMs += Math.floor(Math.random() * 500);
+    await res.text().catch(() => {});
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+  return lastRes ?? (await api(accessToken, path, { method: 'GET' }));
+}
+
+/**
  * @param {{ accessToken: string, refreshToken: string | null, expiresAt: number }} tokens
  * @param {string} clientId
  * @param {(t: object) => void} [onTokensUpdate]
@@ -147,7 +176,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
           });
           if (market) params.set('market', market);
           const path = `/search?${params.toString()}`;
-          const res = await api(access, path);
+          const res = await apiGetWith429Retry(access, path);
           const bodyText = await res.text();
           let data;
           try {
@@ -181,7 +210,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             })),
           });
           if (!res.ok) {
-            throw new Error(bodyText || `HTTP ${res.status}`);
+            throw new Error(formatSpotifyApiError(res.status, bodyText));
           }
           if (items.length > 0) return items;
         }

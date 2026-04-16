@@ -49,19 +49,19 @@
           <div class="row row--wrap row--paste-actions">
             <button type="button" class="btn btn--primary" id="btn-search" disabled>Sök på Spotify</button>
             <button type="button" class="btn" id="btn-clear-paste">Rensa</button>
-            <div id="search-progress" class="search-progress" hidden>
-              <div class="circular-progress" role="status" aria-label="Söker">
-                <svg class="circular-progress__svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <circle class="circular-progress__track" cx="24" cy="24" r="20" />
-                  <circle class="circular-progress__arc" cx="24" cy="24" r="20" transform="rotate(-90 24 24)" />
-                </svg>
-              </div>
-              <span class="search-progress__label">Söker…</span>
-            </div>
           </div>
         </section>
 
         <section class="card" aria-labelledby="heading-results" id="results-section" hidden>
+          <div id="search-progress-wrap" class="results-search-progress" hidden>
+            <div class="circular-progress circular-progress--inline" aria-hidden="true">
+              <svg class="circular-progress__svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle class="circular-progress__track" cx="24" cy="24" r="20" />
+                <circle class="circular-progress__arc" cx="24" cy="24" r="20" transform="rotate(-90 24 24)" />
+              </svg>
+            </div>
+            <p id="search-progress-line" class="results-search-progress__label" role="status" aria-live="polite"></p>
+          </div>
           <p class="help" id="results-summary" aria-live="polite"></p>
           <p class="help" id="match-columns-help">
             <strong>Match:</strong> Spotify kan returnera flera närliggande spår för samma sökning — välj <em>vilket</em> spår som ska användas (album och år visas så likadana titlar skiljs åt).
@@ -221,6 +221,15 @@
               </p>
             </div>
           </details>
+        </section>
+
+        <section class="card" aria-labelledby="heading-search-cache">
+          <h2 id="heading-search-cache" class="card__title">Sökcache</h2>
+          <p class="help" id="search-cache-help">
+            Träfflistor för <strong>samma</strong> söksträng (inkl. artist/titel-hjälp) sparas i denna webbläsare i <strong>30 minuter</strong> så upprepade sökningar mot Spotify minskar.
+            Cachen försvinner när du stänger fliken (sessionStorage). Knappen nedan rensar all sparad sökdata manuellt.
+          </p>
+          <button type="button" class="btn" id="btn-clear-search-cache">Rensa sökcache</button>
         </section>
 
         <section class="card" aria-labelledby="heading-prefs">

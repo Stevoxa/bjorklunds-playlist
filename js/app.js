@@ -3,7 +3,8 @@ import { loadVault, saveVault, VAULT_KEY } from './vault.js';
 import { idbGet } from './db.js';
 import { parseTrackList } from './parser.js';
 import { createSpotifyClient, parsePlaylistIdFromInput } from './spotify-api.js';
-import { subscribeSpotifyLog, clearSpotifyLog } from './spotify-log.js';
+import { subscribeSpotifyLog, clearSpotifyLog, logSpotify } from './spotify-log.js';
+import { makeSearchCacheKey, getSearchCache, setSearchCache, clearSearchCache } from './search-cache.js';
 
 /** @type {ReturnType<createSpotifyClient> | null} */
 let spotifyClient = null;
@@ -21,6 +22,10 @@ let resultRows = [];
 let searchInProgress = false;
 
 const SPOTIFY_CHUNK = 100;
+
+/** Paus mellan rader efter svar (ms), med liten jitter — minskar risk för 429 i rullande 30 s-fönster */
+const SEARCH_ROW_GAP_MS = 600;
+const SEARCH_ROW_JITTER_MS = 250;
 
 function defaultVault() {
   return {
@@ -284,7 +289,11 @@ function formatTrackChoiceLine(track) {
 }
 
 function setSearchProgress(visible) {
-  $('search-progress').hidden = !visible;
+  $('search-progress-wrap').hidden = !visible;
+  $('results-summary').hidden = visible;
+  if (!visible) {
+    $('search-progress-line').textContent = '';
+  }
 }
 
 function finalizeResultsSummary() {
@@ -308,6 +317,9 @@ function renderResults() {
   if (resultRows.length === 0) {
     $('results-section').hidden = true;
     $('results-summary').textContent = '';
+    $('results-summary').hidden = false;
+    $('search-progress-line').textContent = '';
+    $('search-progress-wrap').hidden = true;
     updateApplyEnabled();
     return;
   }
@@ -404,7 +416,9 @@ function renderResults() {
 
 function updateApplyEnabled() {
   $('btn-apply-playlist').disabled = resultRows.length === 0 || !spotifyClient;
-  $('btn-search').disabled = !spotifyClient;
+  const busy = searchInProgress;
+  $('btn-search').disabled = !spotifyClient || busy;
+  $('btn-clear-paste').disabled = busy;
 }
 
 function selectedUrisForPlaylist() {
@@ -433,29 +447,46 @@ async function runSearch() {
   searchInProgress = true;
   renderResults();
   setSearchProgress(true);
-  $('btn-search').disabled = true;
-  $('btn-clear-paste').disabled = true;
   try {
+    let cacheHits = 0;
     for (let i = 0; i < resultRows.length; i += 1) {
-      $('results-summary').textContent = `Söker ${i + 1} av ${resultRows.length} …`;
+      $('search-progress-line').textContent = `Söker ${i + 1} av ${resultRows.length} …`;
       const row = resultRows[i];
-      row.tracks = await spotifyClient.searchTracks(row.query, 5, {
-        artist: row.artist,
-        title: row.title,
-      });
+      const cacheKey = makeSearchCacheKey(row.query, row.artist, row.title);
+      const cached = getSearchCache(cacheKey);
+      if (cached != null) {
+        cacheHits += 1;
+        row.tracks = cached;
+        logSpotify({
+          t: new Date().toISOString(),
+          endpoint: 'GET /v1/search',
+          source: 'cache',
+          q: row.query,
+          itemsReturned: cached.length,
+        });
+      } else {
+        row.tracks = await spotifyClient.searchTracks(row.query, 5, {
+          artist: row.artist,
+          title: row.title,
+        });
+        setSearchCache(cacheKey, row.tracks);
+      }
       row.selectedUri = row.tracks[0]?.uri ?? null;
       renderResults();
-      await new Promise((r) => setTimeout(r, 350));
+      await new Promise((r) => setTimeout(r, SEARCH_ROW_GAP_MS + Math.random() * SEARCH_ROW_JITTER_MS));
     }
-    showToast('Sökning klar.');
+    showToast(
+      cacheHits > 0
+        ? `Sökning klar. ${cacheHits} av ${resultRows.length} rader från cache, övriga från Spotify.`
+        : 'Sökning klar.',
+    );
   } catch (e) {
     showToast(String(e?.message ?? e), true);
   } finally {
     searchInProgress = false;
     setSearchProgress(false);
-    $('btn-search').disabled = !spotifyClient;
-    $('btn-clear-paste').disabled = false;
     renderResults();
+    updateApplyEnabled();
   }
 }
 
@@ -557,6 +588,11 @@ async function boot() {
   });
   $('btn-clear-spotify-log').addEventListener('click', () => {
     clearSpotifyLog();
+  });
+
+  $('btn-clear-search-cache').addEventListener('click', () => {
+    clearSearchCache();
+    showToast('Sökcache rensad.');
   });
 
   $('btn-copy-redirect').addEventListener('click', async () => {
