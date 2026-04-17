@@ -214,6 +214,10 @@ body {
 }
 
 .flow-card {
+  /* Ikon + text i statusrutor, forbidden-help och flow-nav__hint delar samma “rail”. */
+  --flow-callout-icon-col: 2.25rem;
+  --flow-callout-gap: 0.65rem;
+  --flow-callout-inline: 1.15rem;
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -233,13 +237,18 @@ body {
 
 .flow-card--privacy__text {
   margin: 0;
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: var(--flow-callout-icon-col, 2.25rem) minmax(0, 1fr);
+  gap: var(--flow-callout-gap, 0.65rem);
+  align-items: start;
+  min-width: 0;
 }
 
 .flow-card--privacy__icon {
-  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  justify-self: center;
+  margin-top: 0.12em;
   color: var(--spotify);
 }
 
@@ -341,15 +350,23 @@ body {
   margin: 0;
   font-size: 0.85rem;
   color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  display: grid;
+  grid-template-columns: var(--flow-callout-icon-col, 2.25rem) minmax(0, 1fr);
+  gap: var(--flow-callout-gap, 0.65rem);
+  align-items: start;
+  min-width: 0;
 }
 
 .flow-nav__hint svg {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  justify-self: center;
+  margin-top: 0.12em;
+}
+
+.flow-nav__hint-text {
+  min-width: 0;
+  line-height: 1.45;
 }
 
 .choice-grid {
