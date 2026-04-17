@@ -129,6 +129,13 @@ function getClientId() {
   return $('client-id').value.trim();
 }
 
+/** Håller valvets Client ID i synk med fältet (t.ex. efter navigering Inställningar ↔ flöde). */
+function syncClientIdFromFormIntoVault() {
+  if (!vaultData) return;
+  const cid = getClientId().trim();
+  if (cid) vaultData.clientId = cid;
+}
+
 function persistTokensFromClient() {
   if (!spotifyClient || !vaultData) return;
   vaultData.tokens = spotifyClient.getTokens();
@@ -193,6 +200,14 @@ async function loadEncryptedVault() {
 }
 
 function initSpotifyClient() {
+  if (spotifyClient && vaultData) {
+    try {
+      vaultData.tokens = spotifyClient.getTokens();
+    } catch {
+      /* ignorera */
+    }
+  }
+  syncClientIdFromFormIntoVault();
   spotifyClient = null;
   spotifyUserDisplay = '';
   if (!vaultData?.tokens?.accessToken) return;
@@ -431,6 +446,7 @@ function syncPageLeadStep3() {
  */
 function setFlowStep(step, opts = {}) {
   const { focusPanel = false } = opts;
+  syncClientIdFromFormIntoVault();
   currentFlowStep = /** @type {'0' | '1' | '2' | '3' | 'settings'} */ (step);
   const accent = step === '0' || step === 'settings' ? 'spotify' : 'navy';
   document.documentElement.setAttribute('data-flow-accent', accent);
@@ -638,6 +654,25 @@ function wireFlow() {
     btn.addEventListener('click', () => {
       const s = btn.getAttribute('data-flow-goto');
       if (s) setFlowStep(/** @type {'0' | '1' | '2' | '3' | 'settings'} */ (s), { focusPanel: true });
+    });
+  });
+}
+
+function setCreateModeNavActive() {
+  document.querySelectorAll('.flow-mode-nav__btn[data-flow-mode]').forEach((b) => {
+    const m = b.getAttribute('data-flow-mode');
+    const on = m === 'create';
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+
+/** Skapa playlists: markera läge och gå till flödets första steg (t.ex. från Inställningar). */
+function wireFlowModeNav() {
+  document.querySelectorAll('[data-flow-mode="create"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setCreateModeNavActive();
+      setFlowStep('0', { focusPanel: true });
     });
   });
 }
@@ -1227,6 +1262,7 @@ async function boot() {
   });
 
   wireFlow();
+  wireFlowModeNav();
   wirePlaylistMode();
   $('new-pl-name').addEventListener('input', () => {
     updateNewPlaylistPreview();
