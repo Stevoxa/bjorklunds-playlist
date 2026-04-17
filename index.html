@@ -473,53 +473,54 @@
                       Klistra in en spellistelänk eller <code class="code-inline">spotify:playlist:</code>-URI.
                     </p>
                   </div>
-                  <p class="label label--section" id="label-pl-update">Uppdatering</p>
-                  <div
-                    class="choice-grid choice-grid--option-cards"
-                    role="radiogroup"
-                    aria-labelledby="label-pl-update"
-                  >
-                    <label class="choice-tile choice-tile--row">
-                      <input type="radio" name="pl-update" value="append" checked />
-                      <span class="choice-tile__body">
-                        <span class="choice-tile__text">
-                          <span class="choice-tile__title">Lägg till valda låtar</span>
-                          <span class="choice-tile__desc">Befintliga låtar behålls och de valda låtarna läggs till i slutet.</span>
+                  <div class="existing-pl-update-wrap">
+                    <p class="label label--section" id="label-pl-update">Uppdatering</p>
+                    <div
+                      class="choice-grid choice-grid--option-cards choice-grid--pl-update"
+                      role="radiogroup"
+                      aria-labelledby="label-pl-update"
+                    >
+                      <label class="choice-tile choice-tile--row">
+                        <input type="radio" name="pl-update" value="append" checked />
+                        <span class="choice-tile__body">
+                          <span class="choice-tile__text">
+                            <span class="choice-tile__title">Lägg till valda låtar</span>
+                            <span class="choice-tile__desc">Befintliga låtar behålls och de valda låtarna läggs till i slutet.</span>
+                          </span>
+                          <span class="choice-tile__glyph choice-tile__glyph--trail" aria-hidden="true">
+                            <svg><use href="#sym-plus-circle" /></svg>
+                          </span>
                         </span>
-                        <span class="choice-tile__glyph choice-tile__glyph--trail" aria-hidden="true">
-                          <svg><use href="#sym-plus" /></svg>
+                      </label>
+                      <label class="choice-tile choice-tile--row">
+                        <input type="radio" name="pl-update" value="replace" />
+                        <span class="choice-tile__body">
+                          <span class="choice-tile__text">
+                            <span class="choice-tile__title">Ersätt hela spellistan med valda</span>
+                            <span class="choice-tile__desc">Alla befintliga låtar tas bort och ersätts med de valda låtarna.</span>
+                          </span>
+                          <span class="choice-tile__glyph choice-tile__glyph--trail" aria-hidden="true">
+                            <svg><use href="#sym-recycle" /></svg>
+                          </span>
                         </span>
-                      </span>
-                    </label>
-                    <label class="choice-tile choice-tile--row">
-                      <input type="radio" name="pl-update" value="replace" />
-                      <span class="choice-tile__body">
-                        <span class="choice-tile__text">
-                          <span class="choice-tile__title">Ersätt hela spellistan med valda</span>
-                          <span class="choice-tile__desc">Alla befintliga låtar tas bort och ersätts med de valda låtarna.</span>
-                        </span>
-                        <span class="choice-tile__glyph choice-tile__glyph--trail" aria-hidden="true">
-                          <svg><use href="#sym-refresh" /></svg>
-                        </span>
-                      </span>
-                    </label>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
                 <div class="row row--wrap row--apply">
                   <p class="help row--apply__hint" id="apply-hint" aria-live="polite"></p>
+                </div>
+                <div class="flow-nav">
+                  <button type="button" class="btn btn--flow-nav-width" data-flow-goto="2">Tillbaka: Spellista</button>
                   <button
                     type="button"
-                    class="btn btn--primary row--apply__primary btn--flow-nav-width btn--slutfor"
+                    class="btn btn--primary btn--flow-nav-width btn--slutfor"
                     id="btn-apply-playlist"
                     disabled
                   >
                     Slutför
                   </button>
-                </div>
-                <div class="flow-nav">
-                  <button type="button" class="btn btn--flow-nav-width" data-flow-goto="2">Tillbaka: Spellista</button>
-                  <button type="button" class="btn btn--flow-nav-width" data-flow-goto="1">Låtar</button>
                 </div>
               </div>
             </section>

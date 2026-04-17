@@ -610,19 +610,13 @@ a:focus-visible {
 
 .row--apply {
   margin-top: var(--space-lg);
-  align-items: center;
-  justify-content: flex-start;
+  align-items: flex-start;
 }
 
 .row--apply__hint {
-  flex: 1 1 12rem;
+  flex: 1 1 100%;
   min-width: 0;
   margin: 0;
-}
-
-.row--apply__primary {
-  margin-left: auto;
-  flex-shrink: 0;
 }
 
 .results-search-progress {
