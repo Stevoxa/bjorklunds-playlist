@@ -142,6 +142,12 @@ body {
   margin-bottom: var(--space-sm);
 }
 
+.label--section {
+  margin-top: 0.15rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
 .help {
   margin: 0 0 var(--space);
   color: var(--text-muted);
@@ -188,6 +194,16 @@ body {
 
 #existing-pl-select.select {
   max-width: 100%;
+}
+
+.existing-pl-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.existing-pl-stack .existing-pl-source-block {
+  margin-bottom: 0;
 }
 
 .existing-pl-source-block {
@@ -252,6 +268,14 @@ body {
 
 .btn__icon-wrap--spotify {
   color: var(--btn-primary-fg);
+}
+
+.btn__trail {
+  margin-inline-start: 0.15em;
+  font-size: 1.12em;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.9;
 }
 
 .btn:disabled {

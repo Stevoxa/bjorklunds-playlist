@@ -381,7 +381,9 @@
                   </div>
                   <div class="flow-card__titles">
                     <h2 class="flow-card__title flow-card__title--hero-step" id="heading-playlist">Spellista — detaljer</h2>
-                    <p class="flow-card__subtitle">Namn eller befintlig lista, och hur uppdateringen ska göras.</p>
+                    <p class="flow-card__subtitle" id="heading-playlist-sub">
+                      Ange namn för den nya listan (suffix) och om den ska vara publik.
+                    </p>
                   </div>
                 </div>
 
@@ -397,25 +399,42 @@
                   </div>
                 </div>
 
-                <div id="block-existing-playlist" hidden>
-                  <fieldset class="fieldset">
-                    <legend class="legend">Välj befintlig spellista</legend>
-                    <div class="radio-row">
-                      <label class="radio-label">
-                        <input type="radio" name="pl-existing-source" value="from-list" />
-                        Mina listor med prefix
-                      </label>
-                      <label class="radio-label">
-                        <input type="radio" name="pl-existing-source" value="from-link" checked />
-                        ID eller Spotify-länk
-                      </label>
-                    </div>
-                  </fieldset>
-                  <div id="block-existing-from-list" class="existing-pl-source-block" hidden>
+                <div id="block-existing-playlist" hidden class="existing-pl-stack">
+                  <div
+                    class="choice-grid choice-grid--option-cards"
+                    role="radiogroup"
+                    aria-label="Hur hittar du spellistan som ska uppdateras"
+                  >
+                    <label class="choice-tile choice-tile--row">
+                      <input type="radio" name="pl-existing-source" value="from-list" checked />
+                      <span class="choice-tile__body">
+                        <span class="choice-tile__text">
+                          <span class="choice-tile__title">Mina listor med prefix</span>
+                          <span class="choice-tile__desc">Visar dina spellistor som matchar prefixet.</span>
+                        </span>
+                        <span class="choice-tile__glyph choice-tile__glyph--trail" aria-hidden="true">
+                          <svg><use href="#sym-list" /></svg>
+                        </span>
+                      </span>
+                    </label>
+                    <label class="choice-tile choice-tile--row">
+                      <input type="radio" name="pl-existing-source" value="from-link" />
+                      <span class="choice-tile__body">
+                        <span class="choice-tile__text">
+                          <span class="choice-tile__title">ID eller Spotify-länk</span>
+                          <span class="choice-tile__desc">Klistra in länk eller URI till en spellista.</span>
+                        </span>
+                        <span class="choice-tile__glyph choice-tile__glyph--trail" aria-hidden="true">
+                          <svg><use href="#sym-link" /></svg>
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                  <div id="block-existing-from-list" class="existing-pl-source-block">
                     <label for="existing-pl-select" class="label">Spellista</label>
                     <select id="existing-pl-select" class="select" aria-describedby="existing-pl-select-help"></select>
                     <p class="help" id="existing-pl-select-help">
-                      Listan hämtas från Spotify. Uppdateras när du skapat lista här, byter läge/prefix eller återvänder till steg 3 — eller <strong>Hämta om lista</strong>.
+                      Listan hämtas från Spotify och visar spellistor du äger vars namn börjar med ditt prefix.
                     </p>
                     <button type="button" class="btn btn--with-icon" id="btn-refresh-pl-list">
                       <span class="btn__icon-wrap" aria-hidden="true">
@@ -424,35 +443,57 @@
                       <span>Hämta om lista</span>
                     </button>
                   </div>
-                  <div id="block-existing-from-link" class="existing-pl-source-block">
-                    <label for="existing-pl-id" class="label">Spelliste-ID eller Spotify-URI</label>
+                  <div id="block-existing-from-link" class="existing-pl-source-block" hidden>
+                    <label for="existing-pl-id" class="label">Spotify-länk eller spelliste-ID</label>
                     <input
                       type="text"
                       id="existing-pl-id"
                       class="input"
                       autocomplete="off"
-                      placeholder="spotify:playlist:… eller bara ID"
+                      placeholder="spotify:playlist:… eller öppna länk från Spotify"
                       aria-describedby="existing-pl-help"
                     />
-                    <p class="help" id="existing-pl-help">Valfri spellista du har åtkomst till — prefix används inte.</p>
+                    <p class="help" id="existing-pl-help">
+                      Klistra in en spellistelänk eller <code class="code-inline">spotify:playlist:</code>-URI. Prefix används inte.
+                    </p>
                   </div>
-                  <fieldset class="fieldset">
-                    <legend class="legend">Uppdatering</legend>
-                    <div class="radio-row">
-                      <label class="radio-label">
-                        <input type="radio" name="pl-update" value="append" checked />
-                        Lägg till valda låtar
-                      </label>
-                      <label class="radio-label">
-                        <input type="radio" name="pl-update" value="replace" />
-                        Ersätt hela spellistan med valda
-                      </label>
-                    </div>
-                  </fieldset>
+                  <p class="label label--section" id="label-pl-update">Uppdatering</p>
+                  <div
+                    class="choice-grid choice-grid--option-cards"
+                    role="radiogroup"
+                    aria-labelledby="label-pl-update"
+                  >
+                    <label class="choice-tile choice-tile--row">
+                      <input type="radio" name="pl-update" value="append" checked />
+                      <span class="choice-tile__body">
+                        <span class="choice-tile__text">
+                          <span class="choice-tile__title">Lägg till valda låtar</span>
+                          <span class="choice-tile__desc">Befintliga låtar behålls och de valda låtarna läggs till i slutet.</span>
+                        </span>
+                        <span class="choice-tile__glyph choice-tile__glyph--trail" aria-hidden="true">
+                          <svg><use href="#sym-plus" /></svg>
+                        </span>
+                      </span>
+                    </label>
+                    <label class="choice-tile choice-tile--row">
+                      <input type="radio" name="pl-update" value="replace" />
+                      <span class="choice-tile__body">
+                        <span class="choice-tile__text">
+                          <span class="choice-tile__title">Ersätt hela spellistan med valda</span>
+                          <span class="choice-tile__desc">Alla befintliga låtar tas bort och ersätts med de valda låtarna.</span>
+                        </span>
+                        <span class="choice-tile__glyph choice-tile__glyph--trail" aria-hidden="true">
+                          <svg><use href="#sym-refresh" /></svg>
+                        </span>
+                      </span>
+                    </label>
+                  </div>
                 </div>
 
                 <div class="row row--wrap row--apply">
-                  <button type="button" class="btn btn--primary" id="btn-apply-playlist" disabled>Utför</button>
+                  <button type="button" class="btn btn--primary" id="btn-apply-playlist" disabled>
+                    Utför<span class="btn__trail" aria-hidden="true">›</span>
+                  </button>
                   <p class="help row--apply__hint" id="apply-hint" aria-live="polite"></p>
                 </div>
                 <div class="flow-nav">

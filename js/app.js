@@ -437,7 +437,22 @@ function syncPageLeadStep3() {
   lead.textContent =
     mode === 'new'
       ? 'Skapa och publicera din spellista på Spotify. Följ stegen nedan och utför åtgärden när du är redo.'
-      : 'Välj hur spellistan ska uppdateras och ange vilken befintlig spellista som ska användas.';
+      : 'Välj hur du hittar spellistan och hur låtarna ska läggas till innan du kör Utför.';
+}
+
+/** Rubrik i kortet steg 3 växlar mellan ny / befintlig spellista. */
+function syncStep3CardHeadings() {
+  const title = document.getElementById('heading-playlist');
+  const sub = document.getElementById('heading-playlist-sub');
+  if (!title || !sub) return;
+  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value ?? 'new';
+  if (mode === 'new') {
+    title.textContent = 'Spellista — detaljer';
+    sub.textContent = 'Ange namn för den nya listan (suffix) och om den ska vara publik.';
+  } else {
+    title.textContent = 'Uppdatera befintlig spellista';
+    sub.textContent = 'Välj hur du hittar spellistan som ska uppdateras och hur låtarna ska läggas till.';
+  }
 }
 
 /**
@@ -476,6 +491,7 @@ function setFlowStep(step, opts = {}) {
   if (lead) {
     if (step === '3') {
       syncPageLeadStep3();
+      syncStep3CardHeadings();
     } else if (leads[step]) {
       lead.textContent = leads[step];
     }
@@ -580,7 +596,7 @@ function refreshSummary() {
     const suf = $('new-pl-name').value.trim();
     sumPlaylist.textContent = suf ? `${getPlaylistPrefixFromInput()}${suf}` : '—';
   } else {
-    const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
+    const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
     if (src === 'from-list') {
       const sel = $('existing-pl-select');
       sumPlaylist.textContent = sel.value
@@ -605,7 +621,7 @@ function refreshSummary() {
     if (sumRowExtra) sumRowExtra.hidden = true;
   } else if (sumRowExtra && sumExtra && sumExtraLabel) {
     sumRowExtra.hidden = false;
-    const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
+    const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
     sumExtraLabel.textContent = 'Källa';
     sumExtra.textContent = src === 'from-list' ? 'Mina listor med prefix' : 'ID eller länk';
   }
@@ -623,11 +639,11 @@ function refreshSummary() {
   if (!hasToken) {
     sumFoot.textContent = 'Logga in under steg 0 för att fortsätta.';
   } else if (mode === 'existing') {
-    const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
+    const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
     if (src === 'from-list' && !$('existing-pl-select').value) {
       sumFoot.textContent = 'Välj en spellista för att kunna fortsätta.';
     } else if (src === 'from-link' && !$('existing-pl-id').value.trim()) {
-      sumFoot.textContent = 'Ange spelliste-ID eller URI.';
+      sumFoot.textContent = 'Ange Spotify-länk eller spelliste-ID.';
     } else if (trackCount === 0) {
       sumFoot.textContent = 'Välj minst en låt med träff (steg 1).';
     } else {
@@ -710,7 +726,7 @@ async function refreshExistingPlaylistSelect(opts = {}) {
   sel.replaceChildren();
   const ph = document.createElement('option');
   ph.value = '';
-  ph.textContent = '— Välj spellista —';
+  ph.textContent = '- Välj spellista -';
   sel.append(ph);
   const list = await spotifyClient.listMyPlaylistsByPrefix(prefix);
   for (const p of list) {
@@ -753,17 +769,21 @@ function wirePlaylistMode() {
     blockEx.hidden = isNew;
     if (!isNew) {
       updateExistingPlaylistSourceUi();
-      const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
+      const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
       if (src === 'from-list' && spotifyClient) {
         refreshExistingPlaylistSelect({ quiet: true }).catch((e) => showToast(String(e?.message ?? e), true));
       }
     }
     refreshSummary();
     syncPageLeadStep3();
+    syncStep3CardHeadings();
   };
   modes.forEach((r) => r.addEventListener('change', update));
   document.querySelectorAll('input[name="pl-update"]').forEach((r) => {
-    r.addEventListener('change', () => refreshSummary());
+    r.addEventListener('change', () => {
+      refreshSummary();
+      updateApplyEnabled();
+    });
   });
   document.querySelectorAll('input[name="pl-existing-source"]').forEach((r) => {
     r.addEventListener('change', () => {
@@ -959,8 +979,8 @@ function syncApplyHint() {
   const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
   el.textContent =
     um === 'replace'
-      ? 'Ersätter alla spår i vald spellista med de valda låtarna.'
-      : 'Lägger till valda låtar sist i vald spellista utan att ta bort befintliga.';
+      ? 'Alla befintliga låtar i vald spellista ersätts med de valda låtarna.'
+      : 'Låtarna läggs till i vald spellista på Spotify.';
 }
 
 function updateApplyEnabled() {
@@ -1119,7 +1139,7 @@ async function applyPlaylist() {
       await refreshExistingPlaylistSelect({ quiet: true, selectPlaylistId: pl.id }).catch(() => {});
     } else {
       const source =
-        document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-link';
+        document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
       let plId = null;
       if (source === 'from-list') {
         plId = $('existing-pl-select').value.trim();

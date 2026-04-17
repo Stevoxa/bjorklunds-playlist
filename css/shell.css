@@ -437,6 +437,8 @@ body {
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.15;
+  /* Lite ned mot ikonens övre kant (samma som .flow-card__head--spotify-hero .flow-card__title) */
+  padding-top: 0.45rem;
 }
 
 [data-theme='dark'] .flow-card__title {
@@ -574,6 +576,88 @@ body {
   font-weight: 700;
   font-size: 1rem;
   color: var(--text);
+}
+
+/* Steg 3 befintlig lista: horisontella valkort (radio + rubrik/ingress + ikon) */
+.choice-grid--option-cards {
+  gap: 0.85rem;
+}
+
+.choice-tile.choice-tile--row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.choice-tile--row > input[type='radio'] {
+  position: static;
+  opacity: 1;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--spotify);
+  pointer-events: auto;
+  align-self: center;
+}
+
+.choice-tile--row .choice-tile__body {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  text-align: start;
+  gap: 0.85rem 1rem;
+  padding: 1rem 1.15rem;
+  min-height: 3.75rem;
+}
+
+.choice-tile__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.choice-tile__title {
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.choice-tile__desc {
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.choice-tile__glyph--trail {
+  flex-shrink: 0;
+}
+
+.choice-tile__glyph--trail svg {
+  display: block;
+  width: 1.65rem;
+  height: 1.65rem;
+  color: var(--text-muted);
+}
+
+.choice-tile--row input:checked + .choice-tile__body .choice-tile__glyph--trail svg {
+  color: var(--spotify);
+}
+
+[data-theme='dark'] .choice-tile__desc {
+  color: color-mix(in srgb, var(--text-muted) 88%, var(--text));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .choice-tile__desc {
+    color: color-mix(in srgb, var(--text-muted) 88%, var(--text));
+  }
 }
 
 .app-summary {
