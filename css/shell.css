@@ -581,12 +581,23 @@ body {
 /* Steg 2: större kort med ikon, rubrik + ingress (Bootstrap plus-circle / recycle) */
 .choice-grid--mode-tiles {
   gap: 0.85rem;
+  align-items: stretch;
+}
+
+.choice-grid--mode-tiles > .choice-tile.choice-tile--stacked {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
 .choice-tile--stacked .choice-tile__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   padding: 1.2rem var(--space) 1.35rem;
   gap: 0.55rem;
-  min-height: 9.5rem;
   justify-content: flex-start;
 }
 
