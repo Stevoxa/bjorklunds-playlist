@@ -344,6 +344,17 @@ body {
   height: 1.35rem;
 }
 
+/* Korthuvud: samma ring- och ikonstorlek som Spotify-inloggning (steg 0) */
+.flow-card__head .flow-card__icon-ring {
+  width: 4.45rem;
+  height: 4.45rem;
+}
+
+.flow-card__head .flow-card__icon-ring svg {
+  width: 2.85rem;
+  height: 2.85rem;
+}
+
 /* Grön Spotify-mark i kortrubrik (målbild), inte dubbel mint-ring */
 .flow-card__icon-ring--spotify {
   background: var(--surface);
