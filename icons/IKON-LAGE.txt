@@ -1,0 +1,25 @@
+UI-ikoner — växla mellan inline-sprite och extern fil (bild 8 / Figma)
+
+STANDARD (inline)
+  Allt ligger i index.html i ett dolt <svg> med <symbol id="sym-…">.
+  Ingen extra nätverksförfrågan för ikoner.
+
+BACKUP AV NUVARANDE SPRITE
+  icons/ui-sprite-backup.svg
+  Uppdateras med: npm run icons:extract
+  Om du råkar sabba index-spriten: kopiera innehållet från backup tillbaka in i index.html mellan <svg …> och </svg> före <div class="app-frame">.
+
+TESTA EXTERN / BILD 8
+  1) Ersätt filen icons/bild8/product-icons.svg med din export (SVG med samma symbol-id:n som inline, t.ex. sym-spotify, sym-clipboard …).
+     Just nu är filen en kopia av nuvarande sprite så läget "external" ska se likadant ut som inline.
+  2) Aktivera:
+       • Öppna sidan med ?icons=external  ELLER
+       • I konsolen: sessionStorage.setItem('iconSpriteMode','external'); location.reload()
+  3) Tillbaka till inline:
+       • ?icons=inline  ELLER
+       • sessionStorage.removeItem('iconSpriteMode'); location.reload()
+       • Sätt ICON_SPRITE_MODE till 'inline' i js/config.js (standard).
+
+TEKNISKT
+  js/icon-sprite.js skriver om alla <use href="#sym-…"> till ./icons/bild8/product-icons.svg#sym-…
+  Lösenords-ögat använder resolveIconHref() så växling fungerar även där.

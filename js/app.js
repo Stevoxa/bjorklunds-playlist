@@ -1,4 +1,5 @@
 import { DEFAULT_PLAYLIST_NAME_PREFIX } from './config.js';
+import { applyIconSpriteMode, resolveIconHref } from './icon-sprite.js';
 import { getRedirectUri, beginLogin, consumeOAuthCallback } from './auth.js';
 import { loadVault, saveVault, VAULT_KEY } from './vault.js';
 import { idbGet } from './db.js';
@@ -218,7 +219,7 @@ function svgUseEl(symbolId, size = 24) {
   svg.setAttribute('height', String(size));
   svg.setAttribute('aria-hidden', 'true');
   const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  use.setAttribute('href', symbolId);
+  use.setAttribute('href', resolveIconHref(symbolId));
   svg.append(use);
   return svg;
 }
@@ -1137,6 +1138,7 @@ async function registerServiceWorker() {
 }
 
 async function boot() {
+  applyIconSpriteMode();
   $('redirect-uri-display').textContent = getRedirectUri();
 
   const logPre = $('spotify-log-pre');
@@ -1364,7 +1366,7 @@ async function boot() {
       passInp.type = show ? 'text' : 'password';
       passTog.setAttribute('aria-pressed', show ? 'true' : 'false');
       passTog.setAttribute('aria-label', show ? 'Dölj lösenfras' : 'Visa lösenfras');
-      passUse.setAttribute('href', show ? '#sym-eye-off' : '#sym-eye');
+      passUse.setAttribute('href', resolveIconHref(show ? '#sym-eye-off' : '#sym-eye'));
     });
   }
 

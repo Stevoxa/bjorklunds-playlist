@@ -22,5 +22,16 @@ export const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 /** Standardprefix för nya spellistor (användaren skriver bara suffix i appen). */
 export const DEFAULT_PLAYLIST_NAME_PREFIX = 'Björklunds playlist - ';
 
+/**
+ * Ikoner: 'inline' = sprite i index.html (standard).
+ * 'external' = <use> laddar symboler från ICON_SPRITE_EXTERNAL_HREF (byt ut filen mot Figma/bild 8-export, behåll samma id:n).
+ * Överstyr i konsol: sessionStorage.setItem('iconSpriteMode','external'); location.reload()
+ * Eller: ?icons=external | ?icons=inline i URL:en.
+ */
+export const ICON_SPRITE_MODE = 'inline';
+
+/** Måste innehålla samma <symbol id="sym-…"> som inline-spriten. */
+export const ICON_SPRITE_EXTERNAL_HREF = './icons/bild8/product-icons.svg';
+
 /** PKCE verifier length (bytes) → ~43+ chars when base64url. */
 export const PKCE_VERIFIER_LENGTH = 64;
