@@ -591,7 +591,7 @@ function refreshSummary() {
   if (vaultData?.tokens?.expiresAt) {
     const t = new Date(vaultData.tokens.expiresAt);
     const timeStr = t.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
-    sumToken.textContent = `Giltig Spotify-token finns fram till ${timeStr}`;
+    sumToken.textContent = `Giltig Spotify-token finns till ${timeStr}`;
     sumToken.classList.add('summary-list__value--ok');
   } else {
     sumToken.textContent = '—';

@@ -40,7 +40,7 @@ body {
   background: var(--shell-page-bg);
 }
 
-/* Rubrik + steg: ligger i .app-layout__primary så bredd = kolumnen med kort (inte en smal centrerad stapel). */
+/* Rubrik + steg: direkt barn till .app-layout — på bred skärm spänner hela raden ovanför primary | sammanfattning. */
 .app-page-head {
   width: 100%;
   max-width: none;
@@ -194,6 +194,10 @@ body {
     /* ~70 % / ~30 % (mockup) */
     grid-template-columns: minmax(0, 2.35fr) minmax(280px, 1fr);
     gap: 1.35rem 1.75rem;
+  }
+
+  .app-page-head {
+    grid-column: 1 / -1;
   }
 }
 
@@ -481,7 +485,6 @@ body {
 .summary-card__head-icon {
   width: 1.55rem;
   height: 1.55rem;
-  filter: drop-shadow(0.4px 0 0 currentColor) drop-shadow(-0.4px 0 0 currentColor);
 }
 
 .summary-card__head-text {
@@ -550,14 +553,11 @@ body {
 .summary-list__glyph {
   width: 1.38rem;
   height: 1.38rem;
-  /* Lite ”grövre” kontur på fyllda Bootstrap-ikoner */
-  filter: drop-shadow(0.4px 0 0 currentColor) drop-shadow(-0.4px 0 0 currentColor);
 }
 
 .summary-list__glyph--spotify {
   width: 1.72rem;
   height: 1.72rem;
-  filter: none;
 }
 
 .summary-list__glyph--playlist {
@@ -657,7 +657,6 @@ body {
   width: 1.5rem;
   height: 1.5rem;
   color: var(--summary-forest);
-  filter: drop-shadow(0.4px 0 0 currentColor) drop-shadow(-0.4px 0 0 currentColor);
 }
 
 .summary-tip__title {
