@@ -78,6 +78,16 @@
       <symbol id="sym-plus" viewBox="0 0 16 16" fill="currentColor">
         <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
       </symbol>
+      <!-- plus-circle, recycle: paths från Bootstrap Icons v1.11.3 (MIT) -->
+      <symbol id="sym-plus-circle" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
+      </symbol>
+      <symbol id="sym-recycle" viewBox="0 0 16 16" fill="currentColor">
+        <path
+          d="M9.302 1.256a1.5 1.5 0 0 0-2.604 0l-1.704 2.98a.5.5 0 0 0 .869.497l1.703-2.981a.5.5 0 0 1 .868 0l2.54 4.444-1.256-.337a.5.5 0 1 0-.26.966l2.415.647a.5.5 0 0 0 .613-.353l.647-2.415a.5.5 0 1 0-.966-.259l-.333 1.242zM2.973 7.773l-1.255.337a.5.5 0 1 1-.26-.966l2.416-.647a.5.5 0 0 1 .612.353l.647 2.415a.5.5 0 0 1-.966.259l-.333-1.242-2.545 4.454a.5.5 0 0 0 .434.748H5a.5.5 0 0 1 0 1H1.723A1.5 1.5 0 0 1 .421 12.24zm10.89 1.463a.5.5 0 1 0-.868.496l1.716 3.004a.5.5 0 0 1-.434.748h-5.57l.647-.646a.5.5 0 1 0-.708-.707l-1.5 1.5a.5.5 0 0 0 0 .707l1.5 1.5a.5.5 0 1 0 .708-.707l-.647-.647h5.57a1.5 1.5 0 0 0 1.302-2.244z"
+        />
+      </symbol>
       <symbol id="sym-link" viewBox="0 0 16 16" fill="currentColor">
         <path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.83-4H9q-.13 0-.25.031A2 2 0 0 1 7 10.5H4a2 2 0 1 1 0-4h1.535c.218-.376.495-.714.82-1z" />
         <path d="M9 5.5a3 3 0 0 0-2.83 4h1.098A2 2 0 0 1 9 6.5h3a2 2 0 1 1 0 4h-1.535a4 4 0 0 1-.82 1H12a3 3 0 1 0 0-6z" />
@@ -346,23 +356,29 @@
                     <p class="flow-card__subtitle">Skapa ny spellista eller uppdatera en du redan har (kräver inloggning).</p>
                   </div>
                 </div>
-                <div class="choice-grid" role="radiogroup" aria-label="Spellisteläge">
-                  <label class="choice-tile">
+                <div class="choice-grid choice-grid--mode-tiles" role="radiogroup" aria-label="Spellisteläge">
+                  <label class="choice-tile choice-tile--stacked">
                     <input type="radio" name="pl-mode" value="new" checked />
                     <span class="choice-tile__body">
                       <span class="choice-tile__glyph" aria-hidden="true">
-                        <svg><use href="#sym-plus" /></svg>
+                        <svg><use href="#sym-plus-circle" /></svg>
                       </span>
-                      <span class="choice-tile__label">Skapa ny spellista</span>
+                      <span class="choice-tile__text">
+                        <span class="choice-tile__title">Skapa ny spellista</span>
+                        <span class="choice-tile__desc">Skapa en ny spellista med ditt prefix.</span>
+                      </span>
                     </span>
                   </label>
-                  <label class="choice-tile">
+                  <label class="choice-tile choice-tile--stacked">
                     <input type="radio" name="pl-mode" value="existing" />
                     <span class="choice-tile__body">
                       <span class="choice-tile__glyph" aria-hidden="true">
-                        <svg><use href="#sym-pencil" /></svg>
+                        <svg><use href="#sym-recycle" /></svg>
                       </span>
-                      <span class="choice-tile__label">Uppdatera befintlig</span>
+                      <span class="choice-tile__text">
+                        <span class="choice-tile__title">Uppdatera befintlig</span>
+                        <span class="choice-tile__desc">Lägg till i eller ersätt en spellista du redan har.</span>
+                      </span>
                     </span>
                   </label>
                 </div>
@@ -454,7 +470,7 @@
                       aria-describedby="existing-pl-help"
                     />
                     <p class="help" id="existing-pl-help">
-                      Klistra in en spellistelänk eller <code class="code-inline">spotify:playlist:</code>-URI. Prefix används inte.
+                      Klistra in en spellistelänk eller <code class="code-inline">spotify:playlist:</code>-URI.
                     </p>
                   </div>
                   <p class="label label--section" id="label-pl-update">Uppdatering</p>
