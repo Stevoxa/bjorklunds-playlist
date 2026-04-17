@@ -4,7 +4,7 @@
   --shell-navy: #0a1628;
   --shell-navy-muted: #1a2d4a;
   --shell-page-bg: #f4f7f9;
-  --shell-mint: #e8f8ef;
+  --shell-mint: #e8f5e9;
   --shell-mint-strong: #c8edd9;
   --shell-summary-border: #dce3ec;
   --layout-max: 1200px;
@@ -16,6 +16,7 @@
   --shell-navy: #e8eef4;
   --shell-navy-muted: #b8c8d8;
   --shell-summary-border: #2a3544;
+  --shell-mint: rgba(255, 255, 255, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,6 +25,7 @@
     --shell-navy: #e8eef4;
     --shell-navy-muted: #b8c8d8;
     --shell-summary-border: #2a3544;
+    --shell-mint: rgba(255, 255, 255, 0.1);
   }
 }
 
@@ -268,6 +270,18 @@ body {
   color: var(--shell-navy-muted);
 }
 
+[data-theme='dark'] .flow-card__icon-ring:not(.flow-card__icon-ring--spotify) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .flow-card__icon-ring:not(.flow-card__icon-ring--spotify) {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+  }
+}
+
 .flow-card__icon-ring svg {
   width: 1.35rem;
   height: 1.35rem;
@@ -423,9 +437,17 @@ body {
 }
 
 [data-theme='dark'] .summary-card {
-  --summary-icon-bg: color-mix(in srgb, var(--spotify) 16%, var(--surface));
-  --summary-icon-fg: color-mix(in srgb, var(--text) 88%, var(--spotify));
+  --summary-icon-bg: rgba(255, 255, 255, 0.1);
+  --summary-icon-fg: color-mix(in srgb, var(--text) 92%, transparent);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .summary-card {
+    --summary-icon-bg: rgba(255, 255, 255, 0.1);
+    --summary-icon-fg: color-mix(in srgb, var(--text) 92%, transparent);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  }
 }
 
 .summary-card__head {
