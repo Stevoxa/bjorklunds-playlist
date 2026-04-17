@@ -153,6 +153,13 @@ body {
   line-height: 1.55;
 }
 
+/* Ingress under kortrubrik: lite tydligare än vanlig hjälptext */
+.help--ingress {
+  font-size: 0.93rem;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--text) 22%, var(--text-muted));
+}
+
 .help kbd {
   font: inherit;
   font-size: 0.85em;
