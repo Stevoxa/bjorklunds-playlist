@@ -389,16 +389,23 @@
               </div>
             </section>
 
-            <section id="flow-step-3" class="flow-step" data-flow-panel="3" tabindex="-1" aria-labelledby="heading-playlist">
+            <section
+              id="flow-step-3"
+              class="flow-step"
+              data-flow-panel="3"
+              data-playlist-mode="new"
+              tabindex="-1"
+              aria-labelledby="heading-playlist"
+            >
               <div class="flow-card" aria-labelledby="heading-playlist">
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
                     <svg><use href="#sym-lightning" /></svg>
                   </div>
                   <div class="flow-card__titles">
-                    <h2 class="flow-card__title flow-card__title--hero-step" id="heading-playlist">Spellista — detaljer</h2>
+                    <h2 class="flow-card__title flow-card__title--hero-step" id="heading-playlist">Skapa ny spellista</h2>
                     <p class="flow-card__subtitle" id="heading-playlist-sub">
-                      Ange namn för den nya listan (suffix) och om den ska vara publik.
+                      Ange namn och välj om spellistan skall vara publik.
                     </p>
                   </div>
                 </div>
@@ -407,7 +414,7 @@
                   <label for="new-pl-name" class="label">Namn (suffix efter prefix)</label>
                   <input type="text" id="new-pl-name" class="input" autocomplete="off" placeholder="t.ex. Sommar 2026" />
                   <p class="help" id="new-pl-preview-help">
-                    Hela namnet på Spotify blir: <strong id="new-pl-preview">Björklunds playlist - …</strong> (prefix under Inställningar.)
+                    Hela namnet på Spotify blir: <strong id="new-pl-preview">Björklunds playlist - Sommar 2026</strong>
                   </p>
                   <div class="checkbox-row">
                     <input type="checkbox" id="new-pl-public" />

@@ -73,6 +73,12 @@ function $(id) {
   return el;
 }
 
+/** Spellisteläge från steg 2 (radiogruppen pl-mode). */
+function getPlaylistMode() {
+  const el = document.querySelector('#flow-step-2 input[name="pl-mode"]:checked');
+  return el?.value === 'existing' ? 'existing' : 'new';
+}
+
 function showToast(message, isError = false) {
   const t = $('toast');
   clearTimeout(showToast._timer);
@@ -433,7 +439,7 @@ let currentFlowStep = '0';
 function syncPageLeadStep3() {
   const lead = document.getElementById('app-page-lead');
   if (!lead || currentFlowStep !== '3') return;
-  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value ?? 'new';
+  const mode = getPlaylistMode();
   lead.textContent =
     mode === 'new'
       ? 'Skapa och publicera din spellista på Spotify. Följ stegen nedan och utför åtgärden när du är redo.'
@@ -445,10 +451,10 @@ function syncStep3CardHeadings() {
   const title = document.getElementById('heading-playlist');
   const sub = document.getElementById('heading-playlist-sub');
   if (!title || !sub) return;
-  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value ?? 'new';
+  const mode = getPlaylistMode();
   if (mode === 'new') {
-    title.textContent = 'Spellista — detaljer';
-    sub.textContent = 'Ange namn för den nya listan (suffix) och om den ska vara publik.';
+    title.textContent = 'Skapa ny spellista';
+    sub.textContent = 'Ange namn och välj om spellistan skall vara publik.';
   } else {
     title.textContent = 'Uppdatera befintlig spellista';
     sub.textContent = 'Välj hur du hittar spellistan som ska uppdateras och hur låtarna ska läggas till.';
@@ -548,7 +554,7 @@ function updateSummarySubtitle(step) {
 function updateSummaryTip(step) {
   const tip = document.getElementById('sum-tip-text');
   if (!tip) return;
-  const plMode = document.querySelector('input[name="pl-mode"]:checked')?.value;
+  const plMode = getPlaylistMode();
   if ((step === '2' || step === '3') && plMode === 'existing') {
     tip.textContent = 'Listan visar bara spellistor du äger och som matchar ditt prefix.';
     return;
@@ -602,7 +608,7 @@ function refreshSummary() {
   }
   sumTracks.textContent = trackCount === 0 ? '—' : String(trackCount);
 
-  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value ?? 'new';
+  const mode = getPlaylistMode();
   if (mode === 'new') {
     const suf = $('new-pl-name').value.trim();
     sumPlaylist.textContent = suf ? `${getPlaylistPrefixFromInput()}${suf}` : '—';
@@ -726,8 +732,7 @@ function syncExistingPlSelectHelpPrefix() {
 }
 
 function updateExistingPlaylistSourceUi() {
-  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value;
-  if (mode !== 'existing') return;
+  if (getPlaylistMode() !== 'existing') return;
   const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
   $('block-existing-from-list').hidden = !fromList;
   $('block-existing-from-link').hidden = fromList;
@@ -770,7 +775,7 @@ const VISIBILITY_PLAYLIST_REFRESH_GAP_MS = 25_000;
 
 function maybeRefreshPlaylistsWhenTabVisible() {
   if (document.visibilityState !== 'visible') return;
-  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value;
+  const mode = getPlaylistMode();
   const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
   if (mode !== 'existing' || !fromList || !spotifyClient) return;
   const now = Date.now();
@@ -781,8 +786,10 @@ function maybeRefreshPlaylistsWhenTabVisible() {
 
 /** Synkar steg 3: ny vs befintlig spellista (måste köras vid stegbyte, inte bara vid pl-mode change). */
 function syncPlaylistModeBlocks() {
-  const v = document.querySelector('input[name="pl-mode"]:checked')?.value ?? 'new';
+  const v = getPlaylistMode();
   const isNew = v === 'new';
+  const step3 = document.getElementById('flow-step-3');
+  if (step3) step3.setAttribute('data-playlist-mode', v);
   $('block-new-playlist').hidden = !isNew;
   $('block-existing-playlist').hidden = isNew;
   if (!isNew) {
@@ -795,7 +802,7 @@ function syncPlaylistModeBlocks() {
 }
 
 function wirePlaylistMode() {
-  const modes = document.querySelectorAll('input[name="pl-mode"]');
+  const modes = document.querySelectorAll('#flow-step-2 input[name="pl-mode"]');
   const update = () => {
     syncPlaylistModeBlocks();
     refreshSummary();
@@ -995,7 +1002,7 @@ function syncApplyHint() {
     el.textContent = 'Välj låtar med träff under steg 1 först.';
     return;
   }
-  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value ?? 'new';
+  const mode = getPlaylistMode();
   if (mode === 'new') {
     el.textContent = 'Skapar en ny spellista i ditt Spotify-konto med prefix + suffix.';
     return;
@@ -1126,7 +1133,7 @@ async function applyPlaylist() {
     showToast('Välj minst en låt med träff.', true);
     return;
   }
-  const mode = document.querySelector('input[name="pl-mode"]:checked')?.value;
+  const mode = getPlaylistMode();
   $('btn-apply-playlist').disabled = true;
   try {
     if (mode === 'new') {
@@ -1319,7 +1326,7 @@ async function boot() {
     if (playlistPrefixDebounceTimer) clearTimeout(playlistPrefixDebounceTimer);
     playlistPrefixDebounceTimer = setTimeout(() => {
       playlistPrefixDebounceTimer = null;
-      const mode = document.querySelector('input[name="pl-mode"]:checked')?.value;
+      const mode = getPlaylistMode();
       const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
       if (mode === 'existing' && fromList && spotifyClient) {
         refreshExistingPlaylistSelect({ quiet: true }).catch(() => {});
@@ -1330,7 +1337,7 @@ async function boot() {
     $('playlist-prefix').value = DEFAULT_PLAYLIST_NAME_PREFIX;
     updateNewPlaylistPreview();
     showToast('Prefix återställt. Spara under Inställningar om det ska in i valvet.');
-    const mode = document.querySelector('input[name="pl-mode"]:checked')?.value;
+    const mode = getPlaylistMode();
     const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
     if (mode === 'existing' && fromList && spotifyClient) {
       refreshExistingPlaylistSelect({ quiet: true }).catch(() => {});

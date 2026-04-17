@@ -241,6 +241,18 @@ body {
   gap: 1.35rem;
 }
 
+/* Säkerställ att uppdaterings-UI döljs trots display:flex på .existing-pl-stack */
+#block-existing-playlist[hidden],
+#block-new-playlist[hidden] {
+  display: none !important;
+}
+
+/* Dubbel styrning: data-playlist-mode sätts alltid i syncPlaylistModeBlocks() — klarar cache/gamla SW där JS var ur synk. */
+#flow-step-3[data-playlist-mode='new'] #block-existing-playlist,
+#flow-step-3[data-playlist-mode='existing'] #block-new-playlist {
+  display: none !important;
+}
+
 .existing-pl-stack > .choice-grid--option-cards:first-of-type {
   margin-bottom: 3px;
 }

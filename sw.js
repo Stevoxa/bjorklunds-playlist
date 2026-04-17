@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 /** Måste matcha APP_STORAGE_ID i js/config.js */
 const APP_STORAGE_ID = 'stevoxa-io-bjorklunds-playlist-pwa';
-const CACHE = `${APP_STORAGE_ID}-cache-v83`;
+const CACHE = `${APP_STORAGE_ID}-cache-v85`;
 const ASSETS = [
   './',
   './index.html',
@@ -43,7 +43,16 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) {
     return;
   }
+  /** Nätverk först så index.html/js inte fastnar i gammal cache; offline faller tillbaka till cache. */
   event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request)),
+    fetch(request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.ok) {
+          const copy = networkResponse.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(request)),
   );
 });
