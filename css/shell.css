@@ -648,7 +648,7 @@ body {
 
 .choice-tile--row .choice-tile__body {
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   text-align: start;
@@ -665,8 +665,10 @@ body {
 }
 
 .choice-tile--row .choice-tile__text {
+  flex: 1 1 0;
+  min-width: 0;
   justify-content: center;
-  align-self: center;
+  align-self: stretch;
 }
 
 .choice-tile__title {
@@ -685,6 +687,7 @@ body {
 
 .choice-tile__glyph--trail {
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .choice-tile__glyph--trail svg {
