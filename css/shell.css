@@ -96,6 +96,9 @@ body {
 }
 
 .flow-mode-nav__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.5rem 0.95rem;
   border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   border-radius: var(--radius-sm);
@@ -105,6 +108,7 @@ body {
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
+  text-align: center;
 }
 
 .flow-mode-nav__btn:hover:not(:disabled) {
@@ -503,6 +507,56 @@ body {
 
 .flow-nav--actions-end .flow-nav__primary {
   flex-shrink: 0;
+}
+
+/* Små skärmar: flödesknapprad — två knappar sida vid sida (401–640px), annars full bredd */
+@media (max-width: 640px) {
+  .flow-nav:not(.flow-nav--actions-end):not(:has(> .flow-nav__hint)) {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space);
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .flow-nav:not(.flow-nav--actions-end):not(:has(> .flow-nav__hint)) > .btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .flow-nav:not(.flow-nav--actions-end):not(:has(> .flow-nav__hint)):has(> .btn:nth-child(2):last-child) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .flow-nav:not(.flow-nav--actions-end):has(> .flow-nav__hint) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .flow-nav:not(.flow-nav--actions-end):has(> .flow-nav__hint) > .btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .flow-nav--actions-end {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .flow-nav--actions-end .flow-nav__hint {
+    margin-inline-end: 0;
+    max-width: none;
+  }
+
+  .flow-nav--actions-end .flow-nav__primary {
+    width: 100%;
+  }
+}
+
+@media (max-width: 400px) {
+  .flow-nav:not(.flow-nav--actions-end):not(:has(> .flow-nav__hint)):has(> .btn:nth-child(2):last-child) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .choice-grid {

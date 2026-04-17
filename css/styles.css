@@ -305,6 +305,7 @@ body {
   cursor: pointer;
   line-height: 1.25;
   box-sizing: border-box;
+  text-align: center;
 }
 
 .btn--with-icon {
@@ -317,9 +318,9 @@ body {
 }
 
 .btn--slutfor {
-  justify-content: flex-start;
-  text-align: start;
-  padding-inline: 1.1rem 1.25rem;
+  justify-content: center;
+  text-align: center;
+  padding-inline: 1.25rem;
 }
 
 .btn__icon-wrap {
@@ -664,6 +665,38 @@ a:focus-visible {
   gap: var(--space-sm) var(--space);
 }
 
+/* Små skärmar: två knappar i rad, mycket smalt → en kolumn full bredd */
+@media (max-width: 640px) {
+  .row--paste-actions,
+  .row--selection-actions,
+  .row--auth-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm) var(--space);
+    justify-content: stretch;
+    justify-items: stretch;
+  }
+
+  .row--paste-actions > .btn,
+  .row--selection-actions > .btn,
+  .row--auth-actions > .btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .row--paste-actions .btn--flow-nav-width {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 400px) {
+  .row--paste-actions,
+  .row--selection-actions,
+  .row--auth-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .row--apply {
   margin-top: var(--space-lg);
   align-items: flex-start;
@@ -703,6 +736,17 @@ a:focus-visible {
 
 .results-search-progress__abort {
   flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .results-search-progress {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .results-search-progress__abort {
+    width: 100%;
+  }
 }
 
 .circular-progress {
