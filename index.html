@@ -168,31 +168,12 @@
                   aria-describedby="client-id-intro client-id-help"
                   placeholder="Skapa ett Client ID i Spotify Developer Dashboard"
                 />
-                <p class="help" id="client-id-help">Lagras krypterat lokalt.</p>
-                <label for="crypto-pass" class="label">Lösenfras för lokal kryptering</label>
-                <div class="password-field">
-                  <input
-                    type="password"
-                    id="crypto-pass"
-                    class="input password-field__input"
-                    autocomplete="new-password"
-                    aria-describedby="crypto-pass-help"
-                    placeholder="Ange en lösenfras som bara du vet om"
-                  />
-                  <button
-                    type="button"
-                    class="password-field__toggle"
-                    id="btn-toggle-pass-visibility"
-                    aria-label="Visa lösenfras"
-                    aria-pressed="false"
-                  >
-                    <svg class="password-field__toggle-icon" aria-hidden="true"><use href="#sym-eye" /></svg>
-                  </button>
-                </div>
-                <p class="help" id="crypto-pass-help">Minst 8 tecken. Krävs för lokal kryptering (IndexedDB).</p>
+                <p class="help" id="client-id-help">
+                  Client ID finns bara i webbläsarens arbetsminne (RAM) i detta fält medan sidan är öppen — inte i
+                  <code class="code-inline">localStorage</code> eller cookies. Krypterad lagring på enheten sker när du väljer
+                  <strong>Spara lokalt</strong> under Inställningar med din lösenfras (IndexedDB).
+                </p>
                 <div class="row row--wrap row--auth-actions">
-                  <button type="button" class="btn btn--primary" id="btn-save-settings">Spara lokalt</button>
-                  <button type="button" class="btn btn--secondary" id="btn-load-vault">Läs in sparad data</button>
                   <button type="button" class="btn btn--primary btn--with-icon" id="btn-spotify-login">
                     <span class="btn__icon-wrap btn__icon-wrap--spotify" aria-hidden="true">
                       <svg class="btn__icon" width="22" height="22"><use href="#sym-spotify-mark" /></svg>
@@ -216,7 +197,7 @@
                     <p class="help">
                       Status ska visa <strong>playlist-modify-public</strong> eller <strong>playlist-modify-private</strong>. Annars:
                       <a href="https://www.spotify.com/account/apps/" rel="noopener noreferrer" target="_blank">Koppla bort appen</a>
-                      → logga in igen här → <strong>Spara lokalt</strong>.
+                      → logga in igen här → <strong>Spara lokalt</strong> under Inställningar.
                     </p>
                     <p class="help">
                       <strong>Utvecklarläge / åtkomst:</strong>
@@ -228,7 +209,7 @@
                 <div class="flow-nav">
                   <p class="flow-nav__hint">
                     <svg aria-hidden="true"><use href="#sym-info" /></svg>
-                    <span class="flow-nav__hint-text">När Client ID är ifyllt och du är inloggad: spara lokalt och gå till låtar.</span>
+                    <span class="flow-nav__hint-text">När Client ID är ifyllt och du är inloggad: spara gärna valvet under Inställningar — sedan går du till låtar.</span>
                   </p>
                   <button type="button" class="btn btn--primary" data-flow-goto="1">Nästa: Låtar</button>
                 </div>
@@ -523,7 +504,7 @@
                   </div>
                   <div class="flow-card__titles">
                     <h2 class="flow-card__title" id="heading-prefs">Appinställningar</h2>
-                    <p class="flow-card__subtitle">Tema sparas i valvet vid <strong>Spara lokalt</strong>.</p>
+                    <p class="flow-card__subtitle">Tema ingår i valvet när du sparar under avsnittet <strong>Lokal kryptering</strong> nedan.</p>
                   </div>
                 </div>
                 <label for="pref-theme" class="label">Tema</label>
@@ -532,6 +513,46 @@
                   <option value="light">Ljust</option>
                   <option value="dark">Mörkt</option>
                 </select>
+              </div>
+
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-lock" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="heading-vault">Lokal kryptering och valv</h2>
+                    <p class="flow-card__subtitle">
+                      Lösenfras och knapparna nedan styr krypterad lagring i IndexedDB — samma data som Client ID, tokens och
+                      inställningar. Krävs inte för att logga in på Spotify från steg 0.
+                    </p>
+                  </div>
+                </div>
+                <label for="crypto-pass" class="label">Lösenfras för lokal kryptering</label>
+                <div class="password-field">
+                  <input
+                    type="password"
+                    id="crypto-pass"
+                    class="input password-field__input"
+                    autocomplete="new-password"
+                    aria-describedby="crypto-pass-help"
+                    placeholder="Ange en lösenfras som bara du vet om"
+                  />
+                  <button
+                    type="button"
+                    class="password-field__toggle"
+                    id="btn-toggle-pass-visibility"
+                    aria-label="Visa lösenfras"
+                    aria-pressed="false"
+                  >
+                    <svg class="password-field__toggle-icon" aria-hidden="true"><use href="#sym-eye" /></svg>
+                  </button>
+                </div>
+                <p class="help" id="crypto-pass-help">Minst 8 tecken. Krävs för lokal kryptering (IndexedDB).</p>
+                <div class="row row--wrap row--auth-actions">
+                  <button type="button" class="btn btn--primary" id="btn-save-settings">Spara lokalt</button>
+                  <button type="button" class="btn btn--secondary" id="btn-load-vault">Läs in sparad data</button>
+                </div>
               </div>
 
               <div class="flow-card flow-card--privacy">

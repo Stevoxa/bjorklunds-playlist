@@ -324,7 +324,7 @@ function setAuthStatus(extraHint = '') {
     const note = document.createElement('p');
     note.className = 'auth-status-card__note';
     note.textContent =
-      'Vanligt efter omdirigering. Ange Client ID i fältet ovan — det sparas nästa gång du klickar Spara lokalt.';
+      'Vanligt efter omdirigering. Ange Client ID i fältet ovan — spara under Inställningar när du klickar Spara lokalt.';
     body.append(title, note);
     card.append(icon, body);
     host.append(card);
@@ -397,7 +397,7 @@ function mergeOAuthTokens(tokens, clientIdFromOAuth) {
   vaultData.settings = { ...defaultVault().settings, ...vaultData.settings };
   initSpotifyClient();
   updateNewPlaylistPreview();
-  showToast('Spotify-inloggning klar. Spara lokalt med din lösenfras för att behålla tokens.');
+  showToast('Spotify-inloggning klar. Under Inställningar: Spara lokalt med din lösenfras för att behålla tokens.');
   updateApplyEnabled();
   void refreshSpotifyUserDisplay().then(() => setAuthStatus());
 }
@@ -1269,7 +1269,7 @@ async function boot() {
   $('btn-reset-playlist-prefix').addEventListener('click', () => {
     $('playlist-prefix').value = DEFAULT_PLAYLIST_NAME_PREFIX;
     updateNewPlaylistPreview();
-    showToast('Prefix återställt. Spara lokalt om det ska sparas i valvet.');
+    showToast('Prefix återställt. Spara under Inställningar om det ska in i valvet.');
     const mode = document.querySelector('input[name="pl-mode"]:checked')?.value;
     const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
     if (mode === 'existing' && fromList && spotifyClient) {
@@ -1327,7 +1327,7 @@ async function boot() {
       await saveVault(vaultData, pass);
       showToast('Tokens borttagna från sparad data.');
     } else {
-      showToast('Tokens borttagna i minnet. Ange lösenfras och spara för att uppdatera enheten.');
+      showToast('Tokens borttagna i minnet. Under Inställningar: ange lösenfras och Spara lokalt för att uppdatera enheten.');
     }
     setAuthStatus();
     updateApplyEnabled();
@@ -1374,7 +1374,7 @@ async function boot() {
   await refreshSpotifyUserDisplay();
   const vaultHint =
     exists && !vaultData?.tokens?.accessToken
-      ? 'Det finns sparad krypterad data. Ange lösenfras och klicka ”Läs in sparad data”.'
+      ? 'Det finns sparad krypterad data. Under Inställningar: ange lösenfras och klicka ”Läs in sparad data”.'
       : '';
   setAuthStatus(vaultHint);
 

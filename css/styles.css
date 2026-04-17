@@ -297,6 +297,7 @@ body {
 .row--auth-actions {
   margin-top: var(--space);
   gap: var(--space-sm) var(--space);
+  align-items: center;
 }
 
 /* Steg 0: jämnare vertikal rytm mellan fält och knappar */
@@ -304,13 +305,12 @@ body {
   margin-bottom: 1rem;
 }
 
-#flow-step-0 #crypto-pass-help {
-  margin-bottom: 1.05rem;
-}
-
 #flow-step-0 .row--auth-actions {
   margin-top: 1.15rem;
-  align-items: center;
+}
+
+#flow-step-settings #crypto-pass-help {
+  margin-bottom: 1.05rem;
 }
 
 #flow-step-0 .btn--with-icon .btn__icon {

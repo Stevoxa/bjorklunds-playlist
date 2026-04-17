@@ -339,6 +339,8 @@ body {
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.15;
+  /* Lite ned mot ikonens övre kant (målbild) */
+  padding-top: 0.3rem;
 }
 
 .flow-card__lead {
