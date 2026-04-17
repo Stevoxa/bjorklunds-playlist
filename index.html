@@ -165,22 +165,17 @@
                   autocomplete="off"
                   spellcheck="false"
                   inputmode="verbatim"
-                  aria-describedby="client-id-intro client-id-help"
+                  aria-describedby="client-id-intro"
                   placeholder="Skapa ett Client ID i Spotify Developer Dashboard"
                 />
-                <p class="help" id="client-id-help">
-                  Client ID finns bara i webbläsarens arbetsminne (RAM) i detta fält medan sidan är öppen — inte i
-                  <code class="code-inline">localStorage</code> eller cookies. Krypterad lagring på enheten sker när du väljer
-                  <strong>Spara lokalt</strong> under Inställningar med din lösenfras (IndexedDB).
-                </p>
-                <div class="row row--wrap row--auth-actions">
+                <div class="row row--wrap row--auth-actions row--auth-actions--end">
+                  <button type="button" class="btn btn--danger" id="btn-logout">Rensa session</button>
                   <button type="button" class="btn btn--primary btn--with-icon" id="btn-spotify-login">
                     <span class="btn__icon-wrap btn__icon-wrap--spotify" aria-hidden="true">
                       <svg class="btn__icon" width="22" height="22"><use href="#sym-spotify-mark" /></svg>
                     </span>
                     <span>Logga in med Spotify</span>
                   </button>
-                  <button type="button" class="btn btn--danger" id="btn-logout">Rensa session</button>
                 </div>
                 <div id="auth-status" class="auth-status-host" role="status" aria-live="polite"></div>
                 <details class="forbidden-help">
@@ -206,12 +201,12 @@
                     </p>
                   </div>
                 </details>
-                <div class="flow-nav">
+                <div class="flow-nav flow-nav--actions-end">
                   <p class="flow-nav__hint">
                     <svg aria-hidden="true"><use href="#sym-info" /></svg>
                     <span class="flow-nav__hint-text">När Client ID är ifyllt och du är inloggad: spara gärna valvet under Inställningar — sedan går du till låtar.</span>
                   </p>
-                  <button type="button" class="btn btn--primary" data-flow-goto="1">Nästa: Låtar</button>
+                  <button type="button" class="btn btn--primary flow-nav__primary" data-flow-goto="1">Nästa: Låtar</button>
                 </div>
               </div>
             </section>
@@ -637,11 +632,6 @@
               </ul>
               <div class="summary-foot">
                 <p class="summary-foot__text" id="sum-foot">Logga in under steg 0 för att fortsätta.</p>
-              </div>
-              <div class="summary-cta" id="summary-cta" hidden>
-                <button type="button" class="btn btn--primary summary-cta__btn" id="summary-cta-btn" data-flow-goto="1">
-                  Nästa: Låtar
-                </button>
               </div>
               <div class="summary-tip">
                 <div class="summary-tip__head">

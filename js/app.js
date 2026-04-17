@@ -512,7 +512,7 @@ function updateSummaryTip(step) {
   }
   const tips = {
     '0':
-      'Spotify-inloggning: du skriver inte ditt Spotify-lösenord här — du skickas till Spotify. Lösenfrasen är bara för lokal kryptering (IndexedDB).\n\nAnge Client ID, logga in med Spotify och spara lokalt innan du går vidare till låtar.',
+      'Spotify-inloggning: du skriver inte ditt Spotify-lösenord här — du skickas till Spotify. Lösenfrasen är bara för lokal kryptering (IndexedDB).\n\nAnge Client ID, logga in med Spotify och spara valvet under Inställningar innan du går vidare till låtar.',
     '1':
       'Använd brytarna för att ta med en rad i spellistan och radioknapparna för att välja rätt version av spåret.',
     '2': 'Du måste vara inloggad via Spotify för att fortsätta.',
@@ -520,29 +520,6 @@ function updateSummaryTip(step) {
     settings: 'Prefixet används när du skapar nya spellistor och när listor filtreras på prefix.',
   };
   tip.textContent = tips[step] ?? tips['0'];
-}
-
-function updateSummaryCta() {
-  const wrap = document.getElementById('summary-cta');
-  const btn = document.getElementById('summary-cta-btn');
-  if (!wrap || !btn) return;
-  const hasToken = Boolean(vaultData?.tokens?.accessToken);
-  const cid = (vaultData?.clientId || '').trim() || getClientId().trim();
-  const ok = hasToken && Boolean(spotifyClient) && Boolean(cid);
-  const step = currentFlowStep;
-  if (step === '0' && ok) {
-    wrap.hidden = false;
-    btn.textContent = 'Nästa: Låtar';
-    btn.setAttribute('data-flow-goto', '1');
-    return;
-  }
-  if (step === 'settings' && ok) {
-    wrap.hidden = false;
-    btn.textContent = 'Tillbaka till flödet';
-    btn.setAttribute('data-flow-goto', '1');
-    return;
-  }
-  wrap.hidden = true;
 }
 
 function refreshSummary() {
@@ -642,7 +619,6 @@ function refreshSummary() {
     sumFoot.textContent = 'Redo att skapa spellista.';
   }
 
-  updateSummaryCta();
   syncApplyHint();
   updateSummaryTip(currentFlowStep);
 }

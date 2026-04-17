@@ -340,7 +340,7 @@ body {
   letter-spacing: -0.03em;
   line-height: 1.15;
   /* Lite ned mot ikonens övre kant (målbild) */
-  padding-top: 0.3rem;
+  padding-top: 0.45rem;
 }
 
 .flow-card__lead {
@@ -419,6 +419,21 @@ body {
 .flow-nav__hint-text {
   min-width: 0;
   line-height: 1.45;
+}
+
+.flow-nav--actions-end {
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
+.flow-nav--actions-end .flow-nav__hint {
+  flex: 1 1 12rem;
+  margin-inline-end: auto;
+  max-width: min(100%, 38rem);
+}
+
+.flow-nav--actions-end .flow-nav__primary {
+  flex-shrink: 0;
 }
 
 .choice-grid {
@@ -686,15 +701,6 @@ body {
   font-size: 0.86rem;
   line-height: 1.45;
   color: var(--text-muted);
-}
-
-.summary-cta {
-  margin-top: 1rem;
-}
-
-.summary-cta__btn {
-  width: 100%;
-  justify-content: center;
 }
 
 .summary-tip {

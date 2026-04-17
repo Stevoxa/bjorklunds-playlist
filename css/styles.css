@@ -301,12 +301,12 @@ body {
 }
 
 /* Steg 0: jämnare vertikal rytm mellan fält och knappar */
-#flow-step-0 #client-id-help {
-  margin-bottom: 1rem;
-}
-
 #flow-step-0 .row--auth-actions {
   margin-top: 1.15rem;
+}
+
+.row--auth-actions--end {
+  justify-content: flex-end;
 }
 
 #flow-step-settings #crypto-pass-help {
