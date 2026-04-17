@@ -7,7 +7,7 @@
     <meta name="description" content="Lokal PWA för att matcha låtar mot Spotify och hantera spellistor." />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
-    <title>Björklund spellista</title>
+    <title>Bjorklunds Playlist</title>
     <link rel="stylesheet" href="./css/styles.css" />
     <link rel="stylesheet" href="./css/shell.css" />
   </head>
@@ -125,21 +125,51 @@
     <div class="app-frame">
       <main id="main" class="app-main" tabindex="-1">
         <div class="app-layout">
-          <header class="app-page-head">
-            <h1 class="app-page-head__title">Björklund spellista</h1>
-            <p class="app-page-head__lead" id="app-page-lead">Konfigurera och logga in på Spotify så att flödet kan skapa eller uppdatera din spellista.</p>
-            <nav class="flow-stepper" aria-label="Arbetsflöde">
-              <button type="button" class="flow-stepper__btn is-active" data-flow-step="0" aria-controls="flow-step-0" aria-current="step">
-                0. Logga in
-              </button>
-              <button type="button" class="flow-stepper__btn" data-flow-step="1" aria-controls="flow-step-1">1. Låtar</button>
-              <button type="button" class="flow-stepper__btn" data-flow-step="2" aria-controls="flow-step-2">2. Spellista</button>
-              <button type="button" class="flow-stepper__btn" data-flow-step="3" aria-controls="flow-step-3">3. Åtgärd</button>
-              <button type="button" class="flow-stepper__btn flow-stepper__btn--settings" data-flow-step="settings" aria-controls="flow-step-settings">
-                <svg width="16" height="16" aria-hidden="true" style="vertical-align: -0.2em"><use href="#sym-gear" /></svg>
+          <header class="app-page-head" id="app-page-head" data-flow-head="0">
+            <h1 class="app-page-head__title app-page-head__title--brand">Bjorklunds Playlist</h1>
+            <p class="app-page-head__static-intro">
+              Skapa och redigera dina Spotify-playlist på ett smidigt sätt
+            </p>
+            <div class="app-page-head__toolbar">
+              <nav class="flow-mode-nav" aria-label="Funktion">
+                <button type="button" class="flow-mode-nav__btn is-active" data-flow-mode="create" aria-pressed="true">
+                  Skapa playlists
+                </button>
+                <button
+                  type="button"
+                  class="flow-mode-nav__btn"
+                  data-flow-mode="edit"
+                  aria-pressed="false"
+                  disabled
+                  title="Kommer senare"
+                >
+                  Redigera playlist
+                </button>
+              </nav>
+              <button type="button" class="flow-toolbar__settings" data-flow-step="settings" aria-controls="flow-step-settings">
+                <svg width="16" height="16" aria-hidden="true"><use href="#sym-gear" /></svg>
                 Inställningar
               </button>
+            </div>
+            <nav class="flow-breadcrumbs" id="flow-breadcrumbs-wrap" aria-label="Steg i skapande av playlist">
+              <ol class="flow-breadcrumbs__list">
+                <li>
+                  <button type="button" class="flow-breadcrumbs__crumb is-active" data-flow-step="0" aria-controls="flow-step-0" aria-current="location">
+                    Spotify login
+                  </button>
+                </li>
+                <li>
+                  <button type="button" class="flow-breadcrumbs__crumb" data-flow-step="1" aria-controls="flow-step-1">Välj musik</button>
+                </li>
+                <li>
+                  <button type="button" class="flow-breadcrumbs__crumb" data-flow-step="2" aria-controls="flow-step-2">Välj spellista</button>
+                </li>
+                <li>
+                  <button type="button" class="flow-breadcrumbs__crumb" data-flow-step="3" aria-controls="flow-step-3">Slutför</button>
+                </li>
+              </ol>
             </nav>
+            <p class="app-page-head__lead" id="app-page-lead">Konfigurera och logga in på Spotify så att flödet kan skapa eller uppdatera din spellista.</p>
           </header>
 
           <div class="app-layout__primary">
@@ -218,7 +248,7 @@
                     <svg><use href="#sym-clipboard" /></svg>
                   </div>
                   <div class="flow-card__titles">
-                    <h2 class="flow-card__title" id="heading-paste">Klistra in låtlista</h2>
+                    <h2 class="flow-card__title flow-card__title--hero-step" id="heading-paste">Klistra in låtlista</h2>
                     <p class="flow-card__subtitle" id="paste-help">
                       En rad per låt. <kbd>Artist</kbd> – <kbd>Titel</kbd>, eller <kbd>Titel</kbd> av <kbd>Artist</kbd>. <strong>Sök på Spotify</strong> hämtar träffar.
                     </p>
@@ -312,7 +342,7 @@
                     <svg><use href="#sym-playlist" /></svg>
                   </div>
                   <div class="flow-card__titles">
-                    <h2 class="flow-card__title" id="heading-pl-mode">Välj hur låtarna ska sparas</h2>
+                    <h2 class="flow-card__title flow-card__title--hero-step" id="heading-pl-mode">Välj hur låtarna ska sparas</h2>
                     <p class="flow-card__subtitle">Skapa ny spellista eller uppdatera en du redan har (kräver inloggning).</p>
                   </div>
                 </div>
@@ -350,7 +380,7 @@
                     <svg><use href="#sym-lightning" /></svg>
                   </div>
                   <div class="flow-card__titles">
-                    <h2 class="flow-card__title" id="heading-playlist">Spellista — detaljer</h2>
+                    <h2 class="flow-card__title flow-card__title--hero-step" id="heading-playlist">Spellista — detaljer</h2>
                     <p class="flow-card__subtitle">Namn eller befintlig lista, och hur uppdateringen ska göras.</p>
                   </div>
                 </div>
@@ -648,7 +678,7 @@
       </main>
 
       <footer class="site-footer" role="contentinfo">
-        <p>Björklund spellista · lokal PWA · PKCE · krypterad lagring</p>
+        <p>Bjorklunds Playlist · lokal PWA · PKCE · krypterad lagring</p>
       </footer>
     </div>
 

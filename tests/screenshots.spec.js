@@ -22,7 +22,7 @@ test.describe('UI screenshots (headless)', () => {
   test('steg 1 — låtar', async ({ page }) => {
     ensureOut();
     await page.goto('/');
-    await page.getByRole('button', { name: '1. Låtar' }).click();
+    await page.getByRole('button', { name: 'Välj musik' }).click();
     await page.locator('#flow-step-1').waitFor({ state: 'visible' });
     await page.waitForTimeout(300);
     await page.screenshot({ path: join(outDir, '02-step-1-tracks.png'), fullPage: true });
@@ -31,7 +31,7 @@ test.describe('UI screenshots (headless)', () => {
   test('steg 2 — spellista', async ({ page }) => {
     ensureOut();
     await page.goto('/');
-    await page.getByRole('button', { name: '2. Spellista' }).click();
+    await page.getByRole('button', { name: 'Välj spellista' }).click();
     await page.locator('#flow-step-2').waitFor({ state: 'visible' });
     await page.waitForTimeout(300);
     await page.screenshot({ path: join(outDir, '03-step-2-playlist.png'), fullPage: true });
@@ -40,7 +40,7 @@ test.describe('UI screenshots (headless)', () => {
   test('steg 3 — åtgärd', async ({ page }) => {
     ensureOut();
     await page.goto('/');
-    await page.getByRole('button', { name: '3. Åtgärd' }).click();
+    await page.getByRole('button', { name: 'Slutför' }).click();
     await page.locator('#flow-step-3').waitFor({ state: 'visible' });
     await page.waitForTimeout(300);
     await page.screenshot({ path: join(outDir, '04-step-3-action.png'), fullPage: true });

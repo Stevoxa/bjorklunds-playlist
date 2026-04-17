@@ -438,11 +438,15 @@ function setFlowStep(step, opts = {}) {
     const p = el.getAttribute('data-flow-panel');
     el.classList.toggle('is-active', p === step);
   });
-  document.querySelectorAll('.flow-stepper__btn[data-flow-step]').forEach((btn) => {
+  const head = document.getElementById('app-page-head');
+  if (head) head.setAttribute('data-flow-head', step);
+  const bcWrap = document.getElementById('flow-breadcrumbs-wrap');
+  if (bcWrap) bcWrap.hidden = step === 'settings';
+  document.querySelectorAll('.flow-breadcrumbs__crumb[data-flow-step]').forEach((btn) => {
     const s = btn.getAttribute('data-flow-step');
     const on = s === step;
     btn.classList.toggle('is-active', on);
-    if (on) btn.setAttribute('aria-current', 'step');
+    if (on) btn.setAttribute('aria-current', 'location');
     else btn.removeAttribute('aria-current');
   });
   const leads = {
