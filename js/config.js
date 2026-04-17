@@ -23,10 +23,18 @@ export const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 export const DEFAULT_PLAYLIST_NAME_PREFIX = 'Björklunds playlist - ';
 
 /**
- * Ikoner: 'inline' = sprite i index.html (standard).
- * 'external' = <use> laddar symboler från ICON_SPRITE_EXTERNAL_HREF (byt ut filen mot Figma/bild 8-export, behåll samma id:n).
- * Överstyr i konsol: sessionStorage.setItem('iconSpriteMode','external'); location.reload()
- * Eller: ?icons=external | ?icons=inline i URL:en.
+ * Ikoner: 'raster' = PNG ur icons/bild8/raster (klippta från designblad, npm run icons:sheet).
+ * 'svg' = vektor: inline-sprite i index.html, ev. extern fil nedan.
+ * Tillbaka till vektor: sätt 'svg' här eller sessionStorage iconDisplayMode = 'svg' + reload.
+ */
+export const ICON_DISPLAY_MODE = 'raster';
+
+/** Baskatalog för PNG (filnamn = sym-id utan prefix, t.ex. clipboard.png för #sym-clipboard). */
+export const ICON_RASTER_BASE = './icons/bild8/raster/';
+
+/**
+ * När ICON_DISPLAY_MODE === 'svg': 'inline' = sprite i index.html.
+ * 'external' = <use> laddar från ICON_SPRITE_EXTERNAL_HREF.
  */
 export const ICON_SPRITE_MODE = 'inline';
 

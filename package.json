@@ -8,10 +8,12 @@
     "test:e2e": "playwright test",
     "verify": "node tests/smoke-html.mjs && playwright test",
     "screenshots": "playwright test tests/screenshots.spec.js",
-    "icons:extract": "node scripts/extract-ui-sprite.mjs"
+    "icons:extract": "node scripts/extract-ui-sprite.mjs",
+    "icons:sheet": "node scripts/extract-sheet-icons.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",
-    "serve": "^14.2.4"
+    "serve": "^14.2.4",
+    "sharp": "^0.34.5"
   }
 }

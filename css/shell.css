@@ -268,7 +268,8 @@ body {
   color: var(--shell-navy-muted);
 }
 
-.flow-card__icon-ring svg {
+.flow-card__icon-ring svg,
+.flow-card__icon-ring img {
   width: 1.35rem;
   height: 1.35rem;
 }
@@ -281,7 +282,8 @@ body {
   color: inherit;
 }
 
-.flow-card__icon-ring--spotify svg {
+.flow-card__icon-ring--spotify svg,
+.flow-card__icon-ring--spotify img {
   width: 1.9rem;
   height: 1.9rem;
 }
@@ -328,7 +330,8 @@ body {
   gap: 0.35rem;
 }
 
-.flow-nav__hint svg {
+.flow-nav__hint svg,
+.flow-nav__hint img {
   width: 1rem;
   height: 1rem;
   flex-shrink: 0;
@@ -529,6 +532,13 @@ body {
 .summary-list__glyph--playlist {
   width: 1.45rem;
   height: 1.45rem;
+}
+
+/* PNG-ikoner (raster) */
+.ui-icon {
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .summary-list__body {
