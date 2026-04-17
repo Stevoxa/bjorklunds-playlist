@@ -13,6 +13,8 @@ const REQUIRED_IDS = [
   'paste-area',
   'btn-search',
   'results-section',
+  'btn-flow-step-1-next',
+  'flow-step-1-sticky-hint',
   'results-body',
   'spotify-log-pre',
   'client-id',

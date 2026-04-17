@@ -261,6 +261,48 @@ body {
   display: block;
 }
 
+/* Steg 1: ett sammanhängande kort (lista + matchningar) + sticky nav längst ner i kortet */
+#flow-step-1 .flow-step-1-shell {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  margin-bottom: var(--space);
+}
+
+#flow-step-1 .flow-step-1-stack > .flow-card {
+  margin-bottom: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+}
+
+#flow-step-1 .flow-step-1-stack > .flow-card + .flow-card {
+  border-top: 1px solid var(--border);
+}
+
+#flow-step-1 .flow-step-1-stack > .flow-card:first-child {
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
+
+#flow-step-1 .flow-step-1-sticky-nav.flow-nav {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: var(--space) var(--space-lg);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+}
+
+#flow-step-1 .flow-step-1-shell + .spotify-log-card {
+  margin-top: var(--space);
+}
+
 .flow-card {
   /* Ikon + text i statusrutor, forbidden-help och flow-nav__hint delar samma “rail”. */
   --flow-callout-icon-col: 2.25rem;

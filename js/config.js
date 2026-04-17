@@ -19,6 +19,9 @@ export const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
 export const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
 export const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 
+/** Förnya access token när så här många ms återstår (proaktivt, före varje API-anrop). */
+export const SPOTIFY_TOKEN_REFRESH_LEEWAY_MS = 10 * 60 * 1000;
+
 /** Standardprefix för nya spellistor (användaren skriver bara suffix i appen). */
 export const DEFAULT_PLAYLIST_NAME_PREFIX = 'Björklunds playlist - ';
 

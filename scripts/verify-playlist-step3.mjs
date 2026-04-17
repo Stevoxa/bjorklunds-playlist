@@ -62,7 +62,7 @@ async function main() {
     await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#flow-step-0.is-active', { timeout: 15000 });
 
-    /** Brödsmulor — inte ”Nästa: Spellista” i steg 1 (ligger i dold #results-section tills sökning körts). */
+    /** Brödsmulor — ”Nästa: Spellista” i steg 1 kan vara disabled tills sökning + val är klara. */
     await page.locator('.flow-breadcrumbs__crumb[data-flow-step="1"]').click();
     await page.locator('#flow-step-1.is-active').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('.flow-breadcrumbs__crumb[data-flow-step="2"]').click();

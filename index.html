@@ -252,40 +252,42 @@
             </section>
 
             <section id="flow-step-1" class="flow-step" data-flow-panel="1" tabindex="-1" aria-labelledby="heading-paste">
-              <div class="flow-card">
-                <div class="flow-card__head">
-                  <div class="flow-card__icon-ring" aria-hidden="true">
-                    <svg><use href="#sym-clipboard" /></svg>
+              <div class="flow-step-1-shell">
+                <div class="flow-step-1-stack">
+                  <div class="flow-card">
+                    <div class="flow-card__head">
+                      <div class="flow-card__icon-ring" aria-hidden="true">
+                        <svg><use href="#sym-clipboard" /></svg>
+                      </div>
+                      <div class="flow-card__titles">
+                        <h2 class="flow-card__title flow-card__title--hero-step" id="heading-paste">Klistra in låtlista</h2>
+                        <p class="flow-card__subtitle" id="paste-help">
+                          Klistra in en låt per rad. Du kan använda formatet Artist - Titel
+                        </p>
+                      </div>
+                    </div>
+                    <label for="paste-area" class="label">Text</label>
+                    <textarea
+                      id="paste-area"
+                      class="textarea"
+                      rows="8"
+                      autocomplete="off"
+                      spellcheck="false"
+                      aria-describedby="paste-help"
+                      placeholder="Exempel:&#10;ABBA – Dancing Queen&#10;Waterloo av ABBA"
+                    ></textarea>
+                    <div class="row row--wrap row--paste-actions">
+                      <button type="button" class="btn" id="btn-clear-paste">Rensa</button>
+                      <button type="button" class="btn btn--primary btn--with-icon btn--flow-nav-width" id="btn-search" disabled>
+                        <span class="btn__icon-wrap btn__icon-wrap--spotify" aria-hidden="true">
+                          <svg class="btn__icon" width="20" height="20"><use href="#sym-spotify-mark" /></svg>
+                        </span>
+                        <span>Sök på Spotify</span>
+                      </button>
+                    </div>
                   </div>
-                  <div class="flow-card__titles">
-                    <h2 class="flow-card__title flow-card__title--hero-step" id="heading-paste">Klistra in låtlista</h2>
-                    <p class="flow-card__subtitle" id="paste-help">
-                      Klistra in en låt per rad. Du kan använda formatet Artist - Titel
-                    </p>
-                  </div>
-                </div>
-                <label for="paste-area" class="label">Text</label>
-                <textarea
-                  id="paste-area"
-                  class="textarea"
-                  rows="8"
-                  autocomplete="off"
-                  spellcheck="false"
-                  aria-describedby="paste-help"
-                  placeholder="Exempel:&#10;ABBA – Dancing Queen&#10;Waterloo av ABBA"
-                ></textarea>
-                <div class="row row--wrap row--paste-actions">
-                  <button type="button" class="btn" id="btn-clear-paste">Rensa</button>
-                  <button type="button" class="btn btn--primary btn--with-icon btn--flow-nav-width" id="btn-search" disabled>
-                    <span class="btn__icon-wrap btn__icon-wrap--spotify" aria-hidden="true">
-                      <svg class="btn__icon" width="20" height="20"><use href="#sym-spotify-mark" /></svg>
-                    </span>
-                    <span>Sök på Spotify</span>
-                  </button>
-                </div>
-              </div>
 
-              <div class="flow-card" id="results-section" hidden>
+                  <div class="flow-card" id="results-section" hidden>
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
                     <svg><use href="#sym-mag" /></svg>
@@ -322,12 +324,25 @@
                   <button type="button" class="btn" id="btn-clear-selection">Avmarkera</button>
                   <button type="button" class="btn btn--primary" id="btn-select-all">Markera alla med träff</button>
                 </div>
-                <div class="flow-nav">
+              </div>
+                </div>
+
+                <div class="flow-step-1-sticky-nav flow-nav" id="flow-step-1-sticky-nav">
                   <p class="flow-nav__hint">
                     <svg aria-hidden="true"><use href="#sym-info" /></svg>
-                    <span class="flow-nav__hint-text">När träffarna ser rätt ut — fortsätt till spellista.</span>
+                    <span class="flow-nav__hint-text" id="flow-step-1-sticky-hint"
+                      >Klistra in en låtlista och kör Sök på Spotify — därefter kan du gå vidare.</span>
                   </p>
-                  <button type="button" class="btn btn--primary" data-flow-goto="2">Nästa: Spellista</button>
+                  <button
+                    type="button"
+                    class="btn btn--primary"
+                    id="btn-flow-step-1-next"
+                    data-flow-goto="2"
+                    disabled
+                    aria-disabled="true"
+                  >
+                    Nästa: Spellista
+                  </button>
                 </div>
               </div>
 

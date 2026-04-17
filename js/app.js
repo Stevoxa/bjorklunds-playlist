@@ -6,6 +6,7 @@ import { parseTrackList } from './parser.js';
 import { createSpotifyClient, parsePlaylistIdFromInput } from './spotify-api.js';
 import { subscribeSpotifyLog, clearSpotifyLog, logSpotify } from './spotify-log.js';
 import { makeSearchCacheKey, getSearchCache, setSearchCache, clearSearchCache } from './search-cache.js';
+import { readSpotifySession, writeSpotifySession, clearSpotifySession } from './token-session.js';
 
 /** @type {ReturnType<createSpotifyClient> | null} */
 let spotifyClient = null;
@@ -135,6 +136,28 @@ function getClientId() {
   return $('client-id').value.trim();
 }
 
+/** Synkar Spotify-token till sessionStorage så omladdning i samma flik behåller inloggning. */
+function syncSpotifySessionToStorage() {
+  if (!vaultData?.tokens?.accessToken) {
+    clearSpotifySession();
+    return;
+  }
+  const cid = (vaultData.clientId || '').trim() || getClientId().trim();
+  if (!cid) return;
+  writeSpotifySession(cid, vaultData.tokens);
+}
+
+/** Återställer inloggning från sessionStorage efter sidladdning (samma webbläsarflik). */
+function restoreSpotifySessionIfAny() {
+  const snap = readSpotifySession();
+  if (!snap) return false;
+  vaultData = vaultData ?? defaultVault();
+  vaultData.clientId = snap.clientId;
+  vaultData.tokens = snap.tokens;
+  $('client-id').value = snap.clientId;
+  return true;
+}
+
 /** Håller valvets Client ID i synk med fältet (t.ex. efter navigering Inställningar ↔ flöde). */
 function syncClientIdFromFormIntoVault() {
   if (!vaultData) return;
@@ -168,6 +191,7 @@ async function saveEncryptedVault() {
   };
   persistTokensFromClient();
   await saveVault(vaultData, pass);
+  syncSpotifySessionToStorage();
   showToast('Sparat krypterat i IndexedDB.');
   setAuthStatus();
   updateApplyEnabled();
@@ -198,6 +222,7 @@ async function loadEncryptedVault() {
     initSpotifyClient();
     await refreshSpotifyUserDisplay();
     showToast('Data läst in.');
+    syncSpotifySessionToStorage();
     setAuthStatus();
     updateApplyEnabled();
   } catch {
@@ -222,11 +247,13 @@ function initSpotifyClient() {
   vaultData.clientId = cid;
   spotifyClient = createSpotifyClient(vaultData.tokens, cid, (t) => {
     vaultData.tokens = t;
+    syncSpotifySessionToStorage();
     const pass = getPassphrase();
     if (pass.length >= 8) {
       saveVault(vaultData, pass).catch(() => {});
     }
   });
+  syncSpotifySessionToStorage();
 }
 
 /**
@@ -396,7 +423,7 @@ function setAuthStatus(extraHint = '') {
   const foot = document.createElement('p');
   foot.className = 'auth-status-card__note';
   foot.textContent =
-    'Token är tidsbegränsad och måste vara giltig för att flödet ska kunna skapa eller uppdatera din spellista.';
+    'Access token förnyas automatiskt i god tid via refresh token. Omladdning av sidan behåller inloggning i samma webbläsarflik; stäng fliken eller tryck Rensa session för att logga ut lokalt.';
   body.append(foot);
 
   card.append(iconWrap, body);
@@ -418,7 +445,9 @@ function mergeOAuthTokens(tokens, clientIdFromOAuth) {
   vaultData.settings = { ...defaultVault().settings, ...vaultData.settings };
   initSpotifyClient();
   updateNewPlaylistPreview();
-  showToast('Spotify-inloggning klar. Under Inställningar: Spara lokalt med din lösenfras för att behålla tokens.');
+  showToast(
+    'Spotify-inloggning klar. Du kan ladda om sidan utan ny inloggning (samma flik). Under Inställningar: Spara lokalt med lösenfras för att behålla tokens efter stängd flik.',
+  );
   updateApplyEnabled();
   void refreshSpotifyUserDisplay().then(() => setAuthStatus());
 }
@@ -972,6 +1001,7 @@ function renderResults() {
         radio.checked = row.selectedUri === t.uri || (row.selectedUri === null && ti === 0);
         radio.addEventListener('change', () => {
           row.selectedUri = t.uri;
+          updateApplyEnabled();
         });
         const line = document.createElement('span');
         line.className = 'match-line';
@@ -1014,12 +1044,42 @@ function syncApplyHint() {
       : 'Låtarna läggs till i vald spellista på Spotify.';
 }
 
+function updateStep1StickyNav() {
+  const btn = document.getElementById('btn-flow-step-1-next');
+  const hint = document.getElementById('flow-step-1-sticky-hint');
+  if (!btn || !hint) return;
+
+  const busy = searchInProgress;
+  const pendingSearch = resultRows.some((r) => r.tracks === null);
+  const ready =
+    !busy &&
+    resultRows.length > 0 &&
+    !pendingSearch &&
+    selectedUrisForPlaylist().length > 0;
+
+  btn.disabled = !ready;
+  btn.setAttribute('aria-disabled', ready ? 'false' : 'true');
+
+  if (busy) {
+    hint.textContent = 'Sökning pågår — vänta tills alla rader har svarats.';
+  } else if (resultRows.length === 0) {
+    hint.textContent = 'Klistra in en låtlista och kör Sök på Spotify — därefter kan du gå vidare.';
+  } else if (pendingSearch) {
+    hint.textContent = 'Vänta tills sökningen är klar för alla rader.';
+  } else if (selectedUrisForPlaylist().length === 0) {
+    hint.textContent = 'Slå på Välj för minst en rad med träff, eller välj en version av spåret, för att gå vidare.';
+  } else {
+    hint.textContent = 'När träffarna ser rätt ut — fortsätt till spellista.';
+  }
+}
+
 function updateApplyEnabled() {
   $('btn-apply-playlist').disabled = resultRows.length === 0 || !spotifyClient;
   const busy = searchInProgress;
   $('btn-search').disabled = !spotifyClient || busy;
   $('btn-clear-paste').disabled = busy;
   syncApplyHint();
+  updateStep1StickyNav();
 }
 
 function selectedUrisForPlaylist() {
@@ -1389,6 +1449,7 @@ async function boot() {
     vaultData.tokens = null;
     spotifyClient = null;
     spotifyUserDisplay = '';
+    clearSpotifySession();
     const pass = getPassphrase();
     if (pass.length >= 8) {
       await saveVault(vaultData, pass);
@@ -1435,6 +1496,10 @@ async function boot() {
   $('btn-apply-playlist').addEventListener('click', () => applyPlaylist());
 
   await handleOAuthReturn();
+
+  if (!vaultData?.tokens?.accessToken) {
+    restoreSpotifySessionIfAny();
+  }
 
   const exists = await idbGet(VAULT_KEY);
   initSpotifyClient();

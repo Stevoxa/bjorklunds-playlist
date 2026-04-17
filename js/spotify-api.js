@@ -1,4 +1,4 @@
-import { SPOTIFY_API_BASE } from './config.js';
+import { SPOTIFY_API_BASE, SPOTIFY_TOKEN_REFRESH_LEEWAY_MS } from './config.js';
 import { refreshAccessToken } from './auth.js';
 import { logSpotify } from './spotify-log.js';
 
@@ -378,21 +378,50 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
 export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
   let t = { ...tokens };
 
-  async function ensureAccess() {
-    if (Date.now() < t.expiresAt - 60_000) return t.accessToken;
+  async function forceRefreshAccess() {
     if (!t.refreshToken) throw new Error('Ingen refresh token');
     const next = await refreshAccessToken(t.refreshToken, clientId);
     t = { ...t, ...next };
     if (onTokensUpdate) onTokensUpdate(t);
+  }
+
+  async function ensureAccess() {
+    if (Date.now() < t.expiresAt - SPOTIFY_TOKEN_REFRESH_LEEWAY_MS) return t.accessToken;
+    await forceRefreshAccess();
     return t.accessToken;
+  }
+
+  async function getWith401Retry(path, max429, signal) {
+    let access = await ensureAccess();
+    let res = await apiGetWith429Retry(access, path, max429, signal);
+    if (res.status === 401 && t.refreshToken) {
+      await forceRefreshAccess();
+      access = t.accessToken;
+      res = await apiGetWith429Retry(access, path, max429, signal);
+    }
+    return res;
+  }
+
+  async function mutateWith401Retry(path, init) {
+    let access = await ensureAccess();
+    let res = await api(access, path, init);
+    if (res.status === 401 && t.refreshToken) {
+      await forceRefreshAccess();
+      res = await api(t.accessToken, path, init);
+    }
+    return res;
   }
 
   return {
     getTokens: () => ({ ...t }),
 
     async me() {
-      const access = await ensureAccess();
-      const res = await api(access, '/me');
+      let access = await ensureAccess();
+      let res = await api(access, '/me');
+      if (res.status === 401 && t.refreshToken) {
+        await forceRefreshAccess();
+        res = await api(t.accessToken, '/me');
+      }
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -412,9 +441,8 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       let offset = 0;
       const page = 50;
       while (true) {
-        const access = await ensureAccess();
         const path = `/me/playlists?limit=${page}&offset=${offset}`;
-        const res = await apiGetWith429Retry(access, path, 5, signal);
+        const res = await getWith401Retry(path, 5, signal);
         const bodyText = await res.text();
         if (!res.ok) throw new Error(formatSpotifyApiError(res.status, bodyText));
         let data;
@@ -443,7 +471,6 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
      */
     async searchTracks(q, limit = 5, hints = {}) {
       const { signal, ...hintRest } = hints || {};
-      const access = await ensureAccess();
       const queries = buildSearchQueries(q, hintRest.artist, hintRest.title);
       /** Endast from_token: halverar antal /search-anrop per rad (mindre 429-belastning); marknad följer kontot. */
       /** @type {('from_token')[]} */
@@ -460,7 +487,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
           });
           if (market) params.set('market', market);
           const path = `/search?${params.toString()}`;
-          const res = await apiGetWith429Retry(access, path, 3, signal);
+          const res = await getWith401Retry(path, 3, signal);
           const bodyText = await res.text();
           let data;
           try {
@@ -507,14 +534,13 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
      * @param {{ name: string, isPublic: boolean }} opts
      */
     async createPlaylist(opts) {
-      const access = await ensureAccess();
       const path = '/me/playlists';
       const body = {
         name: opts.name,
         public: opts.isPublic,
         collaborative: false,
       };
-      const res = await api(access, path, {
+      const res = await mutateWith401Retry(path, {
         method: 'POST',
         body: JSON.stringify(body),
       });
@@ -533,14 +559,13 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
      * @param {string[]} uris
      */
     async replacePlaylistTracks(playlistId, uris) {
-      const access = await ensureAccess();
       const path = `/playlists/${encodeURIComponent(playlistId)}/items`;
       const requestMeta = {
         playlistId,
         uriCount: uris.length,
         uriSample: uris.slice(0, 8),
       };
-      const res = await api(access, path, {
+      const res = await mutateWith401Retry(path, {
         method: 'PUT',
         body: JSON.stringify({ uris }),
       });
@@ -559,14 +584,13 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
      * @param {string[]} uris
      */
     async appendPlaylistTracks(playlistId, uris) {
-      const access = await ensureAccess();
       const path = `/playlists/${encodeURIComponent(playlistId)}/items`;
       const requestMeta = {
         playlistId,
         uriCount: uris.length,
         uriSample: uris.slice(0, 8),
       };
-      const res = await api(access, path, {
+      const res = await mutateWith401Retry(path, {
         method: 'POST',
         body: JSON.stringify({ uris }),
       });
