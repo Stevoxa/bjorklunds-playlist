@@ -43,6 +43,11 @@ const REQUIRED_IDS = [
   'flow-step-settings',
   'summary-card-subtitle',
   'apply-hint',
+  'playlist-result-dialog',
+  'playlist-result-dialog-title',
+  'playlist-result-dialog-message',
+  'playlist-result-dialog-link',
+  'btn-playlist-result-close',
 ];
 
 function main() {

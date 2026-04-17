@@ -175,7 +175,7 @@
                   <button type="button" class="flow-breadcrumbs__crumb" data-flow-step="2" aria-controls="flow-step-2">Välj spellista</button>
                 </li>
                 <li>
-                  <button type="button" class="flow-breadcrumbs__crumb" data-flow-step="3" aria-controls="flow-step-3">Slutför</button>
+                  <button type="button" class="flow-breadcrumbs__crumb" data-flow-step="3" aria-controls="flow-step-3">Genomför</button>
                 </li>
               </ol>
             </nav>
@@ -549,7 +549,7 @@
                     id="btn-apply-playlist"
                     disabled
                   >
-                    Slutför
+                    Genomför på Spotify
                   </button>
                 </div>
               </div>
@@ -776,6 +776,39 @@
     </div>
 
     <div id="toast" class="toast" role="alert" aria-live="assertive" hidden></div>
+
+    <div id="playlist-result-dialog" class="playlist-result-dialog" hidden>
+      <div class="playlist-result-dialog__backdrop" data-playlist-result-close tabindex="-1"></div>
+      <div
+        class="playlist-result-dialog__panel flow-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="playlist-result-dialog-title"
+        tabindex="-1"
+      >
+        <div class="playlist-result-dialog__hero">
+          <div class="playlist-result-dialog__icon-ring" id="playlist-result-dialog-icon-wrap" aria-hidden="true">
+            <svg class="playlist-result-dialog__icon" width="28" height="28">
+              <use id="playlist-result-dialog-icon-use" href="#sym-check-circle" />
+            </svg>
+          </div>
+          <h2 class="playlist-result-dialog__title" id="playlist-result-dialog-title"></h2>
+        </div>
+        <p class="playlist-result-dialog__message" id="playlist-result-dialog-message"></p>
+        <p class="playlist-result-dialog__link-wrap" id="playlist-result-dialog-link-wrap" hidden>
+          <a
+            id="playlist-result-dialog-link"
+            class="playlist-result-dialog__spotify-link"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+          ></a>
+        </p>
+        <div class="playlist-result-dialog__actions">
+          <button type="button" class="btn btn--primary" id="btn-playlist-result-close">Stäng</button>
+        </div>
+      </div>
+    </div>
 
     <script type="module" src="./js/app.js"></script>
   </body>

@@ -40,7 +40,7 @@ test.describe('UI screenshots (headless)', () => {
   test('steg 3 — åtgärd', async ({ page }) => {
     ensureOut();
     await page.goto('/');
-    await page.getByRole('button', { name: 'Slutför' }).click();
+    await page.getByRole('button', { name: 'Genomför' }).click();
     await page.locator('#flow-step-3').waitFor({ state: 'visible' });
     await page.waitForTimeout(300);
     await page.screenshot({ path: join(outDir, '04-step-3-action.png'), fullPage: true });

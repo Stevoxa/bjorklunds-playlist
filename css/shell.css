@@ -1091,3 +1091,110 @@ body {
   padding: var(--space) var(--space) calc(var(--space) + env(safe-area-inset-bottom, 0));
 }
 
+/* Resultat efter Genomför på Spotify (modal) */
+.playlist-result-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space);
+  padding-bottom: calc(var(--space) + env(safe-area-inset-bottom, 0));
+}
+
+.playlist-result-dialog[hidden] {
+  display: none !important;
+}
+
+.playlist-result-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--shell-navy) 42%, transparent);
+  cursor: pointer;
+}
+
+[data-theme='dark'] .playlist-result-dialog__backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.playlist-result-dialog__panel {
+  position: relative;
+  z-index: 1;
+  width: min(26rem, 100%);
+  max-height: min(90dvh, 32rem);
+  overflow: auto;
+  margin: 0;
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--shell-navy) 22%, transparent);
+}
+
+.playlist-result-dialog__hero {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space);
+  margin-bottom: var(--space);
+}
+
+.playlist-result-dialog__icon-ring {
+  flex-shrink: 0;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--shell-mint);
+  color: var(--summary-forest);
+}
+
+.playlist-result-dialog--error .playlist-result-dialog__icon-ring {
+  background: color-mix(in srgb, #c62828 12%, var(--surface));
+  color: #b71c1c;
+}
+
+.playlist-result-dialog__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--shell-navy);
+}
+
+[data-theme='dark'] .playlist-result-dialog__title {
+  color: var(--text);
+}
+
+.playlist-result-dialog__message {
+  margin: 0 0 var(--space);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  white-space: pre-line;
+}
+
+.playlist-result-dialog__link-wrap {
+  margin: 0 0 var(--space-lg);
+}
+
+.playlist-result-dialog__spotify-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--spotify);
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.playlist-result-dialog__spotify-link:hover {
+  color: color-mix(in srgb, var(--spotify) 85%, var(--text));
+}
+
+.playlist-result-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border);
+}
+

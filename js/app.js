@@ -38,6 +38,9 @@ const SEARCH_ROW_JITTER_MS = 1000;
 /** Debounce: hämta om spellistor när prefix ändras under ”Mina listor med prefix” */
 let playlistPrefixDebounceTimer = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
 
+/** @type {AbortController | null} */
+let playlistResultDialogEscapeAbort = null;
+
 /**
  * @param {number} ms
  * @param {AbortSignal | undefined} signal
@@ -78,6 +81,70 @@ function $(id) {
 function getPlaylistMode() {
   const el = document.querySelector('#flow-step-2 input[name="pl-mode"]:checked');
   return el?.value === 'existing' ? 'existing' : 'new';
+}
+
+function spotifyOpenPlaylistUrl(playlistId) {
+  const id = String(playlistId ?? '').trim();
+  if (!id) return '#';
+  return `https://open.spotify.com/playlist/${encodeURIComponent(id)}`;
+}
+
+/**
+ * @param {{ ok: boolean, title: string, message: string, playlistId?: string, playlistName?: string, playlistOpenUrl?: string }} opts
+ */
+function showPlaylistResultDialog(opts) {
+  const dlg = document.getElementById('playlist-result-dialog');
+  const titleEl = document.getElementById('playlist-result-dialog-title');
+  const msgEl = document.getElementById('playlist-result-dialog-message');
+  const linkWrap = document.getElementById('playlist-result-dialog-link-wrap');
+  const linkEl = document.getElementById('playlist-result-dialog-link');
+  const iconUse = document.getElementById('playlist-result-dialog-icon-use');
+  if (!dlg || !titleEl || !msgEl || !linkWrap || !linkEl || !iconUse) return;
+
+  playlistResultDialogEscapeAbort?.abort();
+  playlistResultDialogEscapeAbort = new AbortController();
+  const { signal } = playlistResultDialogEscapeAbort;
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key === 'Escape') hidePlaylistResultDialog();
+    },
+    { signal },
+  );
+
+  dlg.classList.toggle('playlist-result-dialog--error', !opts.ok);
+  iconUse.setAttribute('href', opts.ok ? '#sym-check-circle' : '#sym-help');
+
+  titleEl.textContent = opts.title;
+  msgEl.textContent = opts.message;
+
+  if (opts.ok && opts.playlistId) {
+    const ext =
+      (opts.playlistOpenUrl && String(opts.playlistOpenUrl).trim()) || spotifyOpenPlaylistUrl(opts.playlistId);
+    linkEl.href = ext;
+    linkEl.textContent = opts.playlistName
+      ? `Öppna spellistan ”${opts.playlistName}” på Spotify`
+      : 'Öppna spellistan på Spotify';
+    linkWrap.hidden = false;
+  } else {
+    linkWrap.hidden = true;
+    linkEl.removeAttribute('href');
+    linkEl.textContent = '';
+  }
+
+  dlg.hidden = false;
+  const panel = dlg.querySelector('.playlist-result-dialog__panel');
+  requestAnimationFrame(() => panel?.focus({ preventScroll: true }));
+}
+
+function hidePlaylistResultDialog() {
+  playlistResultDialogEscapeAbort?.abort();
+  playlistResultDialogEscapeAbort = null;
+  const dlg = document.getElementById('playlist-result-dialog');
+  if (dlg) {
+    dlg.hidden = true;
+    dlg.classList.remove('playlist-result-dialog--error');
+  }
 }
 
 function showToast(message, isError = false) {
@@ -472,7 +539,7 @@ function syncPageLeadStep3() {
   lead.textContent =
     mode === 'new'
       ? 'Skapa och publicera din spellista på Spotify. Följ stegen nedan och utför åtgärden när du är redo.'
-      : 'Välj hur du hittar spellistan och hur låtarna ska läggas till innan du kör Slutför.';
+      : 'Välj hur du hittar spellistan och hur låtarna ska läggas till innan du kör Genomför på Spotify.';
 }
 
 /** Rubrik i kortet steg 3 växlar mellan ny / befintlig spellista. */
@@ -574,7 +641,7 @@ function updateSummarySubtitle(step) {
     '0': 'Status för inloggning och nästa steg.',
     '1': 'Kontrollera dina val innan du går vidare till spellista.',
     '2': 'Kontrollera dina val innan du fortsätter.',
-    '3': 'Kontrollera dina val innan du klickar Slutför.',
+    '3': 'Kontrollera dina val innan du klickar Genomför på Spotify.',
     settings: 'Kontrollera dina val innan du fortsätter.',
   };
   el.textContent = lines[step] ?? '';
@@ -598,7 +665,7 @@ function updateSummaryTip(step) {
     '1':
       'Använd brytarna för att ta med en rad i spellistan och radioknapparna för att välja rätt version av spåret.',
     '2': 'Du måste vara inloggad via Spotify för att fortsätta.',
-    '3': 'Kontrollera sammanfattningen till höger innan du klickar Slutför.',
+    '3': 'Kontrollera sammanfattningen till höger innan du klickar Genomför på Spotify.',
     settings: 'Prefixet används när du skapar nya spellistor och när listor filtreras på prefix.',
   };
   tip.textContent = tips[step] ?? tips['0'];
@@ -657,7 +724,7 @@ function refreshSummary() {
   if (trackCount === 0) {
     sumAction.textContent = '—';
   } else if (mode === 'new') {
-    sumAction.textContent = 'Skapa ny';
+    sumAction.textContent = 'Genomför (ny)';
   } else {
     const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
     sumAction.textContent = um === 'replace' ? 'Uppdatera (ersätt)' : 'Uppdatera (lägg till)';
@@ -697,12 +764,14 @@ function refreshSummary() {
     }
   } else if (trackCount === 0) {
     sumFoot.textContent = 'Välj låtar under steg 1 för att fortsätta.';
+  } else if (!$('new-pl-name').value.trim()) {
+    sumFoot.textContent = 'Ange ett namn (suffix) för den nya spellistan.';
   } else {
-    sumFoot.textContent = 'Redo att skapa spellista.';
+    sumFoot.textContent = 'Redo att genomföra på Spotify.';
   }
 
-  syncApplyHint();
   updateSummaryTip(currentFlowStep);
+  updateApplyEnabled();
 }
 
 function wireFlow() {
@@ -1032,9 +1101,26 @@ function syncApplyHint() {
     el.textContent = 'Välj låtar med träff under steg 1 först.';
     return;
   }
+  if (selectedUrisForPlaylist().length === 0) {
+    el.textContent = 'Slå på Välj och välj version för minst en rad med träff innan du kör Genomför på Spotify.';
+    return;
+  }
   const mode = getPlaylistMode();
   if (mode === 'new') {
+    if (!$('new-pl-name').value.trim()) {
+      el.textContent = 'Ange suffixnamn för spellistan (obligatoriskt) innan du kör Genomför på Spotify.';
+      return;
+    }
     el.textContent = 'Skapar en ny spellista i ditt Spotify-konto med prefix + suffix.';
+    return;
+  }
+  const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
+  if (src === 'from-list' && !$('existing-pl-select').value.trim()) {
+    el.textContent = 'Välj en spellista i listan innan du kör Genomför på Spotify.';
+    return;
+  }
+  if (src === 'from-link' && !parsePlaylistIdFromInput($('existing-pl-id').value)) {
+    el.textContent = 'Ange en giltig Spotify-länk eller spelliste-ID innan du kör Genomför på Spotify.';
     return;
   }
   const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
@@ -1042,6 +1128,18 @@ function syncApplyHint() {
     um === 'replace'
       ? 'Alla befintliga låtar i vald spellista ersätts med de valda låtarna.'
       : 'Låtarna läggs till i vald spellista på Spotify.';
+}
+
+function isStep3ApplyReady() {
+  if (!spotifyClient || resultRows.length === 0) return false;
+  if (selectedUrisForPlaylist().length === 0) return false;
+  const mode = getPlaylistMode();
+  if (mode === 'new') {
+    return $('new-pl-name').value.trim().length > 0;
+  }
+  const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
+  if (src === 'from-list') return Boolean($('existing-pl-select').value.trim());
+  return Boolean(parsePlaylistIdFromInput($('existing-pl-id').value));
 }
 
 function updateStep1StickyNav() {
@@ -1074,7 +1172,7 @@ function updateStep1StickyNav() {
 }
 
 function updateApplyEnabled() {
-  $('btn-apply-playlist').disabled = resultRows.length === 0 || !spotifyClient;
+  $('btn-apply-playlist').disabled = !isStep3ApplyReady();
   const busy = searchInProgress;
   $('btn-search').disabled = !spotifyClient || busy;
   $('btn-clear-paste').disabled = busy;
@@ -1194,10 +1292,15 @@ async function applyPlaylist() {
     return;
   }
   const mode = getPlaylistMode();
+  if (mode === 'new' && !$('new-pl-name').value.trim()) {
+    showToast('Ange namn (suffix) för den nya spellistan.', true);
+    return;
+  }
+  hidePlaylistResultDialog();
   $('btn-apply-playlist').disabled = true;
   try {
     if (mode === 'new') {
-      const suffix = $('new-pl-name').value.trim() || 'Ny spellista';
+      const suffix = $('new-pl-name').value.trim();
       const name = `${getPlaylistPrefixFromInput()}${suffix}`;
       const isPublic = $('new-pl-public').checked;
       const gs = (vaultData.tokens?.grantedScopeRaw || '').trim();
@@ -1226,7 +1329,18 @@ async function applyPlaylist() {
       vaultData.selectedPlaylist = { id: pl.id, name: pl.name };
       const pass = getPassphrase();
       if (pass.length >= 8) await saveVault(vaultData, pass);
-      showToast(`Spellistan ”${pl.name}” skapades med ${uris.length} låtar.`);
+      const openUrl =
+        typeof pl.external_urls?.spotify === 'string' && pl.external_urls.spotify.trim()
+          ? pl.external_urls.spotify.trim()
+          : undefined;
+      showPlaylistResultDialog({
+        ok: true,
+        title: 'Det gick bra',
+        message: `Spellistan ”${pl.name}” skapades med ${uris.length} låtar på Spotify.`,
+        playlistId: pl.id,
+        playlistName: typeof pl.name === 'string' ? pl.name : suffix,
+        playlistOpenUrl: openUrl,
+      });
       await refreshExistingPlaylistSelect({ quiet: true, selectPlaylistId: pl.id }).catch(() => {});
     } else {
       const source =
@@ -1265,12 +1379,24 @@ async function applyPlaylist() {
       vaultData.selectedPlaylist = { id: plId, name: plLabel };
       const pass = getPassphrase();
       if (pass.length >= 8) await saveVault(vaultData, pass);
-      showToast(updateMode === 'replace' ? 'Spellistan ersattes.' : 'Låtar tillagda på spellistan.');
+      showPlaylistResultDialog({
+        ok: true,
+        title: 'Det gick bra',
+        message:
+          updateMode === 'replace'
+            ? `Spellistan uppdaterades: tidigare låtar ersattes med ${uris.length} valda låtar.`
+            : `${uris.length} låtar lades till i spellistan på Spotify.`,
+        playlistId: plId,
+        playlistName: typeof plLabel === 'string' ? plLabel : undefined,
+      });
     }
   } catch (e) {
-    showToast(String(e?.message ?? e), true);
+    showPlaylistResultDialog({
+      ok: false,
+      title: 'Något gick fel',
+      message: String(e?.message ?? e),
+    });
   } finally {
-    $('btn-apply-playlist').disabled = false;
     refreshSummary();
   }
 }
@@ -1379,6 +1505,7 @@ async function boot() {
     updateNewPlaylistPreview();
     refreshSummary();
   });
+  $('new-pl-public').addEventListener('change', () => refreshSummary());
   $('existing-pl-id').addEventListener('input', () => refreshSummary());
   $('existing-pl-select').addEventListener('change', () => refreshSummary());
   $('playlist-prefix').addEventListener('input', () => {
@@ -1494,6 +1621,12 @@ async function boot() {
   });
 
   $('btn-apply-playlist').addEventListener('click', () => applyPlaylist());
+
+  document.querySelectorAll('[data-playlist-result-close]').forEach((el) => {
+    el.addEventListener('click', () => hidePlaylistResultDialog());
+  });
+  const prCloseBtn = document.getElementById('btn-playlist-result-close');
+  if (prCloseBtn) prCloseBtn.addEventListener('click', () => hidePlaylistResultDialog());
 
   await handleOAuthReturn();
 
