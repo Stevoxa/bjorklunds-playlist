@@ -161,6 +161,43 @@ body {
   line-height: 1.55;
 }
 
+.existing-pl-select-help-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.35rem;
+  max-width: 100%;
+}
+
+.inline-flow-link {
+  display: inline;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+
+.inline-flow-link:hover {
+  filter: brightness(0.94);
+}
+
+.inline-flow-link:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+  border-radius: 2px;
+}
+
 .help kbd {
   font: inherit;
   font-size: 0.85em;

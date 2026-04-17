@@ -437,7 +437,7 @@
                       <input type="radio" name="pl-existing-source" value="from-link" />
                       <span class="choice-tile__body">
                         <span class="choice-tile__text">
-                          <span class="choice-tile__title">ID eller Spotify-länk</span>
+                          <span class="choice-tile__title">Spotify-länk</span>
                           <span class="choice-tile__desc">Klistra in länk eller URI till en spellista.</span>
                         </span>
                         <span class="choice-tile__glyph choice-tile__glyph--trail" aria-hidden="true">
@@ -449,8 +449,16 @@
                   <div id="block-existing-from-list" class="existing-pl-source-block">
                     <label for="existing-pl-select" class="label">Spellista</label>
                     <select id="existing-pl-select" class="select" aria-describedby="existing-pl-select-help"></select>
-                    <p class="help" id="existing-pl-select-help">
-                      Listan hämtas från Spotify och visar spellistor du äger vars namn börjar med ditt prefix.
+                    <p class="help existing-pl-select-help-row" id="existing-pl-select-help">
+                      <span>Listan hämtas från Spotify och visar spellistor du äger vars namn börjar med</span>
+                      <button
+                        type="button"
+                        class="inline-flow-link"
+                        id="existing-pl-prefix-link"
+                        data-flow-step="settings"
+                        aria-controls="flow-step-settings"
+                      ></button>
+                      <span aria-hidden="true">.</span>
                     </p>
                     <button type="button" class="btn btn--with-icon" id="btn-refresh-pl-list">
                       <span class="btn__icon-wrap" aria-hidden="true">

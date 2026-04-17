@@ -516,6 +516,7 @@ function setFlowStep(step, opts = {}) {
   }
   updateSummarySubtitle(step);
   updateSummaryTip(step);
+  syncPlaylistModeBlocks();
   refreshSummary();
   scrollAppToTop();
   if (focusPanel) {
@@ -633,7 +634,7 @@ function refreshSummary() {
     sumRowExtra.hidden = false;
     const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
     sumExtraLabel.textContent = 'Källa';
-    sumExtra.textContent = src === 'from-list' ? 'Mina listor med prefix' : 'ID eller länk';
+    sumExtra.textContent = src === 'from-list' ? 'Mina listor med prefix' : 'Spotify-länk';
   }
 
   if (vaultData?.tokens?.expiresAt) {
@@ -712,6 +713,16 @@ function updateNewPlaylistPreview() {
   const pre = getPlaylistPrefixFromInput();
   const suf = $('new-pl-name').value.trim() || '…';
   $('new-pl-preview').textContent = `${pre}${suf}`;
+  syncExistingPlSelectHelpPrefix();
+}
+
+/** Visar aktuellt prefix som länk till Inställningar (spelliste-prefix). */
+function syncExistingPlSelectHelpPrefix() {
+  const link = document.getElementById('existing-pl-prefix-link');
+  if (!link) return;
+  const raw = getPlaylistPrefixFromInput();
+  link.textContent = raw;
+  link.setAttribute('aria-label', `Gå till Inställningar och redigera prefix: ${raw}`);
 }
 
 function updateExistingPlaylistSourceUi() {
@@ -768,22 +779,25 @@ function maybeRefreshPlaylistsWhenTabVisible() {
   refreshExistingPlaylistSelect({ quiet: true }).catch(() => {});
 }
 
+/** Synkar steg 3: ny vs befintlig spellista (måste köras vid stegbyte, inte bara vid pl-mode change). */
+function syncPlaylistModeBlocks() {
+  const v = document.querySelector('input[name="pl-mode"]:checked')?.value ?? 'new';
+  const isNew = v === 'new';
+  $('block-new-playlist').hidden = !isNew;
+  $('block-existing-playlist').hidden = isNew;
+  if (!isNew) {
+    updateExistingPlaylistSourceUi();
+    const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
+    if (src === 'from-list' && spotifyClient) {
+      refreshExistingPlaylistSelect({ quiet: true }).catch((e) => showToast(String(e?.message ?? e), true));
+    }
+  }
+}
+
 function wirePlaylistMode() {
   const modes = document.querySelectorAll('input[name="pl-mode"]');
-  const blockNew = $('block-new-playlist');
-  const blockEx = $('block-existing-playlist');
   const update = () => {
-    const v = document.querySelector('input[name="pl-mode"]:checked')?.value;
-    const isNew = v === 'new';
-    blockNew.hidden = !isNew;
-    blockEx.hidden = isNew;
-    if (!isNew) {
-      updateExistingPlaylistSourceUi();
-      const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
-      if (src === 'from-list' && spotifyClient) {
-        refreshExistingPlaylistSelect({ quiet: true }).catch((e) => showToast(String(e?.message ?? e), true));
-      }
-    }
+    syncPlaylistModeBlocks();
     refreshSummary();
     syncPageLeadStep3();
     syncStep3CardHeadings();
