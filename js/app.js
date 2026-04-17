@@ -455,6 +455,13 @@ function syncStep3CardHeadings() {
   }
 }
 
+/** Scrolla fönstret till toppen så stegbyte inte landar mitt i sidan (t.ex. Välj musik). */
+function scrollAppToTop() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
 /**
  * @param {'0' | '1' | '2' | '3' | 'settings'} step
  * @param {{ focusPanel?: boolean }} [opts] focusPanel: flytta fokus till aktivt steg (t.ex. efter klick i steglisten), inte vid sidladdning.
@@ -510,14 +517,17 @@ function setFlowStep(step, opts = {}) {
   updateSummarySubtitle(step);
   updateSummaryTip(step);
   refreshSummary();
+  scrollAppToTop();
   if (focusPanel) {
     const panelId = step === 'settings' ? 'flow-step-settings' : `flow-step-${step}`;
     const panel = document.getElementById(panelId);
-    if (panel) {
-      requestAnimationFrame(() => {
-        panel.focus({ preventScroll: false });
-      });
-    }
+    requestAnimationFrame(() => {
+      scrollAppToTop();
+      if (panel) panel.focus({ preventScroll: true });
+      requestAnimationFrame(scrollAppToTop);
+    });
+  } else {
+    requestAnimationFrame(() => scrollAppToTop());
   }
 }
 

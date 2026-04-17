@@ -260,7 +260,7 @@
                   <div class="flow-card__titles">
                     <h2 class="flow-card__title flow-card__title--hero-step" id="heading-paste">Klistra in låtlista</h2>
                     <p class="flow-card__subtitle" id="paste-help">
-                      En rad per låt. <kbd>Artist</kbd> – <kbd>Titel</kbd>, eller <kbd>Titel</kbd> av <kbd>Artist</kbd>. <strong>Sök på Spotify</strong> hämtar träffar.
+                      Klistra in en låt per rad. Du kan använda formatet Artist - Titel
                     </p>
                   </div>
                 </div>
@@ -275,13 +275,13 @@
                   placeholder="Exempel:&#10;ABBA – Dancing Queen&#10;Waterloo av ABBA"
                 ></textarea>
                 <div class="row row--wrap row--paste-actions">
+                  <button type="button" class="btn" id="btn-clear-paste">Rensa</button>
                   <button type="button" class="btn btn--primary btn--with-icon btn--flow-nav-width" id="btn-search" disabled>
                     <span class="btn__icon-wrap btn__icon-wrap--spotify" aria-hidden="true">
                       <svg class="btn__icon" width="20" height="20"><use href="#sym-spotify-mark" /></svg>
                     </span>
                     <span>Sök på Spotify</span>
                   </button>
-                  <button type="button" class="btn" id="btn-clear-paste">Rensa</button>
                 </div>
               </div>
 
@@ -318,9 +318,9 @@
                     <div id="results-body" class="results-list__blocks"></div>
                   </div>
                 </div>
-                <div class="row row--wrap">
-                  <button type="button" class="btn btn--primary" id="btn-select-all">Markera alla med träff</button>
+                <div class="row row--wrap row--selection-actions">
                   <button type="button" class="btn" id="btn-clear-selection">Avmarkera</button>
+                  <button type="button" class="btn btn--primary" id="btn-select-all">Markera alla med träff</button>
                 </div>
                 <div class="flow-nav">
                   <p class="flow-nav__hint">

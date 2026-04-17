@@ -604,6 +604,13 @@ a:focus-visible {
 }
 
 .row--paste-actions {
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-sm) var(--space);
+}
+
+.row--selection-actions {
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-sm) var(--space);
 }
