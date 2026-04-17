@@ -156,7 +156,7 @@
                 <p class="help help--tight" id="client-id-intro">
                   Ange ditt eget <strong>Client ID</strong> från
                   <a href="https://developer.spotify.com/dashboard" rel="noopener noreferrer" target="_blank">Spotify Developer Dashboard</a>.
-                  <strong>PKCE</strong> används för säker inloggning — inget <em>Client secret</em> behövs.
+                  <strong>PKCE</strong> används för säker autentisering — inget <strong>Client Secret</strong> behövs.
                 </p>
                 <label for="client-id" class="label">Client ID</label>
                 <input
@@ -187,7 +187,7 @@
                     aria-label="Visa lösenfras"
                     aria-pressed="false"
                   >
-                    <svg width="22" height="22" aria-hidden="true"><use href="#sym-eye" /></svg>
+                    <svg class="password-field__toggle-icon" aria-hidden="true"><use href="#sym-eye" /></svg>
                   </button>
                 </div>
                 <p class="help" id="crypto-pass-help">Minst 8 tecken. Krävs för lokal kryptering (IndexedDB).</p>

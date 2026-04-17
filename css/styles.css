@@ -299,6 +299,29 @@ body {
   gap: var(--space-sm) var(--space);
 }
 
+/* Steg 0: jämnare vertikal rytm mellan intro, fält och knappar */
+#flow-step-0 #client-id-intro {
+  margin-bottom: 1.1rem;
+}
+
+#flow-step-0 #client-id-help {
+  margin-bottom: 1rem;
+}
+
+#flow-step-0 #crypto-pass-help {
+  margin-bottom: 1.05rem;
+}
+
+#flow-step-0 .row--auth-actions {
+  margin-top: 1.15rem;
+  align-items: center;
+}
+
+#flow-step-0 .btn--with-icon .btn__icon {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
 .password-field {
   position: relative;
   display: flex;
@@ -326,8 +349,14 @@ body {
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--text-muted);
+  color: color-mix(in srgb, var(--text) 48%, var(--text-muted));
   cursor: pointer;
+}
+
+.password-field__toggle-icon {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .password-field__toggle:hover {

@@ -313,6 +313,32 @@ body {
   height: 1.9rem;
 }
 
+/* Steg 0 Spotify: större märke + tyngre rubrik (målbild, utan filter på ikon) */
+#flow-step-0 .flow-card__head {
+  margin-bottom: 1.1rem;
+}
+
+#flow-step-0 .flow-card__icon-ring--spotify {
+  width: 3.05rem;
+  height: 3.05rem;
+  border-width: 1.5px;
+  box-shadow:
+    0 2px 10px rgba(15, 20, 25, 0.09),
+    0 1px 3px rgba(29, 185, 84, 0.1);
+}
+
+#flow-step-0 .flow-card__icon-ring--spotify svg {
+  width: 2.12rem;
+  height: 2.12rem;
+}
+
+#flow-step-0 .flow-card__title {
+  font-size: 1.32rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
 .flow-card__titles {
   min-width: 0;
 }
