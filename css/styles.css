@@ -153,13 +153,6 @@ body {
   line-height: 1.55;
 }
 
-/* Ingress under kortrubrik: lite tydligare än vanlig hjälptext */
-.help--ingress {
-  font-size: 0.93rem;
-  line-height: 1.6;
-  color: color-mix(in srgb, var(--text) 22%, var(--text-muted));
-}
-
 .help kbd {
   font: inherit;
   font-size: 0.85em;
@@ -306,11 +299,7 @@ body {
   gap: var(--space-sm) var(--space);
 }
 
-/* Steg 0: jämnare vertikal rytm mellan intro, fält och knappar */
-#flow-step-0 #client-id-intro {
-  margin-bottom: 1.1rem;
-}
-
+/* Steg 0: jämnare vertikal rytm mellan fält och knappar */
 #flow-step-0 #client-id-help {
   margin-bottom: 1rem;
 }
@@ -438,6 +427,19 @@ body {
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.35;
+}
+
+.auth-status-card__expl {
+  margin: 0.45rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 400;
+  line-height: 1.48;
+  color: color-mix(in srgb, var(--text-muted) 94%, var(--text));
+}
+
+.auth-status-card__expl a {
+  font-weight: 600;
+  color: var(--link);
 }
 
 .auth-status-card__meta {

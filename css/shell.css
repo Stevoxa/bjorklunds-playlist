@@ -313,30 +313,54 @@ body {
   height: 1.9rem;
 }
 
-/* Steg 0 Spotify: större märke + tyngre rubrik (målbild, utan filter på ikon) */
-#flow-step-0 .flow-card__head {
-  margin-bottom: 1.1rem;
+/* Steg 0 Spotify: hög ikon bredvid rubrik + ingress (två rader) */
+.flow-card__head--spotify-hero {
+  align-items: flex-start;
+  gap: 1.05rem;
+  margin-bottom: 1.2rem;
 }
 
-#flow-step-0 .flow-card__icon-ring--spotify {
-  width: 3.05rem;
-  height: 3.05rem;
+.flow-card__head--spotify-hero .flow-card__icon-ring--spotify {
+  width: 4.45rem;
+  height: 4.45rem;
   border-width: 1.5px;
   box-shadow:
-    0 2px 10px rgba(15, 20, 25, 0.09),
-    0 1px 3px rgba(29, 185, 84, 0.1);
+    0 2px 12px rgba(15, 20, 25, 0.1),
+    0 1px 4px rgba(29, 185, 84, 0.12);
 }
 
-#flow-step-0 .flow-card__icon-ring--spotify svg {
-  width: 2.12rem;
-  height: 2.12rem;
+.flow-card__head--spotify-hero .flow-card__icon-ring--spotify svg {
+  width: 2.85rem;
+  height: 2.85rem;
 }
 
-#flow-step-0 .flow-card__title {
-  font-size: 1.32rem;
+.flow-card__head--spotify-hero .flow-card__title {
+  font-size: 1.42rem;
   font-weight: 800;
   letter-spacing: -0.03em;
-  line-height: 1.2;
+  line-height: 1.15;
+}
+
+.flow-card__lead {
+  margin: 0.4rem 0 0;
+  font-size: 0.92rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.flow-card__lead a {
+  font-weight: 600;
+}
+
+[data-theme='dark'] .flow-card__lead {
+  color: color-mix(in srgb, var(--text-muted) 88%, var(--text));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .flow-card__lead {
+    color: color-mix(in srgb, var(--text-muted) 88%, var(--text));
+  }
 }
 
 .flow-card__titles {

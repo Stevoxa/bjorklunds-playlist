@@ -253,6 +253,30 @@ async function refreshSpotifyUserDisplay() {
   }
 }
 
+const SPOTIFY_DASHBOARD_URL = 'https://developer.spotify.com/dashboard';
+
+/**
+ * Lägger till avsnittet om Client ID + PKCE (samma som i Spotify-kortets ingress + statusrutan).
+ * @param {HTMLElement} parent
+ */
+function appendSpotifyClientSetupExplainer(parent) {
+  const p = document.createElement('p');
+  p.className = 'auth-status-card__expl';
+  const a = document.createElement('a');
+  a.href = SPOTIFY_DASHBOARD_URL;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.textContent = 'Spotify Developer Dashboard';
+  p.append(
+    document.createTextNode('Ange ditt eget Client ID från '),
+    a,
+    document.createTextNode(
+      '. PKCE används för säker autentisering, så inget Client Secret behövs.',
+    ),
+  );
+  parent.append(p);
+}
+
 /**
  * @param {string} [extraHint] Extra rad när valv finns men ingen session (vid första laddning).
  */
@@ -272,6 +296,7 @@ function setAuthStatus(extraHint = '') {
     title.className = 'auth-status-card__title';
     title.textContent = 'Inte inloggad på Spotify.';
     body.append(title);
+    appendSpotifyClientSetupExplainer(body);
     if (extraHint) {
       const note = document.createElement('p');
       note.className = 'auth-status-card__note';
