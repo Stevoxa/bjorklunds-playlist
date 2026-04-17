@@ -1,5 +1,4 @@
 import { DEFAULT_PLAYLIST_NAME_PREFIX } from './config.js';
-import { applyIconDisplay, getIconDisplayMode, rasterIconSrc, resolveIconHref } from './icon-sprite.js';
 import { getRedirectUri, beginLogin, consumeOAuthCallback } from './auth.js';
 import { loadVault, saveVault, VAULT_KEY } from './vault.js';
 import { idbGet } from './db.js';
@@ -214,26 +213,12 @@ function initSpotifyClient() {
  * @param {number} [size]
  */
 function svgUseEl(symbolId, size = 24) {
-  if (getIconDisplayMode() === 'raster') {
-    const id = symbolId.startsWith('#') ? symbolId.slice(1) : symbolId;
-    const slug = id.startsWith('sym-') ? id.slice(4) : id;
-    const img = document.createElement('img');
-    img.className = 'ui-icon';
-    if (slug === 'spotify' || slug === 'spotify-mark') img.classList.add('ui-icon--spotify');
-    img.src = rasterIconSrc(slug);
-    img.width = size;
-    img.height = size;
-    img.alt = '';
-    img.setAttribute('aria-hidden', 'true');
-    img.decoding = 'async';
-    return img;
-  }
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', String(size));
   svg.setAttribute('height', String(size));
   svg.setAttribute('aria-hidden', 'true');
   const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  use.setAttribute('href', resolveIconHref(symbolId));
+  use.setAttribute('href', symbolId.startsWith('#') ? symbolId : `#${symbolId}`);
   svg.append(use);
   return svg;
 }
@@ -1152,7 +1137,6 @@ async function registerServiceWorker() {
 }
 
 async function boot() {
-  applyIconDisplay();
   $('redirect-uri-display').textContent = getRedirectUri();
 
   const logPre = $('spotify-log-pre');
@@ -1374,15 +1358,13 @@ async function boot() {
   const passInp = $('crypto-pass');
   const passTog = $('btn-toggle-pass-visibility');
   const passUse = passTog.querySelector('use');
-  const passImg = passTog.querySelector('img');
-  if (passUse || passImg) {
+  if (passUse) {
     passTog.addEventListener('click', () => {
       const show = passInp.type === 'password';
       passInp.type = show ? 'text' : 'password';
       passTog.setAttribute('aria-pressed', show ? 'true' : 'false');
       passTog.setAttribute('aria-label', show ? 'Dölj lösenfras' : 'Visa lösenfras');
-      if (passImg) passImg.src = rasterIconSrc(show ? 'eye-off' : 'eye');
-      else if (passUse) passUse.setAttribute('href', resolveIconHref(show ? '#sym-eye-off' : '#sym-eye'));
+      passUse.setAttribute('href', show ? '#sym-eye-off' : '#sym-eye');
     });
   }
 

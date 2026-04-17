@@ -22,24 +22,5 @@ export const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 /** Standardprefix för nya spellistor (användaren skriver bara suffix i appen). */
 export const DEFAULT_PLAYLIST_NAME_PREFIX = 'Björklunds playlist - ';
 
-/**
- * Ikoner: 'raster' = PNG ur icons/bild8/raster (klippta från designblad, npm run icons:sheet).
- * 'svg' = vektor: inline-sprite i index.html, ev. extern fil nedan.
- * Tillbaka till vektor: sätt 'svg' här eller sessionStorage iconDisplayMode = 'svg' + reload.
- */
-export const ICON_DISPLAY_MODE = 'raster';
-
-/** Baskatalog för PNG (filnamn = sym-id utan prefix, t.ex. clipboard.png för #sym-clipboard). */
-export const ICON_RASTER_BASE = './icons/bild8/raster/';
-
-/**
- * När ICON_DISPLAY_MODE === 'svg': 'inline' = sprite i index.html.
- * 'external' = <use> laddar från ICON_SPRITE_EXTERNAL_HREF.
- */
-export const ICON_SPRITE_MODE = 'inline';
-
-/** Måste innehålla samma <symbol id="sym-…"> som inline-spriten. */
-export const ICON_SPRITE_EXTERNAL_HREF = './icons/bild8/product-icons.svg';
-
 /** PKCE verifier length (bytes) → ~43+ chars when base64url. */
 export const PKCE_VERIFIER_LENGTH = 64;

@@ -66,18 +66,8 @@ function main() {
     console.error('smoke-html: sw.js saknar shell.css i ASSETS');
     process.exit(1);
   }
-  if (!sw.includes("'./js/icon-sprite.js'")) {
-    console.error('smoke-html: sw.js saknar icon-sprite.js i ASSETS');
-    process.exit(1);
-  }
 
-  const raster = join(root, 'icons/bild8/raster/clipboard.png');
-  if (!existsSync(raster)) {
-    console.error('smoke-html: kör npm run icons:sheet (saknas', raster, ')');
-    process.exit(1);
-  }
-
-  console.log('smoke-html: OK (', REQUIRED_IDS.length, 'id + shell.css + sw + raster)');
+  console.log('smoke-html: OK (', REQUIRED_IDS.length, 'id + shell.css + sw)');
 }
 
 main();
