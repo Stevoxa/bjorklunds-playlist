@@ -265,7 +265,7 @@
                   placeholder="Exempel:&#10;ABBA – Dancing Queen&#10;Waterloo av ABBA"
                 ></textarea>
                 <div class="row row--wrap row--paste-actions">
-                  <button type="button" class="btn btn--primary btn--with-icon" id="btn-search" disabled>
+                  <button type="button" class="btn btn--primary btn--with-icon btn--flow-nav-width" id="btn-search" disabled>
                     <span class="btn__icon-wrap btn__icon-wrap--spotify" aria-hidden="true">
                       <svg class="btn__icon" width="20" height="20"><use href="#sym-spotify-mark" /></svg>
                     </span>
@@ -491,14 +491,19 @@
                 </div>
 
                 <div class="row row--wrap row--apply">
-                  <button type="button" class="btn btn--primary" id="btn-apply-playlist" disabled>
-                    Utför<span class="btn__trail" aria-hidden="true">›</span>
-                  </button>
                   <p class="help row--apply__hint" id="apply-hint" aria-live="polite"></p>
+                  <button
+                    type="button"
+                    class="btn btn--primary row--apply__primary btn--flow-nav-width btn--slutfor"
+                    id="btn-apply-playlist"
+                    disabled
+                  >
+                    Slutför
+                  </button>
                 </div>
                 <div class="flow-nav">
-                  <button type="button" class="btn" data-flow-goto="2">Tillbaka: Spellista</button>
-                  <button type="button" class="btn" data-flow-goto="1">Låtar</button>
+                  <button type="button" class="btn btn--flow-nav-width" data-flow-goto="2">Tillbaka: Spellista</button>
+                  <button type="button" class="btn btn--flow-nav-width" data-flow-goto="1">Låtar</button>
                 </div>
               </div>
             </section>

@@ -437,7 +437,7 @@ function syncPageLeadStep3() {
   lead.textContent =
     mode === 'new'
       ? 'Skapa och publicera din spellista på Spotify. Följ stegen nedan och utför åtgärden när du är redo.'
-      : 'Välj hur du hittar spellistan och hur låtarna ska läggas till innan du kör Utför.';
+      : 'Välj hur du hittar spellistan och hur låtarna ska läggas till innan du kör Slutför.';
 }
 
 /** Rubrik i kortet steg 3 växlar mellan ny / befintlig spellista. */
@@ -528,7 +528,7 @@ function updateSummarySubtitle(step) {
     '0': 'Status för inloggning och nästa steg.',
     '1': 'Kontrollera dina val innan du går vidare till spellista.',
     '2': 'Kontrollera dina val innan du fortsätter.',
-    '3': 'Kontrollera dina val innan du utför åtgärden.',
+    '3': 'Kontrollera dina val innan du klickar Slutför.',
     settings: 'Kontrollera dina val innan du fortsätter.',
   };
   el.textContent = lines[step] ?? '';
@@ -552,7 +552,7 @@ function updateSummaryTip(step) {
     '1':
       'Använd brytarna för att ta med en rad i spellistan och radioknapparna för att välja rätt version av spåret.',
     '2': 'Du måste vara inloggad via Spotify för att fortsätta.',
-    '3': 'Kontrollera sammanfattningen till höger innan du klickar Utför.',
+    '3': 'Kontrollera sammanfattningen till höger innan du klickar Slutför.',
     settings: 'Prefixet används när du skapar nya spellistor och när listor filtreras på prefix.',
   };
   tip.textContent = tips[step] ?? tips['0'];

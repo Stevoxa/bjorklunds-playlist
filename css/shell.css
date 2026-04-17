@@ -578,29 +578,9 @@ body {
   color: var(--text);
 }
 
-/* Steg 3 befintlig lista: horisontella valkort (radio + rubrik/ingress + ikon) */
+/* Steg 3 befintlig lista: horisontella valkort (dold radio som steg 2, rubrik/ingress + ikon till höger) */
 .choice-grid--option-cards {
   gap: 0.85rem;
-}
-
-.choice-tile.choice-tile--row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 0.75rem 1rem;
-}
-
-.choice-tile--row > input[type='radio'] {
-  position: static;
-  opacity: 1;
-  width: 1.2rem;
-  height: 1.2rem;
-  margin: 0;
-  flex-shrink: 0;
-  cursor: pointer;
-  accent-color: var(--spotify);
-  pointer-events: auto;
-  align-self: center;
 }
 
 .choice-tile--row .choice-tile__body {
@@ -619,6 +599,11 @@ body {
   flex-direction: column;
   gap: 0.2rem;
   min-width: 0;
+}
+
+.choice-tile--row .choice-tile__text {
+  justify-content: center;
+  align-self: center;
 }
 
 .choice-tile__title {
@@ -648,6 +633,31 @@ body {
 
 .choice-tile--row input:checked + .choice-tile__body .choice-tile__glyph--trail svg {
   color: var(--spotify);
+}
+
+/* Ersätt spellista: röd markerad ruta (samma idé som Spotify-grön) */
+.choice-tile--row input[name='pl-update'][value='replace']:checked + .choice-tile__body {
+  border-color: color-mix(in srgb, var(--danger) 52%, var(--border));
+  background: color-mix(in srgb, var(--danger) 11%, var(--surface));
+}
+
+.choice-tile--row input[name='pl-update'][value='replace']:checked + .choice-tile__body .choice-tile__glyph--trail svg {
+  color: var(--danger);
+}
+
+.choice-tile--row input[name='pl-update'][value='replace']:focus-visible + .choice-tile__body {
+  outline: 3px solid color-mix(in srgb, var(--danger) 65%, transparent);
+  outline-offset: 2px;
+}
+
+[data-theme='dark'] .choice-tile--row input[name='pl-update'][value='replace']:checked + .choice-tile__body {
+  background: color-mix(in srgb, var(--danger) 16%, var(--surface));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .choice-tile--row input[name='pl-update'][value='replace']:checked + .choice-tile__body {
+    background: color-mix(in srgb, var(--danger) 16%, var(--surface));
+  }
 }
 
 [data-theme='dark'] .choice-tile__desc {

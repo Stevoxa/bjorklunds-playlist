@@ -24,6 +24,8 @@
   --focus-offset: 2px;
   --spotify: #1db954;
   --danger: #c62828;
+  /* Gemensam minbredd för flödesknappar (jmf. Sök på Spotify) */
+  --flow-nav-btn-width: min(100%, 14rem);
   --text: #0f1419;
   --text-muted: #3d4f5f;
   --bg: #f4f7f9;
@@ -202,6 +204,10 @@ body {
   gap: 1.35rem;
 }
 
+.existing-pl-stack > .choice-grid--option-cards:first-of-type {
+  margin-bottom: 3px;
+}
+
 .existing-pl-stack .existing-pl-source-block {
   margin-bottom: 0;
 }
@@ -256,6 +262,17 @@ body {
   padding-inline: 1.1rem;
 }
 
+.btn--flow-nav-width {
+  min-width: var(--flow-nav-btn-width);
+  box-sizing: border-box;
+}
+
+.btn--slutfor {
+  justify-content: flex-start;
+  text-align: start;
+  padding-inline: 1.1rem 1.25rem;
+}
+
 .btn__icon-wrap {
   display: inline-flex;
   flex-shrink: 0;
@@ -268,14 +285,6 @@ body {
 
 .btn__icon-wrap--spotify {
   color: var(--btn-primary-fg);
-}
-
-.btn__trail {
-  margin-inline-start: 0.15em;
-  font-size: 1.12em;
-  font-weight: 700;
-  line-height: 1;
-  opacity: 0.9;
 }
 
 .btn:disabled {
@@ -601,13 +610,19 @@ a:focus-visible {
 
 .row--apply {
   margin-top: var(--space-lg);
-  align-items: flex-start;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .row--apply__hint {
-  flex: 1 1 14rem;
+  flex: 1 1 12rem;
   min-width: 0;
-  margin: 0.25rem 0 0;
+  margin: 0;
+}
+
+.row--apply__primary {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .results-search-progress {
