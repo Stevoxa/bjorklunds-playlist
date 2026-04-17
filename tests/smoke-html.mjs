@@ -40,7 +40,6 @@ const REQUIRED_IDS = [
   'flow-step-3',
   'flow-step-settings',
   'summary-card-subtitle',
-  'sum-foot-token',
   'summary-cta',
   'summary-cta-btn',
   'apply-hint',

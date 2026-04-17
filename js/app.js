@@ -530,7 +530,6 @@ function refreshSummary() {
   const sumRowExtra = document.getElementById('sum-row-extra');
   const sumExtra = document.getElementById('sum-extra');
   const sumExtraLabel = document.getElementById('sum-extra-label');
-  const sumFootToken = document.getElementById('sum-foot-token');
   if (!sumSpotify || !sumTracks || !sumPlaylist || !sumAction || !sumToken || !sumFoot) return;
 
   const hasToken = Boolean(vaultData?.tokens?.accessToken);
@@ -590,7 +589,9 @@ function refreshSummary() {
   }
 
   if (vaultData?.tokens?.expiresAt) {
-    sumToken.textContent = `Giltig till ${new Date(vaultData.tokens.expiresAt).toLocaleString('sv-SE')}`;
+    const t = new Date(vaultData.tokens.expiresAt);
+    const timeStr = t.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+    sumToken.textContent = `Giltig Spotify-token finns fram till ${timeStr}`;
     sumToken.classList.add('summary-list__value--ok');
   } else {
     sumToken.textContent = '—';
@@ -616,9 +617,6 @@ function refreshSummary() {
     sumFoot.textContent = 'Redo att skapa spellista.';
   }
 
-  if (sumFootToken) {
-    sumFootToken.hidden = !(hasToken && cid && spotifyClient);
-  }
   updateSummaryCta();
   syncApplyHint();
   updateSummaryTip(currentFlowStep);

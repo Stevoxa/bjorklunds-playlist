@@ -426,7 +426,10 @@ body {
 }
 
 .summary-card {
-  /* Ljusgröna ikonringar (målbild / bild 8) */
+  /* Skog/grön accent i sammanfattning (ej Spotify varumärkesgrön) */
+  --summary-forest: #1a5c42;
+  --summary-forest-soft: color-mix(in srgb, var(--summary-forest) 72%, var(--text-muted));
+  /* Ljusgröna ikonringar */
   --summary-icon-bg: color-mix(in srgb, var(--shell-mint) 78%, var(--surface));
   --summary-icon-fg: color-mix(in srgb, var(--shell-navy-muted) 92%, var(--text-muted));
   background: var(--surface);
@@ -437,6 +440,8 @@ body {
 }
 
 [data-theme='dark'] .summary-card {
+  --summary-forest: #6ecf9f;
+  --summary-forest-soft: color-mix(in srgb, var(--summary-forest) 55%, var(--text-muted));
   --summary-icon-bg: rgba(255, 255, 255, 0.1);
   --summary-icon-fg: color-mix(in srgb, var(--text) 92%, transparent);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
@@ -444,6 +449,8 @@ body {
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .summary-card {
+    --summary-forest: #6ecf9f;
+    --summary-forest-soft: color-mix(in srgb, var(--summary-forest) 55%, var(--text-muted));
     --summary-icon-bg: rgba(255, 255, 255, 0.1);
     --summary-icon-fg: color-mix(in srgb, var(--text) 92%, transparent);
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
@@ -454,8 +461,8 @@ body {
   display: flex;
   align-items: center;
   gap: 0.85rem;
-  margin-bottom: 1.15rem;
-  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
   border-bottom: 1px solid var(--border);
 }
 
@@ -474,6 +481,7 @@ body {
 .summary-card__head-icon {
   width: 1.55rem;
   height: 1.55rem;
+  filter: drop-shadow(0.4px 0 0 currentColor) drop-shadow(-0.4px 0 0 currentColor);
 }
 
 .summary-card__head-text {
@@ -482,10 +490,10 @@ body {
 
 .summary-card__title {
   margin: 0;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--shell-navy);
-  letter-spacing: -0.02em;
+  font-size: 1.12rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--shell-navy) 55%, #4a5c56 45%);
+  letter-spacing: -0.015em;
 }
 
 .summary-card__subtitle {
@@ -497,7 +505,8 @@ body {
 }
 
 [data-theme='dark'] .summary-card__title {
-  color: var(--text);
+  color: color-mix(in srgb, var(--text) 78%, rgb(160 185 175) 22%);
+  font-weight: 600;
 }
 
 [data-theme='dark'] .summary-card__subtitle {
@@ -506,15 +515,15 @@ body {
 
 .summary-list {
   margin: 0;
-  padding: 0.35rem 0 0;
+  padding: 0.25rem 0 0;
   list-style: none;
 }
 
 .summary-list__item {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  padding: 1.15rem 0;
+  gap: 0.85rem;
+  padding: 1rem 0;
 }
 
 .summary-list__item + .summary-list__item {
@@ -541,16 +550,24 @@ body {
 .summary-list__glyph {
   width: 1.38rem;
   height: 1.38rem;
+  /* Lite ”grövre” kontur på fyllda Bootstrap-ikoner */
+  filter: drop-shadow(0.4px 0 0 currentColor) drop-shadow(-0.4px 0 0 currentColor);
 }
 
 .summary-list__glyph--spotify {
   width: 1.72rem;
   height: 1.72rem;
+  filter: none;
 }
 
 .summary-list__glyph--playlist {
   width: 1.45rem;
   height: 1.45rem;
+}
+
+.summary-list__glyph--token {
+  width: 1.32rem;
+  height: 1.32rem;
 }
 
 .summary-list__body {
@@ -576,16 +593,16 @@ body {
 }
 
 .summary-list__value {
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1.35;
-  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--text) 88%, var(--text-muted));
   overflow-wrap: anywhere;
 }
 
 .summary-list__value--ok {
-  color: var(--spotify);
-  font-weight: 800;
+  color: var(--summary-forest);
+  font-weight: 600;
 }
 
 .summary-foot {
@@ -600,23 +617,6 @@ body {
   font-size: 0.86rem;
   line-height: 1.45;
   color: var(--text-muted);
-}
-
-.summary-foot__token {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  margin: 0.65rem 0 0;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--spotify);
-  text-align: center;
-}
-
-.summary-foot__lock {
-  flex-shrink: 0;
-  color: var(--spotify);
 }
 
 .summary-cta {
@@ -637,11 +637,11 @@ body {
   text-align: center;
   font-size: 0.84rem;
   line-height: 1.48;
-  color: color-mix(in srgb, var(--text) 88%, var(--spotify));
+  color: var(--summary-forest-soft);
 }
 
 [data-theme='dark'] .summary-tip {
-  background: color-mix(in srgb, var(--spotify) 14%, var(--surface));
+  background: color-mix(in srgb, var(--summary-forest) 12%, var(--surface));
   color: var(--text-muted);
 }
 
@@ -656,13 +656,14 @@ body {
 .summary-tip__bulb {
   width: 1.5rem;
   height: 1.5rem;
-  color: var(--spotify);
+  color: var(--summary-forest);
+  filter: drop-shadow(0.4px 0 0 currentColor) drop-shadow(-0.4px 0 0 currentColor);
 }
 
 .summary-tip__title {
-  font-weight: 700;
-  font-size: 0.88rem;
-  color: var(--spotify);
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--summary-forest);
 }
 
 .summary-tip__text {
