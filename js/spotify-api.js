@@ -209,6 +209,17 @@ function scheduleSearchGetChain(fn) {
 }
 
 /**
+ * Kör arbete efter samma Promise-kedja som serialiserar /search-anrop — undvik parallella Spotify-anrop
+ * (t.ex. om vi senare lägger till GET /tracks för preview).
+ * @template T
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+export function enqueueAfterSpotifySearchChain(fn) {
+  return scheduleSearchGetChain(fn);
+}
+
+/**
  * @param {number} ms
  * @param {AbortSignal | undefined} signal
  */

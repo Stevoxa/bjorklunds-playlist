@@ -1,4 +1,4 @@
-import { DEFAULT_PLAYLIST_NAME_PREFIX } from './config.js';
+import { DEFAULT_PLAYLIST_NAME_PREFIX, FEATURE_ROW_PREVIEW_PLAYER } from './config.js';
 import { getRedirectUri, beginLogin, consumeOAuthCallback } from './auth.js';
 import { loadVault, saveVault, VAULT_KEY } from './vault.js';
 import { idbGet } from './db.js';
@@ -7,6 +7,12 @@ import { createSpotifyClient, parsePlaylistIdFromInput } from './spotify-api.js'
 import { subscribeSpotifyLog, clearSpotifyLog, logSpotify } from './spotify-log.js';
 import { makeSearchCacheKey, getSearchCache, setSearchCache, clearSearchCache } from './search-cache.js';
 import { readSpotifySession, writeSpotifySession, clearSpotifySession } from './token-session.js';
+import {
+  bindRowPreviewControls,
+  stopRowPreview,
+  notifyRowPreviewTrackChanged,
+  afterRenderRowPreview,
+} from './row-preview-player.js';
 
 /** @type {ReturnType<createSpotifyClient> | null} */
 let spotifyClient = null;
@@ -981,6 +987,7 @@ function renderResults() {
   const blocks = $('results-body');
   blocks.replaceChildren();
   if (resultRows.length === 0) {
+    if (FEATURE_ROW_PREVIEW_PLAYER) stopRowPreview();
     $('results-section').hidden = true;
     $('results-summary').textContent = '';
     $('results-summary').hidden = false;
@@ -1033,7 +1040,42 @@ function renderResults() {
     track.append(mark, thumb);
     switchLabel.append(chk, track);
     pickCell.append(switchLabel);
-    queryRow.append(queryEl, pickCell);
+    queryRow.classList.toggle('match-block__query-row--with-audio', hasHits && FEATURE_ROW_PREVIEW_PLAYER);
+    if (hasHits && FEATURE_ROW_PREVIEW_PLAYER) {
+      const previewWrap = document.createElement('div');
+      previewWrap.className = 'match-block__preview';
+      previewWrap.setAttribute('role', 'group');
+      previewWrap.setAttribute('aria-label', 'Förhandslyssning för vald träff');
+
+      const playBtn = document.createElement('button');
+      playBtn.type = 'button';
+      playBtn.className = 'row-preview__btn row-preview__play';
+      playBtn.setAttribute('aria-label', 'Spela förhandslyssning');
+      playBtn.innerHTML = '<svg width="14" height="14" aria-hidden="true"><use href="#sym-play" /></svg>';
+
+      const scrub = document.createElement('div');
+      scrub.className = 'row-preview__scrub';
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.className = 'row-preview__range';
+      range.min = '0';
+      range.max = '1';
+      range.step = '0.001';
+      range.value = '0';
+      range.setAttribute('aria-label', 'Spola i förhandslyssning');
+      scrub.append(range);
+
+      const stopBtn = document.createElement('button');
+      stopBtn.type = 'button';
+      stopBtn.className = 'row-preview__btn row-preview__stop';
+      stopBtn.setAttribute('aria-label', 'Stoppa uppspelning');
+      stopBtn.innerHTML = '<svg width="14" height="14" aria-hidden="true"><use href="#sym-stop" /></svg>';
+
+      previewWrap.append(playBtn, scrub, stopBtn);
+      queryRow.append(queryEl, previewWrap, pickCell);
+    } else {
+      queryRow.append(queryEl, pickCell);
+    }
     article.classList.toggle('match-block--excluded', hasHits && row.includedInPlaylist === false);
     chk.addEventListener('change', () => {
       row.includedInPlaylist = chk.checked;
@@ -1070,6 +1112,7 @@ function renderResults() {
         radio.checked = row.selectedUri === t.uri || (row.selectedUri === null && ti === 0);
         radio.addEventListener('change', () => {
           row.selectedUri = t.uri;
+          notifyRowPreviewTrackChanged(idx);
           updateApplyEnabled();
         });
         const line = document.createElement('span');
@@ -1088,6 +1131,7 @@ function renderResults() {
   if (!searchInProgress) finalizeResultsSummary();
   updateApplyEnabled();
   refreshSummary();
+  if (FEATURE_ROW_PREVIEW_PLAYER) afterRenderRowPreview();
 }
 
 function syncApplyHint() {
@@ -1206,6 +1250,7 @@ async function runSearch() {
     showToast('Inga rader att söka. Klistra in en låtlista först.', true);
     return;
   }
+  if (FEATURE_ROW_PREVIEW_PLAYER) stopRowPreview();
   resultRows = parsed.map((p) => ({ ...p, tracks: null, selectedUri: null, includedInPlaylist: true }));
   searchInProgress = true;
   searchAbortController = new AbortController();
@@ -1433,6 +1478,7 @@ async function boot() {
   });
 
   $('btn-abort-search').addEventListener('click', () => {
+    if (FEATURE_ROW_PREVIEW_PLAYER) stopRowPreview();
     searchAbortController?.abort();
   });
 
@@ -1501,6 +1547,12 @@ async function boot() {
   wireFlow();
   wireFlowModeNav();
   wirePlaylistMode();
+  if (FEATURE_ROW_PREVIEW_PLAYER) {
+    bindRowPreviewControls($('results-body'), {
+      getRows: () => resultRows,
+      showMessage: (text, isError) => showToast(text, Boolean(isError)),
+    });
+  }
   $('new-pl-name').addEventListener('input', () => {
     updateNewPlaylistPreview();
     refreshSummary();
@@ -1565,6 +1617,7 @@ async function boot() {
   });
 
   $('btn-logout').addEventListener('click', async () => {
+    if (FEATURE_ROW_PREVIEW_PLAYER) stopRowPreview();
     vaultData = vaultData ?? defaultVault();
     vaultData.clientId = getClientId();
     vaultData.settings = {
@@ -1591,6 +1644,7 @@ async function boot() {
   $('btn-search').addEventListener('click', () => runSearch());
 
   $('btn-clear-paste').addEventListener('click', () => {
+    if (FEATURE_ROW_PREVIEW_PLAYER) stopRowPreview();
     $('paste-area').value = '';
     resultRows = [];
     searchInProgress = false;

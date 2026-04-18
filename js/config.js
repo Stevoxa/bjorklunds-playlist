@@ -25,5 +25,8 @@ export const SPOTIFY_TOKEN_REFRESH_LEEWAY_MS = 10 * 60 * 1000;
 /** Standardprefix för nya spellistor (användaren skriver bara suffix i appen). */
 export const DEFAULT_PLAYLIST_NAME_PREFIX = 'Björklunds playlist - ';
 
+/** Rad-förhandslyssning (preview_url + HTML5 audio). Sätt till false för att stänga av UI och logik. */
+export const FEATURE_ROW_PREVIEW_PLAYER = true;
+
 /** PKCE verifier length (bytes) → ~43+ chars when base64url. */
 export const PKCE_VERIFIER_LENGTH = 64;
