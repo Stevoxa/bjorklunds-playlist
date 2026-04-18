@@ -898,6 +898,12 @@ a:focus-visible {
   color: var(--spotify);
 }
 
+.row-preview__play--busy {
+  cursor: progress;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
 .row-preview__scrub {
   flex: 1;
   min-width: 0;

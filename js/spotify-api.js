@@ -426,6 +426,11 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
   return {
     getTokens: () => ({ ...t }),
 
+    /** @returns {Promise<string>} Giltig access token (uppdateras automatiskt vid behov). */
+    getAccessToken() {
+      return ensureAccess();
+    },
+
     async me() {
       let access = await ensureAccess();
       let res = await api(access, '/me');
@@ -538,6 +543,73 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         }
       }
       return [];
+    },
+
+    /**
+     * Fulla track-objekt för id (GET /tracks, max 50). Köas via samma kedja som /search så vi inte parallellastar API:t.
+     * Kan ge `preview_url` när sök-svaret bara hade förenklad data utan klipp.
+     * @param {string[]} ids
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<object[]>}
+     */
+    async getTracksByIds(ids, signal) {
+      const clean = [...new Set((ids || []).map((x) => String(x ?? '').trim()).filter(Boolean))].slice(0, 50);
+      if (clean.length === 0) return [];
+      const idList = clean.map((id) => encodeURIComponent(id)).join(',');
+      const path = `/tracks?ids=${idList}&market=from_token`;
+      return enqueueAfterSpotifySearchChain(async () => {
+        const res = await getWith401Retry(path, 5, signal);
+        const bodyText = await res.text();
+        logSpotify({
+          t: new Date().toISOString(),
+          endpoint: 'GET /v1/tracks',
+          httpStatus: res.status,
+          ok: res.ok,
+          idCount: clean.length,
+        });
+        if (!res.ok) throw new Error(formatSpotifyApiError(res.status, bodyText));
+        let data = {};
+        try {
+          data = bodyText ? JSON.parse(bodyText) : {};
+        } catch {
+          throw new Error('Ogiltigt JSON-svar från Spotify (tracks)');
+        }
+        const arr = data.tracks;
+        return Array.isArray(arr) ? arr.filter((x) => x != null && typeof x === 'object') : [];
+      });
+    },
+
+    /**
+     * Starta/uppdatera uppspelning på angiven enhet (Web Playback). Köas efter sök-kedjan.
+     * @param {string} deviceId
+     * @param {{ uris?: string[], context_uri?: string, offset?: object }} body
+     * @param {AbortSignal} [signal]
+     */
+    async startPlaybackOnDevice(deviceId, body, signal) {
+      const enc = encodeURIComponent(deviceId);
+      const path = `/me/player/play?device_id=${enc}`;
+      return enqueueAfterSpotifySearchChain(async () => {
+        const res = await mutateWith401Retry(path, {
+          method: 'PUT',
+          body: JSON.stringify(body && typeof body === 'object' ? body : {}),
+        });
+        const text = await res.text();
+        if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
+      });
+    },
+
+    /**
+     * Pausa uppspelning på angiven enhet. Köas efter sök-kedjan.
+     * @param {string} deviceId
+     * @param {AbortSignal} [signal]
+     */
+    async pausePlayer(deviceId, signal) {
+      const enc = encodeURIComponent(deviceId);
+      return enqueueAfterSpotifySearchChain(async () => {
+        const res = await mutateWith401Retry(`/me/player/pause?device_id=${enc}`, { method: 'PUT' });
+        const text = await res.text();
+        if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
+      });
     },
 
     /**

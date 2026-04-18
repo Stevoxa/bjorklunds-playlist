@@ -1,4 +1,4 @@
-import { DEFAULT_PLAYLIST_NAME_PREFIX, FEATURE_ROW_PREVIEW_PLAYER } from './config.js';
+import { DEFAULT_PLAYLIST_NAME_PREFIX, FEATURE_ROW_FULL_PLAYBACK } from './config.js';
 import { getRedirectUri, beginLogin, consumeOAuthCallback } from './auth.js';
 import { loadVault, saveVault, VAULT_KEY } from './vault.js';
 import { idbGet } from './db.js';
@@ -8,11 +8,12 @@ import { subscribeSpotifyLog, clearSpotifyLog, logSpotify } from './spotify-log.
 import { makeSearchCacheKey, getSearchCache, setSearchCache, clearSearchCache } from './search-cache.js';
 import { readSpotifySession, writeSpotifySession, clearSpotifySession } from './token-session.js';
 import {
-  bindRowPreviewControls,
-  stopRowPreview,
-  notifyRowPreviewTrackChanged,
-  afterRenderRowPreview,
-} from './row-preview-player.js';
+  bindRowPlaybackControls,
+  stopRowPlayback,
+  notifyRowPlaybackTrackChanged,
+  afterRenderRowPlayback,
+  destroyRowPlayback,
+} from './row-spotify-playback.js';
 
 /** @type {ReturnType<createSpotifyClient> | null} */
 let spotifyClient = null;
@@ -304,6 +305,7 @@ async function loadEncryptedVault() {
 }
 
 function initSpotifyClient() {
+  if (FEATURE_ROW_FULL_PLAYBACK) destroyRowPlayback();
   if (spotifyClient && vaultData) {
     try {
       vaultData.tokens = spotifyClient.getTokens();
@@ -987,7 +989,7 @@ function renderResults() {
   const blocks = $('results-body');
   blocks.replaceChildren();
   if (resultRows.length === 0) {
-    if (FEATURE_ROW_PREVIEW_PLAYER) stopRowPreview();
+    if (FEATURE_ROW_FULL_PLAYBACK) void stopRowPlayback();
     $('results-section').hidden = true;
     $('results-summary').textContent = '';
     $('results-summary').hidden = false;
@@ -1040,8 +1042,8 @@ function renderResults() {
     track.append(mark, thumb);
     switchLabel.append(chk, track);
     pickCell.append(switchLabel);
-    queryRow.classList.toggle('match-block__query-row--with-audio', hasHits && FEATURE_ROW_PREVIEW_PLAYER);
-    if (hasHits && FEATURE_ROW_PREVIEW_PLAYER) {
+    queryRow.classList.toggle('match-block__query-row--with-audio', hasHits && FEATURE_ROW_FULL_PLAYBACK);
+    if (hasHits && FEATURE_ROW_FULL_PLAYBACK) {
       const previewWrap = document.createElement('div');
       previewWrap.className = 'match-block__preview';
       previewWrap.setAttribute('role', 'group');
@@ -1112,7 +1114,7 @@ function renderResults() {
         radio.checked = row.selectedUri === t.uri || (row.selectedUri === null && ti === 0);
         radio.addEventListener('change', () => {
           row.selectedUri = t.uri;
-          notifyRowPreviewTrackChanged(idx);
+          notifyRowPlaybackTrackChanged(idx);
           updateApplyEnabled();
         });
         const line = document.createElement('span');
@@ -1131,7 +1133,7 @@ function renderResults() {
   if (!searchInProgress) finalizeResultsSummary();
   updateApplyEnabled();
   refreshSummary();
-  if (FEATURE_ROW_PREVIEW_PLAYER) afterRenderRowPreview();
+  if (FEATURE_ROW_FULL_PLAYBACK) afterRenderRowPlayback();
 }
 
 function syncApplyHint() {
@@ -1250,7 +1252,7 @@ async function runSearch() {
     showToast('Inga rader att söka. Klistra in en låtlista först.', true);
     return;
   }
-  if (FEATURE_ROW_PREVIEW_PLAYER) stopRowPreview();
+  if (FEATURE_ROW_FULL_PLAYBACK) void stopRowPlayback();
   resultRows = parsed.map((p) => ({ ...p, tracks: null, selectedUri: null, includedInPlaylist: true }));
   searchInProgress = true;
   searchAbortController = new AbortController();
@@ -1478,7 +1480,7 @@ async function boot() {
   });
 
   $('btn-abort-search').addEventListener('click', () => {
-    if (FEATURE_ROW_PREVIEW_PLAYER) stopRowPreview();
+    if (FEATURE_ROW_FULL_PLAYBACK) void stopRowPlayback();
     searchAbortController?.abort();
   });
 
@@ -1547,10 +1549,16 @@ async function boot() {
   wireFlow();
   wireFlowModeNav();
   wirePlaylistMode();
-  if (FEATURE_ROW_PREVIEW_PLAYER) {
-    bindRowPreviewControls($('results-body'), {
+  if (FEATURE_ROW_FULL_PLAYBACK) {
+    bindRowPlaybackControls($('results-body'), {
       getRows: () => resultRows,
       showMessage: (text, isError) => showToast(text, Boolean(isError)),
+      getSpotifyClient: () => spotifyClient,
+      getAccessToken: async () => {
+        const c = spotifyClient;
+        if (!c || typeof c.getAccessToken !== 'function') throw new Error('Ej inloggad');
+        return c.getAccessToken();
+      },
     });
   }
   $('new-pl-name').addEventListener('input', () => {
@@ -1617,7 +1625,7 @@ async function boot() {
   });
 
   $('btn-logout').addEventListener('click', async () => {
-    if (FEATURE_ROW_PREVIEW_PLAYER) stopRowPreview();
+    if (FEATURE_ROW_FULL_PLAYBACK) void stopRowPlayback();
     vaultData = vaultData ?? defaultVault();
     vaultData.clientId = getClientId();
     vaultData.settings = {
@@ -1644,7 +1652,7 @@ async function boot() {
   $('btn-search').addEventListener('click', () => runSearch());
 
   $('btn-clear-paste').addEventListener('click', () => {
-    if (FEATURE_ROW_PREVIEW_PLAYER) stopRowPreview();
+    if (FEATURE_ROW_FULL_PLAYBACK) void stopRowPlayback();
     $('paste-area').value = '';
     resultRows = [];
     searchInProgress = false;

@@ -13,6 +13,9 @@ export const SPOTIFY_SCOPES = [
   'playlist-read-private',
   'user-read-private',
   'user-read-email',
+  'streaming',
+  'user-read-playback-state',
+  'user-modify-playback-state',
 ].join(' ');
 
 export const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
@@ -25,8 +28,8 @@ export const SPOTIFY_TOKEN_REFRESH_LEEWAY_MS = 10 * 60 * 1000;
 /** Standardprefix för nya spellistor (användaren skriver bara suffix i appen). */
 export const DEFAULT_PLAYLIST_NAME_PREFIX = 'Björklunds playlist - ';
 
-/** Rad-förhandslyssning (preview_url + HTML5 audio). Sätt till false för att stänga av UI och logik. */
-export const FEATURE_ROW_PREVIEW_PLAYER = true;
+/** Rad-uppspelning i webbläsaren (Spotify Web Playback SDK, Premium + streaming-scope). */
+export const FEATURE_ROW_FULL_PLAYBACK = true;
 
 /** PKCE verifier length (bytes) → ~43+ chars when base64url. */
 export const PKCE_VERIFIER_LENGTH = 64;
