@@ -394,9 +394,22 @@ function onResultsClick(e) {
       }
       lastPlayIntentMs = now;
 
-      await /** @type {{ startPlaybackOnDevice: (d: string, b: { uris: string[] }, s?: AbortSignal) => Promise<void> }} */ (
-        client
-      ).startPlaybackOnDevice(deviceId, { uris: [uri] });
+      const playOnce = async (did) =>
+        /** @type {{ startPlaybackOnDevice: (d: string, b: { uris: string[] }, s?: AbortSignal) => Promise<void> }} */ (
+          client
+        ).startPlaybackOnDevice(did, { uris: [uri] });
+
+      try {
+        await playOnce(deviceId);
+      } catch (e1) {
+        const msg = String(e1 instanceof Error ? e1.message : e1);
+        const looksStaleDevice =
+          /\b404\b/i.test(msg) || /not\s*found/i.test(msg) || /No active device/i.test(msg);
+        if (!looksStaleDevice) throw e1;
+        await resetWebPlaybackSession();
+        const { deviceId: freshId } = await ensureWebPlayerConnected();
+        await playOnce(freshId);
+      }
 
       activeRowIndex = rowIndex;
       activeUri = uri;
@@ -459,6 +472,40 @@ export function destroyRowPlayback() {
   if (playbackPollTimer != null) {
     clearInterval(playbackPollTimer);
     playbackPollTimer = null;
+  }
+  resetPlaybackUiState();
+  try {
+    webPlayer?.disconnect();
+  } catch {
+    /* ok */
+  }
+  webPlayer = null;
+  webDeviceId = null;
+  lastPlayerState = null;
+  syncProgressBars();
+  refreshPlaybackUi();
+}
+
+/**
+ * Kopplar ner Web Playback-enheten (t.ex. när användaren lämnar matchlistan).
+ * Spotify ogiltigförklarar device_id efter navigering/idle — annars ger PUT /me/player/play 404.
+ * Behåller SDK-laddning och UI-bindning; nästa Spela skapar ny spelare + ny enhet.
+ */
+export async function resetWebPlaybackSession() {
+  if (!FEATURE_ROW_FULL_PLAYBACK) return;
+  try {
+    if (webPlayer) await webPlayer.pause();
+  } catch {
+    /* ok */
+  }
+  const client = getSpotifyClient();
+  const did = webDeviceId;
+  if (client && did && typeof /** @type {{ pausePlayer: (d: string) => Promise<void> }} */ (client).pausePlayer === 'function') {
+    try {
+      await client.pausePlayer(did);
+    } catch {
+      /* enheten finns ofta inte längre */
+    }
   }
   resetPlaybackUiState();
   try {

@@ -13,6 +13,7 @@ import {
   notifyRowPlaybackTrackChanged,
   afterRenderRowPlayback,
   destroyRowPlayback,
+  resetWebPlaybackSession,
 } from './row-spotify-playback.js';
 
 /** @type {ReturnType<createSpotifyClient> | null} */
@@ -580,6 +581,9 @@ function setFlowStep(step, opts = {}) {
   const { focusPanel = false } = opts;
   syncClientIdFromFormIntoVault();
   currentFlowStep = /** @type {'0' | '1' | '2' | '3' | 'settings'} */ (step);
+  if (FEATURE_ROW_FULL_PLAYBACK && step !== '1') {
+    void resetWebPlaybackSession();
+  }
   const accent = step === '0' || step === 'settings' ? 'spotify' : 'navy';
   document.documentElement.setAttribute('data-flow-accent', accent);
   document.querySelectorAll('.flow-step').forEach((el) => {
