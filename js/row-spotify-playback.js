@@ -24,6 +24,8 @@ let showMessage = () => {};
 let getSpotifyClient = () => null;
 /** @type {() => Promise<string>} */
 let getAccessToken = async () => '';
+/** @type {() => boolean} */
+let getIsSearching = () => false;
 
 /** @type {SpotifyPlayer | null} */
 let webPlayer = null;
@@ -269,6 +271,7 @@ function refreshPlaybackUi() {
   const playing = Boolean(st && !st.paused && curUri && activeUri && curUri === activeUri && activeRowIndex !== null);
   const durOk =
     Boolean(st && typeof st.duration === 'number' && st.duration > 0 && curUri === activeUri && activeRowIndex !== null);
+  const isSearching = Boolean(getIsSearching());
 
   container.querySelectorAll('.match-block').forEach((article) => {
     const idx = Number(article.dataset.rowIndex);
@@ -284,23 +287,25 @@ function refreshPlaybackUi() {
       typeof /** @type {{ startPlaybackOnDevice?: unknown }} */ (client).startPlaybackOnDevice === 'function';
 
     if (playBtn instanceof HTMLButtonElement) {
-      const canPlay = Boolean(uri && hasClient);
+      const canPlay = Boolean(uri && hasClient) && !isSearching;
       playBtn.disabled = !canPlay;
-      const showPauseUi = playing && isActive;
+      const showPauseUi = playing && isActive && !isSearching;
       playBtn.classList.toggle('row-preview__play--playing', showPauseUi);
       playBtn.setAttribute('aria-pressed', showPauseUi ? 'true' : 'false');
       playBtn.setAttribute('aria-label', showPauseUi ? 'Pausa' : 'Spela');
-      playBtn.title = showPauseUi
-        ? 'Pausa uppspelning'
-        : uri
-          ? 'Spela hela låten i webbläsaren (Spotify Premium + scope streaming)'
-          : 'Saknar Spotify-URI för träffen.';
+      playBtn.title = isSearching
+        ? 'Vänta tills sökningen är klar innan uppspelning startas.'
+        : showPauseUi
+          ? 'Pausa uppspelning'
+          : uri
+            ? 'Spela hela låten i webbläsaren (Spotify Premium + scope streaming)'
+            : 'Saknar Spotify-URI för träffen.';
       playBtn.innerHTML = showPauseUi
         ? '<svg width="14" height="14" aria-hidden="true"><use href="#sym-pause" /></svg>'
         : '<svg width="14" height="14" aria-hidden="true"><use href="#sym-play" /></svg>';
     }
     if (range instanceof HTMLInputElement) {
-      range.disabled = !(isActive && activeUri && uri === activeUri && durOk);
+      range.disabled = isSearching || !(isActive && activeUri && uri === activeUri && durOk);
     }
   });
 }
@@ -312,6 +317,7 @@ function refreshPlaybackUi() {
  *   showMessage: (msg: string, isError?: boolean) => void,
  *   getSpotifyClient?: () => unknown,
  *   getAccessToken: () => Promise<string>,
+ *   getIsSearching?: () => boolean,
  * }} opts
  */
 export function bindRowPlaybackControls(resultsBody, opts) {
@@ -322,6 +328,7 @@ export function bindRowPlaybackControls(resultsBody, opts) {
   showMessage = opts.showMessage;
   getSpotifyClient = opts.getSpotifyClient ?? (() => null);
   getAccessToken = opts.getAccessToken;
+  getIsSearching = opts.getIsSearching ?? (() => false);
   resultsBody.addEventListener('click', onResultsClick);
   resultsBody.addEventListener('input', onRangeInput);
   playbackPollTimer = window.setInterval(() => {
@@ -343,6 +350,10 @@ function onResultsClick(e) {
   const playBtn = t.closest('.row-preview__play');
   if (!playBtn || !(playBtn instanceof HTMLButtonElement)) return;
   e.preventDefault();
+  if (getIsSearching()) {
+    showMessage('Vänta tills sökningen är klar innan du spelar upp.', false);
+    return;
+  }
   if (playBtn.classList.contains('row-preview__play--busy')) return;
   const article = playBtn.closest('.match-block');
   if (!article) return;
@@ -463,6 +474,7 @@ function onResultsClick(e) {
 /** @param {Event} e */
 function onRangeInput(e) {
   if (!FEATURE_ROW_FULL_PLAYBACK || !webPlayer) return;
+  if (getIsSearching()) return;
   const r = /** @type {HTMLElement} */ (e.target).closest('.row-preview__range');
   if (!(r instanceof HTMLInputElement)) return;
   const article = r.closest('.match-block');

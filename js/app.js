@@ -1027,6 +1027,7 @@ function renderResults() {
     return;
   }
   $('results-section').hidden = false;
+  blocks.classList.toggle('results-body--searching', searchInProgress);
 
   resultRows.forEach((row, idx) => {
     if (idx > 0) {
@@ -1055,7 +1056,7 @@ function renderResults() {
     const hasHits = row.tracks !== null && row.tracks.length > 0;
     const included = row.includedInPlaylist !== false;
     chk.checked = hasHits && included;
-    chk.disabled = !hasHits;
+    chk.disabled = !hasHits || searchInProgress;
     chk.dataset.rowIndex = String(idx);
     chk.classList.add('row-select');
     chk.setAttribute('aria-label', `Ta med sökning ${idx + 1} i spellistan`);
@@ -1133,6 +1134,7 @@ function renderResults() {
         radio.name = pickId;
         radio.value = t.uri;
         radio.checked = row.selectedUri === t.uri || (row.selectedUri === null && ti === 0);
+        radio.disabled = searchInProgress;
         radio.addEventListener('change', () => {
           row.selectedUri = t.uri;
           notifyRowPlaybackTrackChanged(idx);
@@ -1592,6 +1594,7 @@ async function boot() {
       getRows: () => resultRows,
       showMessage: (text, isError) => showToast(text, Boolean(isError)),
       getSpotifyClient: () => spotifyClient,
+      getIsSearching: () => searchInProgress,
       getAccessToken: async () => {
         const c = spotifyClient;
         if (!c || typeof c.getAccessToken !== 'function') throw new Error('Ej inloggad');
@@ -1689,9 +1692,17 @@ async function boot() {
 
   $('btn-clear-paste').addEventListener('click', () => {
     if (FEATURE_ROW_FULL_PLAYBACK) void stopRowPlayback();
+    if (searchInProgress && searchAbortController) {
+      try {
+        searchAbortController.abort();
+      } catch {
+        /* ok */
+      }
+    }
     $('paste-area').value = '';
     resultRows = [];
     searchInProgress = false;
+    searchAbortController = null;
     setSearchProgress(false);
     renderResults();
     updateApplyEnabled();

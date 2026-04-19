@@ -1047,6 +1047,25 @@ a:focus-visible {
   display: none;
 }
 
+/**
+ * Under sökning: spärra alla radinteraktioner tills sökningen är klar eller avbryts.
+ * Förebygger t.ex. 404 på /me/player/play som köas efter /search men kommer fram när Spotify-enheten hunnit åldras.
+ */
+.results-body--searching .match-option {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.results-body--searching .row-switch {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.results-body--searching .row-preview__play,
+.results-body--searching .row-preview__range {
+  cursor: not-allowed;
+}
+
 .match-block__status {
   margin: 0;
   padding: 0.35rem 0.25rem;
