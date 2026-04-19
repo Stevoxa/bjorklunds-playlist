@@ -91,9 +91,9 @@ function $(id) {
   return el;
 }
 
-/** Spellisteläge från steg 2 (radiogruppen pl-mode). */
+/** Spellisteläge från steg 2 (radiogruppen pl-mode — enda gruppen i dokumentet). */
 function getPlaylistMode() {
-  const el = document.querySelector('#flow-step-2 input[name="pl-mode"]:checked');
+  const el = document.querySelector('input[name="pl-mode"]:checked');
   return el?.value === 'existing' ? 'existing' : 'new';
 }
 
@@ -825,7 +825,7 @@ function refreshSummary() {
       sumRowPublish.hidden = false;
       sumRowPublish.removeAttribute('aria-hidden');
       const v = $('new-pl-visibility').value;
-      const visLabels = { private: 'Privat spellista', public: 'Publik spellista', collaborative: 'Samarbetslista' };
+      const visLabels = { private: 'Privat', public: 'Publik', collaborative: 'Samarbete' };
       sumPublishStatus.textContent = visLabels[v] ?? '—';
       sumPublishIconUse.setAttribute('href', v === 'private' ? '#sym-lock-closed' : '#sym-unlock-open');
     } else {
@@ -1626,7 +1626,7 @@ async function applyPlaylist() {
         const hasPriv = gs.includes('playlist-modify-private');
         if (isPublic && !hasPub) {
           showToast(
-            'Din token saknar playlist-modify-public (Spotify gav andra scopes). Välj ”Privat spellista” eller ”Samarbetslista”, eller återkalla appen på spotify.com/account/apps och logga in igen.',
+            'Din token saknar playlist-modify-public (Spotify gav andra scopes). Välj ”Privat” eller ”Samarbete”, eller återkalla appen på spotify.com/account/apps och logga in igen.',
             true,
           );
           return;
