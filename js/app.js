@@ -809,13 +809,13 @@ function refreshSummary() {
     }
   }
 
-  if (trackCount === 0) {
-    sumAction.textContent = '—';
-  } else if (mode === 'new') {
+  const sumActionIcon = document.getElementById('sum-action-icon-use');
+  if (mode === 'new') {
     sumAction.textContent = 'Skapa ny spellista';
+    sumActionIcon?.setAttribute('href', '#sym-file-earmark-plus');
   } else {
-    const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
-    sumAction.textContent = um === 'replace' ? 'Uppdatera (ersätt)' : 'Uppdatera (lägg till)';
+    sumAction.textContent = 'Uppdatera en befintlig spellista';
+    sumActionIcon?.setAttribute('href', '#sym-recycle');
   }
 
   const sumRowPublish = document.getElementById('sum-row-publish');
@@ -848,6 +848,32 @@ function refreshSummary() {
     const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
     sumExtraLabel.textContent = 'Källa';
     sumExtra.textContent = src === 'from-list' ? 'Mina listor med prefix' : 'Spotify-länk';
+    document
+      .getElementById('sum-extra-icon-use')
+      ?.setAttribute('href', src === 'from-list' ? '#sym-list' : '#sym-link');
+  }
+
+  const sumRowUpdate = document.getElementById('sum-row-update-method');
+  const sumUpdateMethod = document.getElementById('sum-update-method');
+  const sumUpdateIcon = document.getElementById('sum-update-method-icon-use');
+  if (sumRowUpdate && sumUpdateMethod && sumUpdateIcon) {
+    if (mode === 'existing') {
+      sumRowUpdate.hidden = false;
+      sumRowUpdate.removeAttribute('aria-hidden');
+      const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
+      if (um === 'replace') {
+        sumUpdateMethod.textContent =
+          'Alla befintliga låtar tas bort och ersätts med de valda låtarna.';
+        sumUpdateIcon.setAttribute('href', '#sym-arrow-repeat');
+      } else {
+        sumUpdateMethod.textContent =
+          'Befintliga låtar behålls och de valda låtarna läggs till i slutet av spellistan.';
+        sumUpdateIcon.setAttribute('href', '#sym-plus-circle');
+      }
+    } else {
+      sumRowUpdate.hidden = true;
+      sumRowUpdate.setAttribute('aria-hidden', 'true');
+    }
   }
 
   if (!hasToken) {
@@ -885,6 +911,8 @@ function refreshStep3SummaryCard() {
   const rowExtra = document.getElementById('step3-sum-row-extra');
   const extraLabel = document.getElementById('step3-sum-extra-label');
   const extra = document.getElementById('step3-sum-extra');
+  const rowUpdate = document.getElementById('step3-sum-row-update-method');
+  const updateMethod = document.getElementById('step3-sum-update-method');
   if (!tracks || !playlist || !action) return;
   const asideSpotify = document.getElementById('sum-spotify');
   const asideTracks = document.getElementById('sum-tracks');
@@ -893,6 +921,8 @@ function refreshStep3SummaryCard() {
   const asideRowExtra = document.getElementById('sum-row-extra');
   const asideExtraLabel = document.getElementById('sum-extra-label');
   const asideExtra = document.getElementById('sum-extra');
+  const asideRowUpdate = document.getElementById('sum-row-update-method');
+  const asideUpdateMethod = document.getElementById('sum-update-method');
   if (spotify && asideSpotify) {
     spotify.textContent = asideSpotify.textContent ?? '—';
     spotify.classList.toggle('step3-summary-list__value--ok', asideSpotify.classList.contains('summary-list__value--ok'));
@@ -900,6 +930,11 @@ function refreshStep3SummaryCard() {
   if (asideTracks) tracks.textContent = asideTracks.textContent ?? '—';
   if (asidePlaylist) playlist.textContent = asidePlaylist.textContent ?? '—';
   if (asideAction) action.textContent = asideAction.textContent ?? '—';
+  const asideActionIcon = document.getElementById('sum-action-icon-use');
+  const step3ActionIcon = document.getElementById('step3-sum-action-icon-use');
+  const actionHref = asideActionIcon?.getAttribute('href');
+  if (actionHref && step3ActionIcon) step3ActionIcon.setAttribute('href', actionHref);
+
   const rowPublish = document.getElementById('step3-sum-row-publish');
   const asideRowPublish = document.getElementById('sum-row-publish');
   const publishStatus = document.getElementById('step3-sum-publish-status');
@@ -926,6 +961,23 @@ function refreshStep3SummaryCard() {
     }
     if (extraLabel && asideExtraLabel) extraLabel.textContent = asideExtraLabel.textContent ?? 'Källa';
     if (extra && asideExtra) extra.textContent = asideExtra.textContent ?? '—';
+    const asideExtraIcon = document.getElementById('sum-extra-icon-use');
+    const step3ExtraIcon = document.getElementById('step3-sum-extra-icon-use');
+    const extraHref = asideExtraIcon?.getAttribute('href');
+    if (extraHref && step3ExtraIcon) step3ExtraIcon.setAttribute('href', extraHref);
+  }
+  if (rowUpdate && asideRowUpdate && updateMethod && asideUpdateMethod) {
+    rowUpdate.hidden = asideRowUpdate.hidden;
+    if (asideRowUpdate.hasAttribute('aria-hidden')) {
+      rowUpdate.setAttribute('aria-hidden', asideRowUpdate.getAttribute('aria-hidden') ?? 'true');
+    } else {
+      rowUpdate.removeAttribute('aria-hidden');
+    }
+    updateMethod.textContent = asideUpdateMethod.textContent ?? '—';
+    const asideUpIcon = document.getElementById('sum-update-method-icon-use');
+    const step3UpIcon = document.getElementById('step3-sum-update-method-icon-use');
+    const upHref = asideUpIcon?.getAttribute('href');
+    if (upHref && step3UpIcon) step3UpIcon.setAttribute('href', upHref);
   }
   syncStep3LockedTip();
 }

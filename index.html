@@ -96,6 +96,15 @@
         <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
         <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
       </symbol>
+      <!-- file-earmark-plus, arrow-repeat: paths från Bootstrap Icons v1.11.3 (MIT) -->
+      <symbol id="sym-file-earmark-plus" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 6.5a.5.5 0 0 1 .5.5v1.5H10a.5.5 0 0 1 0 1H8.5V11a.5.5 0 0 1-1 0V9.5H6a.5.5 0 0 1 0-1h1.5V7a.5.5 0 0 1 .5-.5" />
+        <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z" />
+      </symbol>
+      <symbol id="sym-arrow-repeat" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41m-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9" />
+        <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5 5 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z" />
+      </symbol>
       <symbol id="sym-recycle" viewBox="0 0 16 16" fill="currentColor">
         <path
           d="M9.302 1.256a1.5 1.5 0 0 0-2.604 0l-1.704 2.98a.5.5 0 0 0 .869.497l1.703-2.981a.5.5 0 0 1 .868 0l2.54 4.444-1.256-.337a.5.5 0 1 0-.26.966l2.415.647a.5.5 0 0 0 .613-.353l.647-2.415a.5.5 0 1 0-.966-.259l-.333 1.242zM2.973 7.773l-1.255.337a.5.5 0 1 1-.26-.966l2.416-.647a.5.5 0 0 1 .612.353l.647 2.415a.5.5 0 0 1-.966.259l-.333-1.242-2.545 4.454a.5.5 0 0 0 .434.748H5a.5.5 0 0 1 0 1H1.723A1.5 1.5 0 0 1 .421 12.24zm10.89 1.463a.5.5 0 1 0-.868.496l1.716 3.004a.5.5 0 0 1-.434.748h-5.57l.647-.646a.5.5 0 1 0-.708-.707l-1.5 1.5a.5.5 0 0 0 0 .707l1.5 1.5a.5.5 0 1 0 .708-.707l-.647-.647h5.57a1.5 1.5 0 0 0 1.302-2.244z"
@@ -394,7 +403,7 @@
                       <input type="radio" name="pl-mode" value="new" checked />
                       <span class="choice-tile__body">
                         <span class="choice-tile__glyph" aria-hidden="true">
-                          <svg><use href="#sym-plus-circle" /></svg>
+                          <svg><use href="#sym-file-earmark-plus" /></svg>
                         </span>
                         <span class="choice-tile__text">
                           <span class="choice-tile__title">Skapa ny spellista</span>
@@ -540,7 +549,7 @@
                             <span class="choice-tile__desc">Alla befintliga låtar tas bort och ersätts med de valda låtarna.</span>
                           </span>
                           <span class="choice-tile__glyph choice-tile__glyph--trail" aria-hidden="true">
-                            <svg><use href="#sym-recycle" /></svg>
+                            <svg><use href="#sym-arrow-repeat" /></svg>
                           </span>
                         </span>
                       </label>
@@ -594,7 +603,7 @@
                 </div>
 
                 <ul class="step3-summary-list" id="step3-summary-list">
-                  <li class="step3-summary-list__item">
+                  <li class="step3-summary-list__item step3-summary-list__item--sep-after">
                     <span class="step3-summary-list__icon-wrap step3-summary-list__icon-wrap--spotify" aria-hidden="true">
                       <svg class="step3-summary-list__glyph step3-summary-list__glyph--spotify"><use href="#sym-spotify" /></svg>
                     </span>
@@ -603,7 +612,7 @@
                       <span class="step3-summary-list__value" id="step3-sum-spotify">—</span>
                     </div>
                   </li>
-                  <li class="step3-summary-list__item">
+                  <li class="step3-summary-list__item step3-summary-list__item--sep-after">
                     <span class="step3-summary-list__icon-wrap" aria-hidden="true">
                       <svg class="step3-summary-list__glyph"><use href="#sym-note" /></svg>
                     </span>
@@ -623,11 +632,35 @@
                   </li>
                   <li class="step3-summary-list__item">
                     <span class="step3-summary-list__icon-wrap" aria-hidden="true">
-                      <svg class="step3-summary-list__glyph"><use href="#sym-lightning" /></svg>
+                      <svg class="step3-summary-list__glyph">
+                        <use id="step3-sum-action-icon-use" href="#sym-file-earmark-plus" />
+                      </svg>
                     </span>
                     <div class="step3-summary-list__body">
                       <span class="step3-summary-list__label">Åtgärd</span>
                       <span class="step3-summary-list__value" id="step3-sum-action">—</span>
+                    </div>
+                  </li>
+                  <li class="step3-summary-list__item" id="step3-sum-row-extra" hidden>
+                    <span class="step3-summary-list__icon-wrap" aria-hidden="true">
+                      <svg class="step3-summary-list__glyph">
+                        <use id="step3-sum-extra-icon-use" href="#sym-list" />
+                      </svg>
+                    </span>
+                    <div class="step3-summary-list__body">
+                      <span class="step3-summary-list__label" id="step3-sum-extra-label">Källa</span>
+                      <span class="step3-summary-list__value" id="step3-sum-extra">—</span>
+                    </div>
+                  </li>
+                  <li class="step3-summary-list__item" id="step3-sum-row-update-method" hidden>
+                    <span class="step3-summary-list__icon-wrap" aria-hidden="true">
+                      <svg class="step3-summary-list__glyph">
+                        <use id="step3-sum-update-method-icon-use" href="#sym-plus-circle" />
+                      </svg>
+                    </span>
+                    <div class="step3-summary-list__body">
+                      <span class="step3-summary-list__label">Hur sker uppdatering</span>
+                      <span class="step3-summary-list__value" id="step3-sum-update-method">—</span>
                     </div>
                   </li>
                   <li class="step3-summary-list__item" id="step3-sum-row-publish" hidden>
@@ -639,15 +672,6 @@
                     <div class="step3-summary-list__body">
                       <span class="step3-summary-list__label">Publicerings- och samarbetsstatus</span>
                       <span class="step3-summary-list__value" id="step3-sum-publish-status">—</span>
-                    </div>
-                  </li>
-                  <li class="step3-summary-list__item" id="step3-sum-row-extra" hidden>
-                    <span class="step3-summary-list__icon-wrap" aria-hidden="true">
-                      <svg class="step3-summary-list__glyph"><use href="#sym-link" /></svg>
-                    </span>
-                    <div class="step3-summary-list__body">
-                      <span class="step3-summary-list__label" id="step3-sum-extra-label">Källa</span>
-                      <span class="step3-summary-list__value" id="step3-sum-extra">—</span>
                     </div>
                   </li>
                 </ul>
@@ -848,7 +872,7 @@
                 </div>
               </div>
                 <ul class="summary-list">
-                <li class="summary-list__item">
+                <li class="summary-list__item summary-list__item--sep-after">
                   <span class="summary-list__icon-wrap summary-list__icon-wrap--spotify" aria-hidden="true">
                     <svg class="summary-list__glyph summary-list__glyph--spotify"><use href="#sym-spotify" /></svg>
                   </span>
@@ -857,7 +881,7 @@
                     <span class="summary-list__value" id="sum-spotify">Ej inloggad</span>
                   </div>
                 </li>
-                <li class="summary-list__item">
+                <li class="summary-list__item summary-list__item--sep-after">
                   <span class="summary-list__icon-wrap" aria-hidden="true">
                     <svg class="summary-list__glyph"><use href="#sym-note" /></svg>
                   </span>
@@ -877,11 +901,35 @@
                 </li>
                 <li class="summary-list__item">
                   <span class="summary-list__icon-wrap" aria-hidden="true">
-                    <svg class="summary-list__glyph"><use href="#sym-lightning" /></svg>
+                    <svg class="summary-list__glyph">
+                      <use id="sum-action-icon-use" href="#sym-file-earmark-plus" />
+                    </svg>
                   </span>
                   <div class="summary-list__body">
                     <span class="summary-list__label">Åtgärd</span>
                     <span class="summary-list__value" id="sum-action">—</span>
+                  </div>
+                </li>
+                <li class="summary-list__item" id="sum-row-extra" hidden>
+                  <span class="summary-list__icon-wrap" aria-hidden="true">
+                    <svg class="summary-list__glyph">
+                      <use id="sum-extra-icon-use" href="#sym-list" />
+                    </svg>
+                  </span>
+                  <div class="summary-list__body">
+                    <span class="summary-list__label" id="sum-extra-label">Källa</span>
+                    <span class="summary-list__value" id="sum-extra">—</span>
+                  </div>
+                </li>
+                <li class="summary-list__item" id="sum-row-update-method" hidden>
+                  <span class="summary-list__icon-wrap" aria-hidden="true">
+                    <svg class="summary-list__glyph">
+                      <use id="sum-update-method-icon-use" href="#sym-plus-circle" />
+                    </svg>
+                  </span>
+                  <div class="summary-list__body">
+                    <span class="summary-list__label">Hur sker uppdatering</span>
+                    <span class="summary-list__value" id="sum-update-method">—</span>
                   </div>
                 </li>
                 <li class="summary-list__item" id="sum-row-publish" hidden>
@@ -893,15 +941,6 @@
                   <div class="summary-list__body">
                     <span class="summary-list__label">Publicerings- och samarbetsstatus</span>
                     <span class="summary-list__value" id="sum-publish-status">—</span>
-                  </div>
-                </li>
-                <li class="summary-list__item" id="sum-row-extra" hidden>
-                  <span class="summary-list__icon-wrap" aria-hidden="true">
-                    <svg class="summary-list__glyph"><use href="#sym-link" /></svg>
-                  </span>
-                  <div class="summary-list__body">
-                    <span class="summary-list__label" id="sum-extra-label">Källa</span>
-                    <span class="summary-list__value" id="sum-extra">—</span>
                   </div>
                 </li>
               </ul>
