@@ -817,6 +817,23 @@ function refreshSummary() {
     sumAction.textContent = um === 'replace' ? 'Uppdatera (ersätt)' : 'Uppdatera (lägg till)';
   }
 
+  const sumRowPublish = document.getElementById('sum-row-publish');
+  const sumPublishStatus = document.getElementById('sum-publish-status');
+  const sumPublishIconUse = document.getElementById('sum-publish-icon-use');
+  if (sumRowPublish && sumPublishStatus && sumPublishIconUse) {
+    if (mode === 'new') {
+      sumRowPublish.hidden = false;
+      sumRowPublish.removeAttribute('aria-hidden');
+      const v = $('new-pl-visibility').value;
+      const visLabels = { private: 'Privat spellista', public: 'Publik spellista', collaborative: 'Samarbetslista' };
+      sumPublishStatus.textContent = visLabels[v] ?? '—';
+      sumPublishIconUse.setAttribute('href', v === 'private' ? '#sym-lock-closed' : '#sym-unlock-open');
+    } else {
+      sumRowPublish.hidden = true;
+      sumRowPublish.setAttribute('aria-hidden', 'true');
+    }
+  }
+
   if (mode === 'new') {
     if (sumRowExtra) {
       sumRowExtra.hidden = true;
@@ -886,6 +903,23 @@ function refreshStep3SummaryCard() {
   if (asideTracks) tracks.textContent = asideTracks.textContent ?? '—';
   if (asidePlaylist) playlist.textContent = asidePlaylist.textContent ?? '—';
   if (asideAction) action.textContent = asideAction.textContent ?? '—';
+  const rowPublish = document.getElementById('step3-sum-row-publish');
+  const asideRowPublish = document.getElementById('sum-row-publish');
+  const publishStatus = document.getElementById('step3-sum-publish-status');
+  const asidePublishStatus = document.getElementById('sum-publish-status');
+  const publishIconUse = document.getElementById('step3-sum-publish-icon-use');
+  const asidePublishIconUse = document.getElementById('sum-publish-icon-use');
+  if (rowPublish && asideRowPublish && publishStatus && asidePublishStatus && publishIconUse && asidePublishIconUse) {
+    rowPublish.hidden = asideRowPublish.hidden;
+    if (asideRowPublish.hasAttribute('aria-hidden')) {
+      rowPublish.setAttribute('aria-hidden', asideRowPublish.getAttribute('aria-hidden') ?? 'true');
+    } else {
+      rowPublish.removeAttribute('aria-hidden');
+    }
+    publishStatus.textContent = asidePublishStatus.textContent ?? '—';
+    const ph = asidePublishIconUse.getAttribute('href');
+    if (ph) publishIconUse.setAttribute('href', ph);
+  }
   if (rowExtra && asideRowExtra) {
     rowExtra.hidden = asideRowExtra.hidden;
     if (asideRowExtra.hasAttribute('aria-hidden')) {
@@ -1583,14 +1617,16 @@ async function applyPlaylist() {
     if (mode === 'new') {
       const suffix = $('new-pl-name').value.trim();
       const name = `${getPlaylistPrefixFromInput()}${suffix}`;
-      const isPublic = $('new-pl-public').checked;
+      const visibility = $('new-pl-visibility').value;
+      const isPublic = visibility === 'public';
+      const collaborative = visibility === 'collaborative';
       const gs = (vaultData.tokens?.grantedScopeRaw || '').trim();
       if (gs) {
         const hasPub = gs.includes('playlist-modify-public');
         const hasPriv = gs.includes('playlist-modify-private');
         if (isPublic && !hasPub) {
           showToast(
-            'Din token saknar playlist-modify-public (Spotify gav andra scopes). Lämna ”Publik spellista” urkryssad, eller återkalla appen på spotify.com/account/apps och logga in igen.',
+            'Din token saknar playlist-modify-public (Spotify gav andra scopes). Välj ”Privat spellista” eller ”Samarbetslista”, eller återkalla appen på spotify.com/account/apps och logga in igen.',
             true,
           );
           return;
@@ -1603,7 +1639,7 @@ async function applyPlaylist() {
           return;
         }
       }
-      const pl = await spotifyClient.createPlaylist({ name, isPublic });
+      const pl = await spotifyClient.createPlaylist({ name, isPublic, collaborative });
       for (let i = 0; i < uris.length; i += SPOTIFY_CHUNK) {
         await spotifyClient.appendPlaylistTracks(pl.id, uris.slice(i, i + SPOTIFY_CHUNK));
       }
@@ -1801,7 +1837,7 @@ async function boot() {
     updateNewPlaylistPreview();
     touchPlaylistApplyPostSuccessDirty();
   });
-  $('new-pl-public').addEventListener('change', () => touchPlaylistApplyPostSuccessDirty());
+  $('new-pl-visibility').addEventListener('change', () => touchPlaylistApplyPostSuccessDirty());
   $('existing-pl-id').addEventListener('input', () => touchPlaylistApplyPostSuccessDirty());
   $('existing-pl-select').addEventListener('change', () => touchPlaylistApplyPostSuccessDirty());
   $('paste-area').addEventListener('input', () => touchPlaylistApplyPostSuccessDirty());

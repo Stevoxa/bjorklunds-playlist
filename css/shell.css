@@ -1160,6 +1160,11 @@ body {
   display: none !important;
 }
 
+#sum-row-publish[hidden],
+#step3-sum-row-publish[hidden] {
+  display: none !important;
+}
+
 /* Steg 3: dölj den vanliga sammanfattningen i högerpanelen (sammanfattningen visas i mitten istället). */
 body[data-flow-step='3'] #summary-aside-card {
   display: none;

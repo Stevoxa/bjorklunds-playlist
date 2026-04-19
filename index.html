@@ -68,6 +68,19 @@
       <symbol id="sym-lock" viewBox="0 0 16 16" fill="currentColor">
         <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2M5 8h6a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1" />
       </symbol>
+      <!-- lock-closed, unlock-open: paths från Bootstrap Icons v1.11.3 (MIT) — sammanfattning publiceringsstatus -->
+      <symbol id="sym-lock-closed" viewBox="0 0 16 16" fill="currentColor">
+        <path
+          fill-rule="evenodd"
+          d="M8 0a4 4 0 0 1 4 4v2.05a2.5 2.5 0 0 1 2 2.45v5a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 2 13.5v-5a2.5 2.5 0 0 1 2-2.45V4a4 4 0 0 1 4-4M4.5 7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7zM8 1a3 3 0 0 0-3 3v2h6V4a3 3 0 0 0-3-3"
+        />
+      </symbol>
+      <symbol id="sym-unlock-open" viewBox="0 0 16 16" fill="currentColor">
+        <path
+          fill-rule="evenodd"
+          d="M12 0a4 4 0 0 1 4 4v2.5h-1V4a3 3 0 1 0-6 0v2h.5A2.5 2.5 0 0 1 12 8.5v5A2.5 2.5 0 0 1 9.5 16h-7A2.5 2.5 0 0 1 0 13.5v-5A2.5 2.5 0 0 1 2.5 6H8V4a4 4 0 0 1 4-4M2.5 7A1.5 1.5 0 0 0 1 8.5v5A1.5 1.5 0 0 0 2.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 9.5 7z"
+        />
+      </symbol>
       <symbol id="sym-clock" viewBox="0 0 16 16" fill="currentColor">
         <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71z" />
         <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0" />
@@ -412,7 +425,7 @@
                     <div class="flow-card__titles">
                       <h2 class="flow-card__title flow-card__title--hero-step" id="heading-playlist">Skapa ny spellista</h2>
                       <p class="flow-card__subtitle" id="heading-playlist-sub">
-                        Ange namn och välj om spellistan skall vara publik.
+                        Ange namn och välj publicerings- och samarbetsstatus.
                       </p>
                     </div>
                   </div>
@@ -423,10 +436,15 @@
                   <p class="help" id="new-pl-preview-help">
                     Hela namnet på Spotify blir: <strong id="new-pl-preview">Björklunds playlist - Sommar 2026</strong>
                   </p>
-                  <div class="checkbox-row">
-                    <input type="checkbox" id="new-pl-public" />
-                    <label for="new-pl-public">Publik spellista</label>
-                  </div>
+                  <p class="label label--section" id="label-new-pl-visibility">Publicerings- och samarbetsstatus</p>
+                  <select id="new-pl-visibility" class="select" aria-labelledby="label-new-pl-visibility">
+                    <option value="private" selected>Privat spellista</option>
+                    <option value="public">Publik spellista</option>
+                    <option value="collaborative">Samarbetslista</option>
+                  </select>
+                  <p class="help" id="new-pl-visibility-help">
+                    Samarbetslistor är alltid privata i Spotify (men andra med länk kan redigera låtar). De kan inte vara publika samtidigt.
+                  </p>
                 </div>
 
                 <div id="block-existing-playlist" hidden class="existing-pl-stack">
@@ -601,6 +619,17 @@
                     <div class="step3-summary-list__body">
                       <span class="step3-summary-list__label">Åtgärd</span>
                       <span class="step3-summary-list__value" id="step3-sum-action">—</span>
+                    </div>
+                  </li>
+                  <li class="step3-summary-list__item" id="step3-sum-row-publish" hidden>
+                    <span class="step3-summary-list__icon-wrap" aria-hidden="true">
+                      <svg class="step3-summary-list__glyph">
+                        <use id="step3-sum-publish-icon-use" href="#sym-lock-closed" />
+                      </svg>
+                    </span>
+                    <div class="step3-summary-list__body">
+                      <span class="step3-summary-list__label">Publicerings- och samarbetsstatus</span>
+                      <span class="step3-summary-list__value" id="step3-sum-publish-status">—</span>
                     </div>
                   </li>
                   <li class="step3-summary-list__item" id="step3-sum-row-extra" hidden>
@@ -847,6 +876,17 @@
                   <div class="summary-list__body">
                     <span class="summary-list__label">Åtgärd</span>
                     <span class="summary-list__value" id="sum-action">—</span>
+                  </div>
+                </li>
+                <li class="summary-list__item" id="sum-row-publish" hidden>
+                  <span class="summary-list__icon-wrap" aria-hidden="true">
+                    <svg class="summary-list__glyph">
+                      <use id="sum-publish-icon-use" href="#sym-lock-closed" />
+                    </svg>
+                  </span>
+                  <div class="summary-list__body">
+                    <span class="summary-list__label">Publicerings- och samarbetsstatus</span>
+                    <span class="summary-list__value" id="sum-publish-status">—</span>
                   </div>
                 </li>
                 <li class="summary-list__item" id="sum-row-extra" hidden>

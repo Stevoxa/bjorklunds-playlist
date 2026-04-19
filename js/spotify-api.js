@@ -639,21 +639,27 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
 
     /**
      * Skapar spellista för inloggad användare (POST /me/playlists).
-     * @param {{ name: string, isPublic: boolean }} opts
+     * Spotify: `collaborative` och `public` får inte båda vara true.
+     * @param {{ name: string, isPublic: boolean, collaborative?: boolean }} opts
      */
     async createPlaylist(opts) {
       const path = '/me/playlists';
+      const isPublic = Boolean(opts.isPublic);
+      const collaborative = Boolean(opts.collaborative);
+      if (collaborative && isPublic) {
+        throw new Error('Samarbetslista kan inte skapas som publik (Spotify Web API).');
+      }
       const body = {
         name: opts.name,
-        public: opts.isPublic,
-        collaborative: false,
+        public: isPublic,
+        collaborative,
       };
       const res = await mutateWith401Retry(path, {
         method: 'POST',
         body: JSON.stringify(body),
       });
       const text = await res.text();
-      logPlaylistWrite('POST', path, { name: opts.name, public: opts.isPublic, collaborative: false }, res, text);
+      logPlaylistWrite('POST', path, { name: opts.name, public: isPublic, collaborative }, res, text);
       if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
       try {
         return text ? JSON.parse(text) : {};
