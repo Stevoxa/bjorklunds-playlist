@@ -1154,6 +1154,12 @@ body {
   text-align: left;
 }
 
+/* Källa-raden: helt borta i läget ny spellista (hidden + display för robusthet). */
+#sum-row-extra[hidden],
+#step3-sum-row-extra[hidden] {
+  display: none !important;
+}
+
 /* Steg 3: dölj den vanliga sammanfattningen i högerpanelen (sammanfattningen visas i mitten istället). */
 body[data-flow-step='3'] #summary-aside-card {
   display: none;

@@ -811,16 +811,22 @@ function refreshSummary() {
   if (trackCount === 0) {
     sumAction.textContent = '—';
   } else if (mode === 'new') {
-    sumAction.textContent = 'Genomför (ny)';
+    sumAction.textContent = 'Skapa ny spellista';
   } else {
     const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
     sumAction.textContent = um === 'replace' ? 'Uppdatera (ersätt)' : 'Uppdatera (lägg till)';
   }
 
   if (mode === 'new') {
-    if (sumRowExtra) sumRowExtra.hidden = true;
+    if (sumRowExtra) {
+      sumRowExtra.hidden = true;
+      sumRowExtra.setAttribute('aria-hidden', 'true');
+    }
+    if (sumExtra) sumExtra.textContent = '';
+    if (sumExtraLabel) sumExtraLabel.textContent = 'Källa';
   } else if (sumRowExtra && sumExtra && sumExtraLabel) {
     sumRowExtra.hidden = false;
+    sumRowExtra.removeAttribute('aria-hidden');
     const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
     sumExtraLabel.textContent = 'Källa';
     sumExtra.textContent = src === 'from-list' ? 'Mina listor med prefix' : 'Spotify-länk';
@@ -882,6 +888,11 @@ function refreshStep3SummaryCard() {
   if (asideAction) action.textContent = asideAction.textContent ?? '—';
   if (rowExtra && asideRowExtra) {
     rowExtra.hidden = asideRowExtra.hidden;
+    if (asideRowExtra.hasAttribute('aria-hidden')) {
+      rowExtra.setAttribute('aria-hidden', asideRowExtra.getAttribute('aria-hidden') ?? 'true');
+    } else {
+      rowExtra.removeAttribute('aria-hidden');
+    }
     if (extraLabel && asideExtraLabel) extraLabel.textContent = asideExtraLabel.textContent ?? 'Källa';
     if (extra && asideExtra) extra.textContent = asideExtra.textContent ?? '—';
   }
