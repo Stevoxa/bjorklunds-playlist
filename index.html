@@ -365,56 +365,57 @@
               tabindex="-1"
               aria-labelledby="heading-pl-mode"
             >
-              <div class="flow-card">
-                <div class="flow-card__head">
-                  <div class="flow-card__icon-ring" aria-hidden="true">
-                    <svg><use href="#sym-playlist" /></svg>
+              <div class="flow-step-2-shell">
+                <div class="flow-card flow-card--step2-merged">
+                  <div class="flow-card__head">
+                    <div class="flow-card__icon-ring" aria-hidden="true">
+                      <svg><use href="#sym-playlist" /></svg>
+                    </div>
+                    <div class="flow-card__titles">
+                      <h2 class="flow-card__title flow-card__title--hero-step" id="heading-pl-mode">Välj hur låtarna ska sparas</h2>
+                      <p class="flow-card__subtitle">Skapa ny spellista eller uppdatera en du redan har (kräver inloggning).</p>
+                    </div>
                   </div>
-                  <div class="flow-card__titles">
-                    <h2 class="flow-card__title flow-card__title--hero-step" id="heading-pl-mode">Välj hur låtarna ska sparas</h2>
-                    <p class="flow-card__subtitle">Skapa ny spellista eller uppdatera en du redan har (kräver inloggning).</p>
+                  <div class="choice-grid choice-grid--mode-tiles" role="radiogroup" aria-label="Spellisteläge">
+                    <label class="choice-tile choice-tile--stacked">
+                      <input type="radio" name="pl-mode" value="new" checked />
+                      <span class="choice-tile__body">
+                        <span class="choice-tile__glyph" aria-hidden="true">
+                          <svg><use href="#sym-plus-circle" /></svg>
+                        </span>
+                        <span class="choice-tile__text">
+                          <span class="choice-tile__title">Skapa ny spellista</span>
+                          <span class="choice-tile__desc">Skapa en ny spellista med ditt prefix.</span>
+                        </span>
+                      </span>
+                    </label>
+                    <label class="choice-tile choice-tile--stacked">
+                      <input type="radio" name="pl-mode" value="existing" />
+                      <span class="choice-tile__body">
+                        <span class="choice-tile__glyph" aria-hidden="true">
+                          <svg><use href="#sym-recycle" /></svg>
+                        </span>
+                        <span class="choice-tile__text">
+                          <span class="choice-tile__title">Uppdatera befintlig</span>
+                          <span class="choice-tile__desc">Lägg till i eller ersätt en spellista du redan har.</span>
+                        </span>
+                      </span>
+                    </label>
                   </div>
-                </div>
-                <div class="choice-grid choice-grid--mode-tiles" role="radiogroup" aria-label="Spellisteläge">
-                  <label class="choice-tile choice-tile--stacked">
-                    <input type="radio" name="pl-mode" value="new" checked />
-                    <span class="choice-tile__body">
-                      <span class="choice-tile__glyph" aria-hidden="true">
-                        <svg><use href="#sym-plus-circle" /></svg>
-                      </span>
-                      <span class="choice-tile__text">
-                        <span class="choice-tile__title">Skapa ny spellista</span>
-                        <span class="choice-tile__desc">Skapa en ny spellista med ditt prefix.</span>
-                      </span>
-                    </span>
-                  </label>
-                  <label class="choice-tile choice-tile--stacked">
-                    <input type="radio" name="pl-mode" value="existing" />
-                    <span class="choice-tile__body">
-                      <span class="choice-tile__glyph" aria-hidden="true">
-                        <svg><use href="#sym-recycle" /></svg>
-                      </span>
-                      <span class="choice-tile__text">
-                        <span class="choice-tile__title">Uppdatera befintlig</span>
-                        <span class="choice-tile__desc">Lägg till i eller ersätt en spellista du redan har.</span>
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </div>
 
-              <div class="flow-card" aria-labelledby="heading-playlist">
-                <div class="flow-card__head">
-                  <div class="flow-card__icon-ring" aria-hidden="true">
-                    <svg><use href="#sym-lightning" /></svg>
+                  <div class="flow-step-2-inner-divider" aria-hidden="true"></div>
+
+                  <div class="flow-card__head flow-card__head--step2-sub" aria-labelledby="heading-playlist">
+                    <div class="flow-card__icon-ring" aria-hidden="true">
+                      <svg><use href="#sym-lightning" /></svg>
+                    </div>
+                    <div class="flow-card__titles">
+                      <h2 class="flow-card__title flow-card__title--hero-step" id="heading-playlist">Skapa ny spellista</h2>
+                      <p class="flow-card__subtitle" id="heading-playlist-sub">
+                        Ange namn och välj om spellistan skall vara publik.
+                      </p>
+                    </div>
                   </div>
-                  <div class="flow-card__titles">
-                    <h2 class="flow-card__title flow-card__title--hero-step" id="heading-playlist">Skapa ny spellista</h2>
-                    <p class="flow-card__subtitle" id="heading-playlist-sub">
-                      Ange namn och välj om spellistan skall vara publik.
-                    </p>
-                  </div>
-                </div>
 
                 <div id="block-new-playlist">
                   <label for="new-pl-name" class="label">Namn (suffix efter prefix)</label>
@@ -528,12 +529,28 @@
                     </div>
                   </div>
                 </div>
+                </div>
 
-              </div>
-
-              <div class="flow-nav">
-                <button type="button" class="btn" data-flow-goto="1">Tillbaka: Välj musik</button>
-                <button type="button" class="btn btn--primary" data-flow-goto="3">Nästa: Genomför</button>
+                <div class="flow-step-2-sticky-nav flow-nav" id="flow-step-2-sticky-nav">
+                  <p class="flow-nav__hint flow-nav__hint--step2">
+                    <svg aria-hidden="true"><use href="#sym-info" /></svg>
+                    <span class="flow-nav__hint-text" id="flow-step-2-sticky-hint"
+                      >Ange suffix för ny spellista eller välj befintlig lista / länk för att gå vidare.</span>
+                  </p>
+                  <div class="flow-nav__row flow-nav__row--step2">
+                    <button type="button" class="btn" data-flow-goto="1">Tillbaka: Välj musik</button>
+                    <button
+                      type="button"
+                      class="btn btn--primary"
+                      id="btn-flow-step-2-next"
+                      data-flow-goto="3"
+                      disabled
+                      aria-disabled="true"
+                    >
+                      Nästa: Genomför
+                    </button>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -754,6 +771,36 @@
               <p class="step3-locked-tip__text" id="step3-locked-tip-text">
                 Fyll i alla steg innan du kör Genomför på Spotify.
               </p>
+            </div>
+            <div
+              class="step3-apply-result-card"
+              id="step3-apply-result-card"
+              hidden
+              role="region"
+              aria-live="polite"
+              aria-label="Resultat från Genomför på Spotify"
+            >
+              <div class="step3-apply-result-card__hero">
+                <div class="step3-apply-result-card__icon-ring" id="step3-apply-result-icon-wrap" aria-hidden="true">
+                  <svg class="step3-apply-result-card__icon" width="28" height="28">
+                    <use id="step3-apply-result-icon-use" href="#sym-check-circle" />
+                  </svg>
+                </div>
+                <h2 class="step3-apply-result-card__title" id="step3-apply-result-title"></h2>
+              </div>
+              <p class="step3-apply-result-card__message" id="step3-apply-result-message"></p>
+              <p class="step3-apply-result-card__link-wrap" id="step3-apply-result-link-wrap" hidden>
+                <a
+                  id="step3-apply-result-link"
+                  class="step3-apply-result-card__spotify-link"
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                ></a>
+              </p>
+              <div class="step3-apply-result-card__actions" id="step3-apply-result-actions" hidden>
+                <button type="button" class="btn" id="btn-step3-apply-result-dismiss">Stäng</button>
+              </div>
             </div>
             <div class="summary-card" id="summary-aside-card">
               <div class="summary-card__head">

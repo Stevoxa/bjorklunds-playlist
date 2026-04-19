@@ -69,6 +69,13 @@ async function main() {
     await page.locator('#flow-step-2.is-active').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#flow-step-2 input[name="pl-mode"][value="new"]').waitFor({ state: 'attached' });
 
+    const next2DisabledEmpty = await page.locator('#btn-flow-step-2-next').isDisabled();
+    if (!next2DisabledEmpty) throw new Error('Nästa: Genomför ska vara låst utan suffixnamn (ny spellista).');
+    await page.locator('#new-pl-name').fill('Testlista');
+    const next2Enabled = await page.locator('#btn-flow-step-2-next').isEnabled();
+    if (!next2Enabled) throw new Error('Nästa: Genomför ska låsas upp när suffixnamn är ifyllt.');
+    await page.locator('#new-pl-name').fill('');
+
     const modeNew = await page.locator('#flow-step-2').getAttribute('data-playlist-mode');
     if (modeNew !== 'new') throw new Error(`Förväntade data-playlist-mode="new" på steg 2, fick ${modeNew}`);
 

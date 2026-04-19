@@ -14,7 +14,9 @@ const REQUIRED_IDS = [
   'btn-search',
   'results-section',
   'btn-flow-step-1-next',
+  'btn-flow-step-2-next',
   'flow-step-1-sticky-hint',
+  'flow-step-2-sticky-hint',
   'results-body',
   'spotify-log-pre',
   'client-id',
@@ -48,6 +50,10 @@ const REQUIRED_IDS = [
   'playlist-result-dialog-message',
   'playlist-result-dialog-link',
   'btn-playlist-result-close',
+  'step3-apply-result-card',
+  'step3-apply-result-title',
+  'step3-apply-result-message',
+  'btn-step3-apply-result-dismiss',
 ];
 
 function main() {

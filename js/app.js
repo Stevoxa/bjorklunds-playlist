@@ -49,6 +49,12 @@ let playlistPrefixDebounceTimer = /** @type {ReturnType<typeof setTimeout> | nul
 /** @type {AbortController | null} */
 let playlistResultDialogEscapeAbort = null;
 
+/** Efter lyckad Genomför på Spotify: lås knappen tills användaren ändrar data. */
+let playlistApplyPostSuccess = false;
+
+/** Programmatiska liständringar (t.ex. efter ny spellista) ska inte räknas som användarändring. */
+let suppressPlaylistApplyDirty = false;
+
 /**
  * @param {number} ms
  * @param {AbortSignal | undefined} signal
@@ -153,6 +159,65 @@ function hidePlaylistResultDialog() {
     dlg.hidden = true;
     dlg.classList.remove('playlist-result-dialog--error');
   }
+}
+
+function hideStep3ApplyResultUi() {
+  const card = document.getElementById('step3-apply-result-card');
+  if (card) {
+    card.hidden = true;
+    card.classList.remove('step3-apply-result-card--error');
+  }
+  const actions = document.getElementById('step3-apply-result-actions');
+  if (actions) actions.hidden = true;
+  playlistApplyPostSuccess = false;
+}
+
+/**
+ * Resultat från Genomför på Spotify — visas i högerspalten (steg 3), inte som modal.
+ * @param {{ ok: boolean, title: string, message: string, playlistId?: string, playlistName?: string, playlistOpenUrl?: string }} opts
+ */
+function showStep3PlaylistApplyResult(opts) {
+  const card = document.getElementById('step3-apply-result-card');
+  const titleEl = document.getElementById('step3-apply-result-title');
+  const msgEl = document.getElementById('step3-apply-result-message');
+  const linkWrap = document.getElementById('step3-apply-result-link-wrap');
+  const linkEl = document.getElementById('step3-apply-result-link');
+  const iconUse = document.getElementById('step3-apply-result-icon-use');
+  const actions = document.getElementById('step3-apply-result-actions');
+  if (!card || !titleEl || !msgEl || !linkWrap || !linkEl || !iconUse) return;
+
+  card.classList.toggle('step3-apply-result-card--error', !opts.ok);
+  iconUse.setAttribute('href', opts.ok ? '#sym-check-circle' : '#sym-help');
+
+  titleEl.textContent = opts.title;
+  msgEl.textContent = opts.message;
+
+  if (opts.ok && opts.playlistId) {
+    const ext =
+      (opts.playlistOpenUrl && String(opts.playlistOpenUrl).trim()) || spotifyOpenPlaylistUrl(opts.playlistId);
+    linkEl.href = ext;
+    linkEl.textContent = opts.playlistName
+      ? `Öppna spellistan ”${opts.playlistName}” på Spotify`
+      : 'Öppna spellistan på Spotify';
+    linkWrap.hidden = false;
+  } else {
+    linkWrap.hidden = true;
+    linkEl.removeAttribute('href');
+    linkEl.textContent = '';
+  }
+
+  if (actions) actions.hidden = Boolean(opts.ok);
+  playlistApplyPostSuccess = Boolean(opts.ok);
+  card.hidden = false;
+  refreshSummary();
+}
+
+/** Rensar lyckat resultat + lås när användaren ändrar låtar, sökning eller spellista. */
+function touchPlaylistApplyPostSuccessDirty() {
+  if (suppressPlaylistApplyDirty) return;
+  hideStep3ApplyResultUi();
+  hidePlaylistResultDialog();
+  refreshSummary();
 }
 
 function showToast(message, isError = false) {
@@ -828,6 +893,11 @@ function syncStep3LockedTip() {
   const wrap = document.getElementById('step3-locked-tip');
   const text = document.getElementById('step3-locked-tip-text');
   if (!wrap || !text) return;
+  const resultCard = document.getElementById('step3-apply-result-card');
+  if (resultCard && !resultCard.hidden) {
+    wrap.hidden = true;
+    return;
+  }
   const onStep3 = currentFlowStep === '3';
   const ready = isStep3ApplyReady();
   if (!onStep3 || ready) {
@@ -1005,15 +1075,14 @@ function wirePlaylistMode() {
   const modes = document.querySelectorAll('#flow-step-2 input[name="pl-mode"]');
   const update = () => {
     syncPlaylistModeBlocks();
-    refreshSummary();
     syncPageLeadStep3();
     syncStep3CardHeadings();
+    touchPlaylistApplyPostSuccessDirty();
   };
   modes.forEach((r) => r.addEventListener('change', update));
   document.querySelectorAll('input[name="pl-update"]').forEach((r) => {
     r.addEventListener('change', () => {
-      refreshSummary();
-      updateApplyEnabled();
+      touchPlaylistApplyPostSuccessDirty();
     });
   });
   document.querySelectorAll('input[name="pl-existing-source"]').forEach((r) => {
@@ -1022,7 +1091,7 @@ function wirePlaylistMode() {
       if (r.value === 'from-list' && spotifyClient) {
         refreshExistingPlaylistSelect().catch((e) => showToast(String(e?.message ?? e), true));
       }
-      refreshSummary();
+      touchPlaylistApplyPostSuccessDirty();
     });
   });
   $('btn-refresh-pl-list').addEventListener('click', () => {
@@ -1173,7 +1242,7 @@ function renderResults() {
     chk.addEventListener('change', () => {
       row.includedInPlaylist = chk.checked;
       article.classList.toggle('match-block--excluded', hasHits && !chk.checked);
-      updateApplyEnabled();
+      touchPlaylistApplyPostSuccessDirty();
     });
 
     const hrUnder = document.createElement('hr');
@@ -1207,7 +1276,7 @@ function renderResults() {
         radio.addEventListener('change', () => {
           row.selectedUri = t.uri;
           notifyRowPlaybackTrackChanged(idx);
-          updateApplyEnabled();
+          touchPlaylistApplyPostSuccessDirty();
         });
         const main = document.createElement('div');
         main.className = 'match-option__main';
@@ -1248,6 +1317,10 @@ function renderResults() {
 function syncApplyHint() {
   const el = document.getElementById('apply-hint');
   if (!el) return;
+  if (playlistApplyPostSuccess) {
+    el.textContent = 'Spellistan är uppdaterad. Ändra låtar eller spellista under tidigare steg om du vill köra Genomför igen.';
+    return;
+  }
   if (!spotifyClient) {
     el.textContent = 'Logga in under steg 0 för att kunna utföra åtgärden.';
     return;
@@ -1297,6 +1370,43 @@ function isStep3ApplyReady() {
   return Boolean(parsePlaylistIdFromInput($('existing-pl-id').value));
 }
 
+/** Steg 2: tillåt ”Nästa: Genomför” när spelliste-val är komplett (namn / vald lista / giltig länk). */
+function isStep2PlaylistConfigReady() {
+  const mode = getPlaylistMode();
+  if (mode === 'new') {
+    return $('new-pl-name').value.trim().length > 0;
+  }
+  const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
+  if (src === 'from-list') return Boolean($('existing-pl-select').value.trim());
+  return Boolean(parsePlaylistIdFromInput($('existing-pl-id').value));
+}
+
+function updateStep2StickyNav() {
+  const btn = document.getElementById('btn-flow-step-2-next');
+  const hint = document.getElementById('flow-step-2-sticky-hint');
+  if (!btn || !hint) return;
+  const ready = isStep2PlaylistConfigReady();
+  btn.disabled = !ready;
+  btn.setAttribute('aria-disabled', ready ? 'false' : 'true');
+  const mode = getPlaylistMode();
+  if (mode === 'new') {
+    hint.textContent = $('new-pl-name').value.trim()
+      ? 'Du kan gå vidare för att granska och genomföra.'
+      : 'Ange ett namn (suffix) för den nya spellistan.';
+    return;
+  }
+  const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
+  if (src === 'from-list') {
+    hint.textContent = $('existing-pl-select').value.trim()
+      ? 'Du kan gå vidare för att granska och genomföra.'
+      : 'Välj en spellista i listan, eller byt till Spotify-länk.';
+    return;
+  }
+  hint.textContent = parsePlaylistIdFromInput($('existing-pl-id').value)
+    ? 'Du kan gå vidare för att granska och genomföra.'
+    : 'Ange en giltig Spotify-länk eller spelliste-ID.';
+}
+
 function updateStep1StickyNav() {
   const btn = document.getElementById('btn-flow-step-1-next');
   const hint = document.getElementById('flow-step-1-sticky-hint');
@@ -1327,12 +1437,13 @@ function updateStep1StickyNav() {
 }
 
 function updateApplyEnabled() {
-  $('btn-apply-playlist').disabled = !isStep3ApplyReady();
+  $('btn-apply-playlist').disabled = playlistApplyPostSuccess || !isStep3ApplyReady();
   const busy = searchInProgress;
   $('btn-search').disabled = !spotifyClient || busy;
   $('btn-clear-paste').disabled = busy;
   syncApplyHint();
   updateStep1StickyNav();
+  updateStep2StickyNav();
 }
 
 function selectedUrisForPlaylist() {
@@ -1362,6 +1473,7 @@ async function runSearch() {
     return;
   }
   if (FEATURE_ROW_FULL_PLAYBACK) void stopRowPlayback();
+  touchPlaylistApplyPostSuccessDirty();
   resultRows = parsed.map((p) => ({ ...p, tracks: null, selectedUri: null, includedInPlaylist: true }));
   searchInProgress = true;
   searchAbortController = new AbortController();
@@ -1453,7 +1565,9 @@ async function applyPlaylist() {
     return;
   }
   hidePlaylistResultDialog();
+  hideStep3ApplyResultUi();
   $('btn-apply-playlist').disabled = true;
+  suppressPlaylistApplyDirty = true;
   try {
     if (mode === 'new') {
       const suffix = $('new-pl-name').value.trim();
@@ -1489,7 +1603,7 @@ async function applyPlaylist() {
         typeof pl.external_urls?.spotify === 'string' && pl.external_urls.spotify.trim()
           ? pl.external_urls.spotify.trim()
           : undefined;
-      showPlaylistResultDialog({
+      showStep3PlaylistApplyResult({
         ok: true,
         title: 'Det gick bra',
         message: `Spellistan ”${pl.name}” skapades med ${uris.length} låtar på Spotify.`,
@@ -1535,7 +1649,7 @@ async function applyPlaylist() {
       vaultData.selectedPlaylist = { id: plId, name: plLabel };
       const pass = getPassphrase();
       if (pass.length >= 8) await saveVault(vaultData, pass);
-      showPlaylistResultDialog({
+      showStep3PlaylistApplyResult({
         ok: true,
         title: 'Det gick bra',
         message:
@@ -1547,12 +1661,13 @@ async function applyPlaylist() {
       });
     }
   } catch (e) {
-    showPlaylistResultDialog({
+    showStep3PlaylistApplyResult({
       ok: false,
       title: 'Något gick fel',
       message: String(e?.message ?? e),
     });
   } finally {
+    suppressPlaylistApplyDirty = false;
     refreshSummary();
   }
 }
@@ -1673,11 +1788,12 @@ async function boot() {
   }
   $('new-pl-name').addEventListener('input', () => {
     updateNewPlaylistPreview();
-    refreshSummary();
+    touchPlaylistApplyPostSuccessDirty();
   });
-  $('new-pl-public').addEventListener('change', () => refreshSummary());
-  $('existing-pl-id').addEventListener('input', () => refreshSummary());
-  $('existing-pl-select').addEventListener('change', () => refreshSummary());
+  $('new-pl-public').addEventListener('change', () => touchPlaylistApplyPostSuccessDirty());
+  $('existing-pl-id').addEventListener('input', () => touchPlaylistApplyPostSuccessDirty());
+  $('existing-pl-select').addEventListener('change', () => touchPlaylistApplyPostSuccessDirty());
+  $('paste-area').addEventListener('input', () => touchPlaylistApplyPostSuccessDirty());
   $('playlist-prefix').addEventListener('input', () => {
     updateNewPlaylistPreview();
     if (playlistPrefixDebounceTimer) clearTimeout(playlistPrefixDebounceTimer);
@@ -1688,6 +1804,7 @@ async function boot() {
       if (mode === 'existing' && fromList && spotifyClient) {
         refreshExistingPlaylistSelect({ quiet: true }).catch(() => {});
       }
+      touchPlaylistApplyPostSuccessDirty();
     }, 650);
   });
   $('btn-reset-playlist-prefix').addEventListener('click', () => {
@@ -1699,6 +1816,7 @@ async function boot() {
     if (mode === 'existing' && fromList && spotifyClient) {
       refreshExistingPlaylistSelect({ quiet: true }).catch(() => {});
     }
+    touchPlaylistApplyPostSuccessDirty();
   });
 
   $('pref-theme').addEventListener('change', () => {
@@ -1754,7 +1872,7 @@ async function boot() {
       showToast('Tokens borttagna i minnet. Under Inställningar: ange lösenfras och Spara lokalt för att uppdatera enheten.');
     }
     setAuthStatus();
-    updateApplyEnabled();
+    touchPlaylistApplyPostSuccessDirty();
   });
 
   $('btn-search').addEventListener('click', () => runSearch());
@@ -1773,8 +1891,8 @@ async function boot() {
     searchInProgress = false;
     searchAbortController = null;
     setSearchProgress(false);
+    touchPlaylistApplyPostSuccessDirty();
     renderResults();
-    updateApplyEnabled();
   });
 
   $('btn-select-all').addEventListener('click', () => {
@@ -1785,7 +1903,7 @@ async function boot() {
       if (!Number.isNaN(idx) && resultRows[idx]) resultRows[idx].includedInPlaylist = true;
       c.closest('.match-block')?.classList.remove('match-block--excluded');
     });
-    updateApplyEnabled();
+    touchPlaylistApplyPostSuccessDirty();
   });
   $('btn-clear-selection').addEventListener('click', () => {
     document.querySelectorAll('.row-select').forEach((c) => {
@@ -1795,10 +1913,19 @@ async function boot() {
       if (!Number.isNaN(idx) && resultRows[idx]) resultRows[idx].includedInPlaylist = false;
       c.closest('.match-block')?.classList.add('match-block--excluded');
     });
-    updateApplyEnabled();
+    touchPlaylistApplyPostSuccessDirty();
   });
 
   $('btn-apply-playlist').addEventListener('click', () => applyPlaylist());
+
+  const step3ApplyDismiss = document.getElementById('btn-step3-apply-result-dismiss');
+  if (step3ApplyDismiss) {
+    step3ApplyDismiss.addEventListener('click', () => {
+      hideStep3ApplyResultUi();
+      updateApplyEnabled();
+      syncApplyHint();
+    });
+  }
 
   document.querySelectorAll('[data-playlist-result-close]').forEach((el) => {
     el.addEventListener('click', () => hidePlaylistResultDialog());
