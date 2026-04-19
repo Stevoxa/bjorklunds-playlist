@@ -605,6 +605,40 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     },
 
     /**
+     * Tempo m.m. (GET /audio-features, max 100 id). Returnerar array i samma ordning som `ids` (element kan vara null).
+     * @param {string[]} ids
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<(object | null)[]>}
+     */
+    async getAudioFeaturesByIds(ids, signal) {
+      const clean = [...new Set((ids || []).map((x) => String(x ?? '').trim()).filter(Boolean))].slice(0, 100);
+      if (clean.length === 0) return [];
+      const idList = clean.map((id) => encodeURIComponent(id)).join(',');
+      const path = `/audio-features?ids=${idList}`;
+      return enqueueAfterSpotifySearchChain(async () => {
+        const res = await getWith401Retry(path, 5, signal);
+        const bodyText = await res.text();
+        logSpotify({
+          t: new Date().toISOString(),
+          endpoint: 'GET /v1/audio-features',
+          httpStatus: res.status,
+          ok: res.ok,
+          idCount: clean.length,
+        });
+        if (!res.ok) throw new Error(formatSpotifyApiError(res.status, bodyText));
+        let data = {};
+        try {
+          data = bodyText ? JSON.parse(bodyText) : {};
+        } catch {
+          throw new Error('Ogiltigt JSON-svar från Spotify (audio-features)');
+        }
+        const raw = data.audio_features;
+        const arr = Array.isArray(raw) ? raw : [];
+        return clean.map((_, i) => (arr[i] != null && typeof arr[i] === 'object' ? arr[i] : null));
+      });
+    },
+
+    /**
      * Starta/uppdatera uppspelning på angiven enhet (Web Playback). Köas efter sök-kedjan.
      * @param {string} deviceId
      * @param {{ uris?: string[], context_uri?: string, offset?: object }} body

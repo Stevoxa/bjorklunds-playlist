@@ -975,16 +975,46 @@ function formatTrackDuration(ms) {
 }
 
 /** @param {object} track Spotify track-objekt från sökning */
-function formatTrackChoiceLine(track) {
+function formatTrackTitleLine(track) {
+  const artists = (track.artists || []).map((a) => a.name).join(', ');
+  return `${track.name ?? ''} — ${artists}`;
+}
+
+/** Album + år på egen rad (utan parentes). */
+function formatTrackMetaLine(track) {
   const album = track.album?.name ?? '';
   const rawDate = track.album?.release_date || '';
   const year = rawDate.length >= 4 ? rawDate.slice(0, 4) : '';
-  const albumBit = [album, year].filter(Boolean).join(', ');
-  const dur = formatTrackDuration(track.duration_ms);
-  const extras = [albumBit, dur].filter(Boolean);
-  const suffix = extras.length ? ` (${extras.join(' · ')})` : '';
-  const artists = (track.artists || []).map((a) => a.name).join(', ');
-  return `${track.name ?? ''} — ${artists}${suffix}`;
+  return [album, year].filter(Boolean).join(', ');
+}
+
+/**
+ * @param {object[]} tracks
+ * @param {AbortSignal | undefined} signal
+ */
+async function mergeAudioFeaturesForTracks(tracks, signal) {
+  if (!spotifyClient || !Array.isArray(tracks) || tracks.length === 0) return;
+  const ids = [...new Set(tracks.map((t) => String(/** @type {{ id?: string }} */ (t).id ?? '').trim()).filter(Boolean))];
+  if (ids.length === 0) return;
+  if (typeof /** @type {{ getAudioFeaturesByIds?: unknown }} */ (spotifyClient).getAudioFeaturesByIds !== 'function') return;
+  try {
+    const features = await /** @type {{ getAudioFeaturesByIds: (ids: string[], s?: AbortSignal) => Promise<(object | null)[]> }} */ (
+      spotifyClient
+    ).getAudioFeaturesByIds(ids, signal);
+    const map = new Map(ids.map((id, i) => [id, features[i] ?? null]));
+    for (const t of tracks) {
+      const id = String(/** @type {{ id?: string }} */ (t).id ?? '').trim();
+      const f = id ? map.get(id) : null;
+      const tempo = f && typeof /** @type {{ tempo?: unknown }} */ (f).tempo === 'number' ? /** @type {{ tempo: number }} */ (f).tempo : NaN;
+      if (Number.isFinite(tempo)) {
+        /** @type {Record<string, unknown>} */ (t)._tempoBpm = Math.round(tempo);
+      } else {
+        delete /** @type {Record<string, unknown>} */ (t)._tempoBpm;
+      }
+    }
+  } catch {
+    /* BPM är tillägg */
+  }
 }
 
 function setSearchProgress(visible) {
@@ -1136,10 +1166,37 @@ function renderResults() {
           notifyRowPlaybackTrackChanged(idx);
           updateApplyEnabled();
         });
-        const line = document.createElement('span');
-        line.className = 'match-line';
-        line.textContent = formatTrackChoiceLine(t);
-        label.append(radio, line);
+        const main = document.createElement('div');
+        main.className = 'match-option__main';
+        const titleEl = document.createElement('div');
+        titleEl.className = 'match-option__title';
+        titleEl.textContent = formatTrackTitleLine(t);
+        main.append(titleEl);
+        const metaLine = formatTrackMetaLine(t);
+        if (metaLine) {
+          const metaEl = document.createElement('div');
+          metaEl.className = 'match-option__meta';
+          metaEl.textContent = metaLine;
+          main.append(metaEl);
+        }
+        const stats = document.createElement('div');
+        stats.className = 'match-option__stats';
+        const bpmEl = document.createElement('span');
+        bpmEl.className = 'match-option__bpm';
+        const bpmRaw = /** @type {{ _tempoBpm?: number }} */ (t)._tempoBpm;
+        const bpmText = typeof bpmRaw === 'number' && Number.isFinite(bpmRaw) ? String(bpmRaw) : '–';
+        bpmEl.textContent = bpmText;
+        const durEl = document.createElement('span');
+        durEl.className = 'match-option__dur';
+        durEl.textContent = formatTrackDuration(t.duration_ms) || '–';
+        stats.append(bpmEl, durEl);
+        const sr = document.createElement('span');
+        sr.className = 'visually-hidden';
+        sr.textContent =
+          bpmText === '–'
+            ? ` Okänd BPM, längd ${durEl.textContent}.`
+            : ` ${bpmText} BPM, längd ${durEl.textContent}.`;
+        label.append(radio, main, stats, sr);
         optionsWrap.append(label);
       });
       if (row.selectedUri === null && row.tracks[0]) row.selectedUri = row.tracks[0].uri;
@@ -1307,6 +1364,8 @@ async function runSearch() {
         });
         if (!signal.aborted) setSearchCache(cacheKey, row.tracks);
       }
+      if (signal.aborted) break;
+      if (row.tracks.length > 0) await mergeAudioFeaturesForTracks(row.tracks, signal);
       if (signal.aborted) break;
       row.selectedUri = row.tracks[0]?.uri ?? null;
       renderResults();
