@@ -194,7 +194,12 @@ const RETRY_AFTER_COUNTDOWN_MIN_MS = 30_000;
 const SEARCH_INTERNAL_GAP_MS = 3000;
 const SEARCH_INTERNAL_JITTER_MS = 1000;
 
-/** Endast en /search-GET-kedja (inkl. 429-retries) åt gången — undviker överlapp mellan parallella anrop eller dubbelklick */
+/** Paus mellan paginerade GET /me/playlists — Spotify rate-limitar hårda bursts (429). */
+const PLAYLIST_FETCH_INITIAL_GAP_MS = 280;
+const PLAYLIST_PAGE_GAP_MS = 500;
+const PLAYLIST_PAGE_JITTER_MS = 400;
+
+/** Endast en kedja för /search + spellisteläsning (inkl. 429-retries) åt gången — undviker parallella GET-bursts */
 let searchGetChain = Promise.resolve();
 
 /**
@@ -268,6 +273,7 @@ function parseRetryAfterMs(raw) {
  */
 async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
   const isSearch = path.startsWith('/search?');
+  const isPlaylistListPage = path.startsWith('/me/playlists?');
   const run = async () => {
     let lastRes = /** @type {Response | null} */ (null);
     let totalWaited = 0;
@@ -293,10 +299,10 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
 
       const retryAfterRaw = res.headers.get('Retry-After');
       const fromHeader = parseRetryAfterMs(retryAfterRaw);
-      /** Utan Retry-After: /search straffas hårt av snabba omförsök — längre backoff än övriga GET */
-      const fallbackBase = isSearch ? 12_000 : 2_500;
+      /** Utan Retry-After: /search och /me/playlists straffas hårt av snabba omförsök — längre backoff */
+      const fallbackBase = isSearch ? 12_000 : isPlaylistListPage ? 8_000 : 2_500;
       const fallbackMs = Math.min(RATE_LIMIT_WAIT_CAP_MS, fallbackBase * 2 ** attempt);
-      const minNoHeader = isSearch ? 2_000 : RATE_LIMIT_WAIT_MIN_MS;
+      const minNoHeader = isSearch || isPlaylistListPage ? 2_000 : RATE_LIMIT_WAIT_MIN_MS;
       let waitMs =
         fromHeader != null
           ? Math.min(RATE_LIMIT_WAIT_CAP_MS, Math.max(RATE_LIMIT_WAIT_MIN_MS, fromHeader))
@@ -471,38 +477,45 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
      * @returns {Promise<{ id: string, name: string }[]>}
      */
     async listMyPlaylistsByPrefix(prefix, signal) {
-      signal?.throwIfAborted();
-      const me = await this.me(signal);
-      const myId = me.id;
-      const pref = String(prefix ?? '');
-      /** @type {Map<string, { id: string, name: string }>} */
-      const byId = new Map();
-      let offset = 0;
-      const page = 50;
-      while (true) {
+      return scheduleSearchGetChain(async () => {
         signal?.throwIfAborted();
-        const path = `/me/playlists?limit=${page}&offset=${offset}`;
-        const res = await getWith401Retry(path, 5, signal);
-        const bodyText = await res.text();
-        if (!res.ok) throw new Error(formatSpotifyApiError(res.status, bodyText));
-        let data;
-        try {
-          data = bodyText ? JSON.parse(bodyText) : {};
-        } catch {
-          throw new Error('Ogiltigt JSON-svar från Spotify (spellistor)');
-        }
-        const items = data.items ?? [];
-        for (const item of items) {
-          if (item?.owner?.id === myId && typeof item.name === 'string' && item.name.startsWith(pref)) {
-            byId.set(item.id, { id: item.id, name: item.name });
+        const me = await this.me(signal);
+        const myId = me.id;
+        const pref = String(prefix ?? '');
+        /** @type {Map<string, { id: string, name: string }>} */
+        const byId = new Map();
+        let offset = 0;
+        const page = 50;
+        await sleepAbortable(PLAYLIST_FETCH_INITIAL_GAP_MS, signal);
+        while (true) {
+          signal?.throwIfAborted();
+          const path = `/me/playlists?limit=${page}&offset=${offset}`;
+          const res = await getWith401Retry(path, 5, signal);
+          const bodyText = await res.text();
+          if (!res.ok) throw new Error(formatSpotifyApiError(res.status, bodyText));
+          let data;
+          try {
+            data = bodyText ? JSON.parse(bodyText) : {};
+          } catch {
+            throw new Error('Ogiltigt JSON-svar från Spotify (spellistor)');
           }
+          const items = data.items ?? [];
+          for (const item of items) {
+            if (item?.owner?.id === myId && typeof item.name === 'string' && item.name.startsWith(pref)) {
+              byId.set(item.id, { id: item.id, name: item.name });
+            }
+          }
+          if (items.length < page) break;
+          offset += page;
+          await sleepAbortable(
+            PLAYLIST_PAGE_GAP_MS + Math.floor(Math.random() * PLAYLIST_PAGE_JITTER_MS),
+            signal,
+          );
         }
-        if (items.length < page) break;
-        offset += page;
-      }
-      const out = [...byId.values()];
-      out.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
-      return out;
+        const out = [...byId.values()];
+        out.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+        return out;
+      });
     },
 
     /**
