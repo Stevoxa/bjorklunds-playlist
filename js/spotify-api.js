@@ -450,12 +450,15 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       return ensureAccess();
     },
 
-    async me() {
+    /**
+     * @param {AbortSignal} [signal]
+     */
+    async me(signal) {
       let access = await ensureAccess();
-      let res = await api(access, '/me');
+      let res = await api(access, '/me', { signal });
       if (res.status === 401 && t.refreshToken) {
-        await forceRefreshAccess();
-        res = await api(t.accessToken, '/me');
+        await refreshAccessCoalesced();
+        res = await api(t.accessToken, '/me', { signal });
       }
       if (!res.ok) throw new Error(await res.text());
       return res.json();
@@ -468,14 +471,16 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
      * @returns {Promise<{ id: string, name: string }[]>}
      */
     async listMyPlaylistsByPrefix(prefix, signal) {
-      const me = await this.me();
+      signal?.throwIfAborted();
+      const me = await this.me(signal);
       const myId = me.id;
       const pref = String(prefix ?? '');
-      /** @type {{ id: string, name: string }[]} */
-      const out = [];
+      /** @type {Map<string, { id: string, name: string }>} */
+      const byId = new Map();
       let offset = 0;
       const page = 50;
       while (true) {
+        signal?.throwIfAborted();
         const path = `/me/playlists?limit=${page}&offset=${offset}`;
         const res = await getWith401Retry(path, 5, signal);
         const bodyText = await res.text();
@@ -489,12 +494,13 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         const items = data.items ?? [];
         for (const item of items) {
           if (item?.owner?.id === myId && typeof item.name === 'string' && item.name.startsWith(pref)) {
-            out.push({ id: item.id, name: item.name });
+            byId.set(item.id, { id: item.id, name: item.name });
           }
         }
         if (items.length < page) break;
         offset += page;
       }
+      const out = [...byId.values()];
       out.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
       return out;
     },

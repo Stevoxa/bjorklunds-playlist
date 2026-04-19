@@ -855,6 +855,9 @@ function updateExistingPlaylistSourceUi() {
   $('block-existing-from-link').hidden = fromList;
 }
 
+/** Avbryter föregående spelliste-hämtning — annars kan två parallella körningar ge dubbletter i spellistelistan. */
+let existingPlSelectRefreshAbort = /** @type {AbortController | null} */ (null);
+
 /**
  * @param {{ quiet?: boolean, selectPlaylistId?: string }} [opts] quiet: ingen toast (t.ex. auto-uppdatering). selectPlaylistId: välj detta id efter laddning.
  */
@@ -864,25 +867,36 @@ async function refreshExistingPlaylistSelect(opts = {}) {
     showToast('Logga in på Spotify under steg 0 (Logga in) först.', true);
     return;
   }
-  const prefix = getPlaylistPrefixFromInput();
-  const sel = $('existing-pl-select');
-  sel.replaceChildren();
-  const ph = document.createElement('option');
-  ph.value = '';
-  ph.textContent = '- Välj spellista -';
-  sel.append(ph);
-  const list = await spotifyClient.listMyPlaylistsByPrefix(prefix);
-  for (const p of list) {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = p.name;
-    sel.append(opt);
-  }
-  if (selectPlaylistId && list.some((p) => p.id === selectPlaylistId)) {
-    sel.value = selectPlaylistId;
-  }
-  if (!quiet) {
-    showToast(list.length ? `${list.length} spellistor med prefix.` : 'Inga spellistor matchar prefixet.');
+  existingPlSelectRefreshAbort?.abort();
+  const ac = new AbortController();
+  existingPlSelectRefreshAbort = ac;
+  const { signal } = ac;
+  try {
+    const prefix = getPlaylistPrefixFromInput();
+    const sel = $('existing-pl-select');
+    sel.replaceChildren();
+    const ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = '- Välj spellista -';
+    sel.append(ph);
+    const list = await spotifyClient.listMyPlaylistsByPrefix(prefix, signal);
+    for (const p of list) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      sel.append(opt);
+    }
+    if (selectPlaylistId && list.some((p) => p.id === selectPlaylistId)) {
+      sel.value = selectPlaylistId;
+    }
+    if (!quiet) {
+      showToast(list.length ? `${list.length} spellistor med prefix.` : 'Inga spellistor matchar prefixet.');
+    }
+  } catch (e) {
+    if (signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return;
+    throw e;
+  } finally {
+    if (existingPlSelectRefreshAbort === ac) existingPlSelectRefreshAbort = null;
   }
 }
 
