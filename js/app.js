@@ -46,6 +46,15 @@ const SEARCH_ROW_JITTER_MS = 1000;
 /** Debounce: hämta om spellistor när prefix ändras under ”Mina listor med prefix” */
 let playlistPrefixDebounceTimer = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
 
+/** Cache för GET /me/playlists (prefixfiltrerad) — minskar 429 vid växling lista/länk. */
+const PLAYLIST_LIST_CACHE_TTL_MS = 10 * 60 * 1000;
+/** @type {{ prefix: string, at: number, list: { id: string, name: string }[] } | null} */
+let existingPlaylistListCache = null;
+
+function invalidateExistingPlaylistListCache() {
+  existingPlaylistListCache = null;
+}
+
 /** @type {AbortController | null} */
 let playlistResultDialogEscapeAbort = null;
 
@@ -847,7 +856,7 @@ function refreshSummary() {
     sumRowExtra.removeAttribute('aria-hidden');
     const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
     sumExtraLabel.textContent = 'Källa';
-    sumExtra.textContent = src === 'from-list' ? 'Mina listor med prefix' : 'Spotify-länk';
+    sumExtra.textContent = src === 'from-list' ? 'Vald från mina listor med prefix' : 'Spotify-länk';
     document
       .getElementById('sum-extra-icon-use')
       ?.setAttribute('href', src === 'from-list' ? '#sym-list' : '#sym-link');
@@ -892,7 +901,7 @@ function refreshSummary() {
   } else if (trackCount === 0) {
     sumFoot.textContent = 'Välj låtar under steg 1 för att fortsätta.';
   } else if (!$('new-pl-name').value.trim()) {
-    sumFoot.textContent = 'Ange ett namn (suffix) för den nya spellistan.';
+    sumFoot.textContent = 'Ange ett namn för den nya spellistan.';
   } else {
     sumFoot.textContent = 'Redo att genomföra på Spotify.';
   }
@@ -1013,7 +1022,7 @@ function syncStep3LockedTip() {
   }
   const mode = getPlaylistMode();
   if (mode === 'new') {
-    text.textContent = 'Ange ett namn (suffix) för den nya spellistan under Välj spellista innan du genomför.';
+    text.textContent = 'Ange ett namn för den nya spellistan under Välj spellista innan du genomför.';
     return;
   }
   const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
@@ -1090,43 +1099,73 @@ function updateExistingPlaylistSourceUi() {
 let existingPlSelectRefreshAbort = /** @type {AbortController | null} */ (null);
 
 /**
- * @param {{ quiet?: boolean, selectPlaylistId?: string }} [opts] quiet: ingen toast (t.ex. auto-uppdatering). selectPlaylistId: välj detta id efter laddning.
+ * @param {HTMLSelectElement} sel
+ * @param {{ id: string, name: string }[]} list
+ * @param {string} preserveId
+ * @param {string | undefined} selectPlaylistId
+ */
+function populateExistingPlaylistSelectFromList(sel, list, preserveId, selectPlaylistId) {
+  sel.replaceChildren();
+  const ph = document.createElement('option');
+  ph.value = '';
+  ph.textContent = '- Välj spellista -';
+  sel.append(ph);
+  for (const p of list) {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.append(opt);
+  }
+  const explicit =
+    selectPlaylistId != null && String(selectPlaylistId).trim() !== '' ? String(selectPlaylistId).trim() : '';
+  const idToRestore = explicit || preserveId;
+  if (idToRestore && list.some((p) => p.id === idToRestore)) {
+    sel.value = idToRestore;
+  }
+}
+
+/**
+ * @param {{ quiet?: boolean, selectPlaylistId?: string, force?: boolean }} [opts]
+ *   quiet: ingen toast vid nätverkshämtning. selectPlaylistId: välj detta id efter laddning.
+ *   force: kringgå cache (t.ex. ”Hämta om lista”, ny skapad spellista).
  */
 async function refreshExistingPlaylistSelect(opts = {}) {
-  const { quiet = false, selectPlaylistId } = opts;
+  const { quiet = false, selectPlaylistId, force = false } = opts;
   if (!spotifyClient) {
     showToast('Logga in på Spotify under steg 0 (Logga in) först.', true);
     return;
   }
+  const prefix = getPlaylistPrefixFromInput();
+  const sel = $('existing-pl-select');
+  /** Id som ska återställas efter omladdning (t.ex. val innan stegbyte — syncPlaylistModeBlocks kör refresh utan id). */
+  const preserveId = sel.value.trim();
+
+  const cacheFresh =
+    !force &&
+    existingPlaylistListCache &&
+    existingPlaylistListCache.prefix === prefix &&
+    Date.now() - existingPlaylistListCache.at < PLAYLIST_LIST_CACHE_TTL_MS;
+
+  if (cacheFresh) {
+    existingPlSelectRefreshAbort?.abort();
+    existingPlSelectRefreshAbort = null;
+    populateExistingPlaylistSelectFromList(sel, existingPlaylistListCache.list, preserveId, selectPlaylistId);
+    refreshSummary();
+    return;
+  }
+
   existingPlSelectRefreshAbort?.abort();
   const ac = new AbortController();
   existingPlSelectRefreshAbort = ac;
   const { signal } = ac;
   try {
-    const prefix = getPlaylistPrefixFromInput();
-    const sel = $('existing-pl-select');
-    /** Id som ska återställas efter omladdning (t.ex. val innan stegbyte — syncPlaylistModeBlocks kör refresh utan id). */
-    const preserveId = sel.value.trim();
     const list = await spotifyClient.listMyPlaylistsByPrefix(prefix, signal);
-    sel.replaceChildren();
-    const ph = document.createElement('option');
-    ph.value = '';
-    ph.textContent = '- Välj spellista -';
-    sel.append(ph);
-    for (const p of list) {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.name;
-      sel.append(opt);
-    }
-    const explicit =
-      selectPlaylistId != null && String(selectPlaylistId).trim() !== ''
-        ? String(selectPlaylistId).trim()
-        : '';
-    const idToRestore = explicit || preserveId;
-    if (idToRestore && list.some((p) => p.id === idToRestore)) {
-      sel.value = idToRestore;
-    }
+    existingPlaylistListCache = {
+      prefix,
+      at: Date.now(),
+      list: list.map((p) => ({ id: p.id, name: p.name })),
+    };
+    populateExistingPlaylistSelectFromList(sel, list, preserveId, selectPlaylistId);
     refreshSummary();
     if (!quiet) {
       showToast(list.length ? `${list.length} spellistor med prefix.` : 'Inga spellistor matchar prefixet.');
@@ -1139,18 +1178,11 @@ async function refreshExistingPlaylistSelect(opts = {}) {
   }
 }
 
-/** Undvik för täta Spotify-anrop vid snabba stegbyten */
-let lastVisibilityPlaylistRefresh = 0;
-const VISIBILITY_PLAYLIST_REFRESH_GAP_MS = 25_000;
-
 function maybeRefreshPlaylistsWhenTabVisible() {
   if (document.visibilityState !== 'visible') return;
   const mode = getPlaylistMode();
   const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
   if (mode !== 'existing' || !fromList || !spotifyClient) return;
-  const now = Date.now();
-  if (now - lastVisibilityPlaylistRefresh < VISIBILITY_PLAYLIST_REFRESH_GAP_MS) return;
-  lastVisibilityPlaylistRefresh = now;
   refreshExistingPlaylistSelect({ quiet: true }).catch(() => {});
 }
 
@@ -1191,13 +1223,13 @@ function wirePlaylistMode() {
     r.addEventListener('change', () => {
       updateExistingPlaylistSourceUi();
       if (r.value === 'from-list' && spotifyClient) {
-        refreshExistingPlaylistSelect().catch((e) => showToast(String(e?.message ?? e), true));
+        refreshExistingPlaylistSelect({ quiet: true }).catch((e) => showToast(String(e?.message ?? e), true));
       }
       touchPlaylistApplyPostSuccessDirty();
     });
   });
   $('btn-refresh-pl-list').addEventListener('click', () => {
-    refreshExistingPlaylistSelect({ quiet: false }).catch((e) => showToast(String(e?.message ?? e), true));
+    refreshExistingPlaylistSelect({ quiet: false, force: true }).catch((e) => showToast(String(e?.message ?? e), true));
   });
   document.addEventListener('visibilitychange', () => {
     maybeRefreshPlaylistsWhenTabVisible();
@@ -1494,7 +1526,7 @@ function updateStep2StickyNav() {
   if (mode === 'new') {
     hint.textContent = $('new-pl-name').value.trim()
       ? 'Du kan gå vidare för att granska och genomföra.'
-      : 'Ange ett namn (suffix) för den nya spellistan.';
+      : 'Ange ett namn för den nya spellistan.';
     return;
   }
   const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
@@ -1715,7 +1747,7 @@ async function applyPlaylist() {
         playlistName: typeof pl.name === 'string' ? pl.name : suffix,
         playlistOpenUrl: openUrl,
       });
-      await refreshExistingPlaylistSelect({ quiet: true, selectPlaylistId: pl.id }).catch(() => {});
+      await refreshExistingPlaylistSelect({ quiet: true, selectPlaylistId: pl.id, force: true }).catch(() => {});
     } else {
       const source =
         document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
@@ -1967,6 +1999,7 @@ async function boot() {
     vaultData.tokens = null;
     spotifyClient = null;
     spotifyUserDisplay = '';
+    invalidateExistingPlaylistListCache();
     clearSpotifySession();
     const pass = getPassphrase();
     if (pass.length >= 8) {
