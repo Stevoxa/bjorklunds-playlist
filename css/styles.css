@@ -1097,18 +1097,16 @@ a:focus-visible {
   color: var(--text-muted);
 }
 
-.match-option__stats {
-  display: grid;
-  grid-template-columns: 2.75rem 3.65rem;
-  column-gap: 0.65rem;
-  justify-items: end;
-  align-items: start;
-  flex-shrink: 0;
+.match-option__dur {
+  justify-self: end;
+  align-self: start;
+  min-width: 3.2rem;
   padding-top: 0.1rem;
   font-size: 0.9rem;
   line-height: 1.35;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  text-align: right;
 }
 
 .site-footer {
