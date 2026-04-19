@@ -892,10 +892,11 @@ a:focus-visible {
   cursor: not-allowed;
 }
 
-.row-preview__play--on {
-  background: color-mix(in srgb, var(--spotify) 18%, var(--surface));
-  border-color: color-mix(in srgb, var(--spotify) 45%, var(--border));
-  color: var(--spotify);
+.row-preview__play--playing {
+  background: color-mix(in srgb, var(--spotify) 28%, #e9f7ed);
+  border-color: color-mix(in srgb, var(--spotify) 50%, var(--border));
+  border-radius: 0.55rem;
+  color: color-mix(in srgb, var(--spotify) 72%, #0a1f0f);
 }
 
 .row-preview__play--busy {

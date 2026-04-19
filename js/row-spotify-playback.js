@@ -286,12 +286,18 @@ function refreshPlaybackUi() {
     if (playBtn instanceof HTMLButtonElement) {
       const canPlay = Boolean(uri && hasClient);
       playBtn.disabled = !canPlay;
-      playBtn.title = uri
-        ? 'Spela hela låten i webbläsaren (Spotify Premium + scope streaming)'
-        : 'Saknar Spotify-URI för träffen.';
-      const on = playing && isActive;
-      playBtn.classList.toggle('row-preview__play--on', on);
-      playBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      const showPauseUi = playing && isActive;
+      playBtn.classList.toggle('row-preview__play--playing', showPauseUi);
+      playBtn.setAttribute('aria-pressed', showPauseUi ? 'true' : 'false');
+      playBtn.setAttribute('aria-label', showPauseUi ? 'Pausa' : 'Spela');
+      playBtn.title = showPauseUi
+        ? 'Pausa uppspelning'
+        : uri
+          ? 'Spela hela låten i webbläsaren (Spotify Premium + scope streaming)'
+          : 'Saknar Spotify-URI för träffen.';
+      playBtn.innerHTML = showPauseUi
+        ? '<svg width="14" height="14" aria-hidden="true"><use href="#sym-pause" /></svg>'
+        : '<svg width="14" height="14" aria-hidden="true"><use href="#sym-play" /></svg>';
     }
     if (range instanceof HTMLInputElement) {
       range.disabled = !(isActive && activeUri && uri === activeUri && durOk);
@@ -334,11 +340,6 @@ export function bindRowPlaybackControls(resultsBody, opts) {
 function onResultsClick(e) {
   if (!FEATURE_ROW_FULL_PLAYBACK) return;
   const t = /** @type {HTMLElement} */ (e.target);
-  if (t.closest('.row-preview__stop')) {
-    e.preventDefault();
-    void stopRowPlayback();
-    return;
-  }
   const playBtn = t.closest('.row-preview__play');
   if (!playBtn || !(playBtn instanceof HTMLButtonElement)) return;
   e.preventDefault();
@@ -366,6 +367,37 @@ function onResultsClick(e) {
   void (async () => {
     playBtn.classList.add('row-preview__play--busy');
     try {
+      const st0 = /** @type {{ paused?: boolean, track_window?: { current_track?: { uri?: string } } } | null> */ (
+        lastPlayerState
+      );
+      const sameRowPlaying =
+        webPlayer &&
+        activeRowIndex === rowIndex &&
+        activeUri === uri &&
+        st0 &&
+        !st0.paused &&
+        st0.track_window?.current_track?.uri === uri;
+
+      if (sameRowPlaying) {
+        await webPlayer.pause();
+        const did = webDeviceId;
+        if (did && typeof /** @type {{ pausePlayer: (d: string) => Promise<void> }} */ (client).pausePlayer === 'function') {
+          try {
+            await /** @type {{ pausePlayer: (d: string) => Promise<void> }} */ (client).pausePlayer(did);
+          } catch {
+            /* ok */
+          }
+        }
+        try {
+          lastPlayerState = webPlayer ? await webPlayer.getCurrentState() : null;
+        } catch {
+          lastPlayerState = st0 ? { ...st0, paused: true } : null;
+        }
+        syncProgressBars();
+        refreshPlaybackUi();
+        return;
+      }
+
       const { deviceId } = await ensureWebPlayerConnected();
 
       const st = /** @type {{ paused?: boolean, track_window?: { current_track?: { uri?: string } } } | null> */ (

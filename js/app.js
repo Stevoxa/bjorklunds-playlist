@@ -1077,7 +1077,7 @@ function renderResults() {
       const playBtn = document.createElement('button');
       playBtn.type = 'button';
       playBtn.className = 'row-preview__btn row-preview__play';
-      playBtn.setAttribute('aria-label', 'Spela förhandslyssning');
+      playBtn.setAttribute('aria-label', 'Spela');
       playBtn.innerHTML = '<svg width="14" height="14" aria-hidden="true"><use href="#sym-play" /></svg>';
 
       const scrub = document.createElement('div');
@@ -1089,16 +1089,10 @@ function renderResults() {
       range.max = '1';
       range.step = '0.001';
       range.value = '0';
-      range.setAttribute('aria-label', 'Spola i förhandslyssning');
+      range.setAttribute('aria-label', 'Spola i uppspelning');
       scrub.append(range);
 
-      const stopBtn = document.createElement('button');
-      stopBtn.type = 'button';
-      stopBtn.className = 'row-preview__btn row-preview__stop';
-      stopBtn.setAttribute('aria-label', 'Stoppa uppspelning');
-      stopBtn.innerHTML = '<svg width="14" height="14" aria-hidden="true"><use href="#sym-stop" /></svg>';
-
-      previewWrap.append(playBtn, scrub, stopBtn);
+      previewWrap.append(playBtn, scrub);
       queryRow.append(queryEl, previewWrap, pickCell);
     } else {
       queryRow.append(queryEl, pickCell);
