@@ -529,9 +529,6 @@ function mergeOAuthTokens(tokens, clientIdFromOAuth) {
   $('client-id').value = cid;
   vaultData.settings = { ...defaultVault().settings, ...vaultData.settings };
   updateNewPlaylistPreview();
-  showToast(
-    'Spotify-inloggning klar. Du kan ladda om sidan utan ny inloggning (samma flik). Under Inställningar: Spara lokalt med lösenfras för att behålla tokens efter stängd flik.',
-  );
   updateApplyEnabled();
   void syncSpotifySessionToUi();
 }
