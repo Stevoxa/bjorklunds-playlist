@@ -7,7 +7,7 @@
     <meta name="description" content="Lokal PWA för att matcha låtar mot Spotify och hantera spellistor." />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
-    <title>Bjorklunds Playlist</title>
+    <title>Björklund Playlist</title>
     <link rel="stylesheet" href="./css/styles.css" />
     <link rel="stylesheet" href="./css/shell.css" />
   </head>
@@ -143,7 +143,7 @@
       <main id="main" class="app-main" tabindex="-1">
         <div class="app-layout">
           <header class="app-page-head" id="app-page-head" data-flow-head="0">
-            <h1 class="app-page-head__title app-page-head__title--brand">Bjorklunds Playlist</h1>
+            <h1 class="app-page-head__title app-page-head__title--brand">Björklund Playlist</h1>
             <p class="app-page-head__static-intro">
               Skapa och redigera dina Spotify-playlist på ett smidigt sätt
             </p>
@@ -243,7 +243,7 @@
                     <svg aria-hidden="true"><use href="#sym-info" /></svg>
                     <span class="flow-nav__hint-text">När Client ID är ifyllt och du är inloggad: spara gärna valvet under Inställningar — sedan går du till låtar.</span>
                   </p>
-                  <button type="button" class="btn btn--primary flow-nav__primary" data-flow-goto="1">Nästa: Låtar</button>
+                  <button type="button" class="btn btn--primary flow-nav__primary" data-flow-goto="1">Nästa: Välj musik</button>
                 </div>
               </div>
             </section>
@@ -338,7 +338,7 @@
                     disabled
                     aria-disabled="true"
                   >
-                    Nästa: Spellista
+                    Nästa: Välj spellista
                   </button>
                 </div>
               </div>
@@ -395,8 +395,8 @@
                   </label>
                 </div>
                 <div class="flow-nav">
-                  <button type="button" class="btn" data-flow-goto="1">Tillbaka: Låtar</button>
-                  <button type="button" class="btn btn--primary" data-flow-goto="3">Nästa: Åtgärd</button>
+                  <button type="button" class="btn" data-flow-goto="1">Tillbaka: Välj musik</button>
+                  <button type="button" class="btn btn--primary" data-flow-goto="3">Nästa: Genomför</button>
                 </div>
               </div>
             </section>
@@ -539,7 +539,7 @@
                   <p class="help row--apply__hint" id="apply-hint" aria-live="polite"></p>
                 </div>
                 <div class="flow-nav">
-                  <button type="button" class="btn btn--flow-nav-width" data-flow-goto="2">Tillbaka: Spellista</button>
+                  <button type="button" class="btn btn--flow-nav-width" data-flow-goto="2">Tillbaka: Välj spellista</button>
                   <button
                     type="button"
                     class="btn btn--primary btn--flow-nav-width btn--slutfor"
@@ -759,7 +759,7 @@
                   <span class="summary-tip__title">Tips</span>
                 </div>
                 <p class="summary-tip__text" id="sum-tip-text">
-                  Spotify-inloggning: du skriver inte ditt Spotify-lösenord här — du skickas till Spotify. Lösenfrasen är bara för lokal kryptering (IndexedDB).
+                  Fyll i Client ID och tryck Logga in med Spotify. Inloggningen sker hos Spotify — inget lösenord sparas här. Gå sedan vidare via Nästa: Välj musik.
                 </p>
               </div>
             </div>
@@ -768,7 +768,7 @@
       </main>
 
       <footer class="site-footer" role="contentinfo">
-        <p>Bjorklunds Playlist · lokal PWA · PKCE · krypterad lagring</p>
+        <p>Björklund Playlist · lokal PWA · PKCE · krypterad lagring</p>
       </footer>
     </div>
 

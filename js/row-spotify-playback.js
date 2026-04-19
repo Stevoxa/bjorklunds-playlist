@@ -137,7 +137,7 @@ async function ensureWebPlayerConnected() {
   }
 
   const player = new Spotify.Player({
-    name: 'Bjorklunds Playlist (webb)',
+    name: 'Björklund Playlist (webb)',
     getOAuthToken: (cb) => {
       void getAccessToken()
         .then((tok) => cb(tok))

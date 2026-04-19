@@ -677,9 +677,8 @@ function updateSummaryTip(step) {
   }
   const tips = {
     '0':
-      'Spotify-inloggning: du skriver inte ditt Spotify-lösenord här — du skickas till Spotify. Lösenfrasen är bara för lokal kryptering (IndexedDB).\n\nAnge Client ID, logga in med Spotify och spara valvet under Inställningar innan du går vidare till låtar.',
-    '1':
-      'Använd brytarna för att ta med en rad i spellistan och radioknapparna för att välja rätt version av spåret.',
+      'Fyll i Client ID och tryck Logga in med Spotify. Inloggningen sker hos Spotify — inget lösenord sparas här. Gå sedan vidare via Nästa: Välj musik.',
+    '1': 'Välj vilka låtar som ska tas med och markera den version du vill använda.',
     '2': 'Du måste vara inloggad via Spotify för att fortsätta.',
     '3': 'Kontrollera sammanfattningen till höger innan du klickar Genomför på Spotify.',
     settings: 'Prefixet används när du skapar nya spellistor och när listor filtreras på prefix.',
