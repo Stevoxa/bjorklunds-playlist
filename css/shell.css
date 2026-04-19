@@ -303,6 +303,12 @@ body {
   margin-top: var(--space);
 }
 
+/* Steg 2: två staplade flow-cards + flow-nav med enhetligt gap. */
+#flow-step-2 > .flow-card + .flow-card,
+#flow-step-2 > .flow-card + .flow-nav {
+  margin-top: var(--space);
+}
+
 .flow-card {
   /* Ikon + text i statusrutor, forbidden-help och flow-nav__hint delar samma “rail”. */
   --flow-callout-icon-col: 2.25rem;
@@ -1083,6 +1089,142 @@ body {
   max-width: none;
   white-space: pre-line;
   text-align: left;
+}
+
+/* Steg 3: dölj den vanliga sammanfattningen i högerpanelen (sammanfattningen visas i mitten istället). */
+body[data-flow-step='3'] #summary-aside-card {
+  display: none;
+}
+
+/* Steg 3-tipskort (större, i högerpanelens plats när Genomför är låst). */
+.step3-locked-tip {
+  background: color-mix(in srgb, var(--shell-mint) 50%, var(--surface));
+  border: 1px solid var(--shell-summary-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(15, 20, 25, 0.07);
+  padding: 1.35rem 1.25rem 1.3rem;
+  color: var(--summary-forest-soft);
+}
+
+.step3-locked-tip[hidden] {
+  display: none !important;
+}
+
+[data-theme='dark'] .step3-locked-tip {
+  background: color-mix(in srgb, var(--summary-forest) 14%, var(--surface));
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  color: var(--text-muted);
+}
+
+.step3-locked-tip__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.65rem;
+}
+
+.step3-locked-tip__icon {
+  flex-shrink: 0;
+  width: 1.55rem;
+  height: 1.55rem;
+  color: var(--summary-forest);
+}
+
+.step3-locked-tip__title {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--summary-forest);
+  letter-spacing: -0.01em;
+}
+
+[data-theme='dark'] .step3-locked-tip__icon,
+[data-theme='dark'] .step3-locked-tip__title {
+  color: color-mix(in srgb, var(--summary-forest) 60%, var(--text));
+}
+
+.step3-locked-tip__text {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+/* Steg 3-sammanfattningskort (mitten). */
+.flow-card--summary {
+  --summary-forest: #1a5c42;
+  --summary-forest-soft: color-mix(in srgb, var(--summary-forest) 72%, var(--text-muted));
+  --summary-icon-bg: color-mix(in srgb, var(--shell-mint) 78%, var(--surface));
+  --summary-icon-fg: color-mix(in srgb, var(--shell-navy-muted) 92%, var(--text-muted));
+}
+
+[data-theme='dark'] .flow-card--summary {
+  --summary-forest: #6ecf9f;
+  --summary-icon-bg: rgba(255, 255, 255, 0.1);
+  --summary-icon-fg: color-mix(in srgb, var(--text) 92%, transparent);
+}
+
+.step3-summary-list {
+  margin: 0.25rem 0 1.1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.step3-summary-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.step3-summary-list__item + .step3-summary-list__item {
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.step3-summary-list__icon-wrap {
+  flex-shrink: 0;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--summary-icon-bg);
+  color: var(--summary-icon-fg);
+}
+
+.step3-summary-list__glyph {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
+.step3-summary-list__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-top: 0.1rem;
+}
+
+.step3-summary-list__label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  opacity: 0.7;
+}
+
+[data-theme='dark'] .step3-summary-list__label {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.step3-summary-list__value {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--text) 90%, var(--text-muted));
+  overflow-wrap: anywhere;
 }
 
 .site-footer {

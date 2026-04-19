@@ -1,5 +1,6 @@
 /**
- * Verifierar att steg 3 visar rätt block för ny vs befintlig spellista.
+ * Verifierar att steg 2 visar rätt block för ny vs befintlig spellista
+ * och att steg 3 speglar sammanfattningen (data-playlist-mode, sammanfattningsvärden).
  * Kör: node scripts/verify-playlist-step3.mjs
  * Kräver: npm-paketet playwright (npx playwright install chromium)
  */
@@ -62,18 +63,14 @@ async function main() {
     await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#flow-step-0.is-active', { timeout: 15000 });
 
-    /** Brödsmulor — ”Nästa: Välj spellista” i steg 1 kan vara disabled tills sökning + val är klara. */
     await page.locator('.flow-breadcrumbs__crumb[data-flow-step="1"]').click();
     await page.locator('#flow-step-1.is-active').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('.flow-breadcrumbs__crumb[data-flow-step="2"]').click();
     await page.locator('#flow-step-2.is-active').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#flow-step-2 input[name="pl-mode"][value="new"]').waitFor({ state: 'attached' });
 
-    await page.locator('.flow-breadcrumbs__crumb[data-flow-step="3"]').click();
-    await page.locator('#flow-step-3.is-active').waitFor({ state: 'visible', timeout: 10000 });
-
-    const modeNew = await page.locator('#flow-step-3').getAttribute('data-playlist-mode');
-    if (modeNew !== 'new') throw new Error(`Förväntade data-playlist-mode="new", fick ${modeNew}`);
+    const modeNew = await page.locator('#flow-step-2').getAttribute('data-playlist-mode');
+    if (modeNew !== 'new') throw new Error(`Förväntade data-playlist-mode="new" på steg 2, fick ${modeNew}`);
 
     const existingHiddenNew = await page.locator('#block-existing-playlist').isHidden();
     if (!existingHiddenNew) {
@@ -98,12 +95,12 @@ async function main() {
       document.querySelector('#flow-step-2 input[name="pl-mode"][value="existing"]')?.click();
     });
     await page.waitForFunction(
-      () => document.getElementById('flow-step-3')?.getAttribute('data-playlist-mode') === 'existing',
+      () => document.getElementById('flow-step-2')?.getAttribute('data-playlist-mode') === 'existing',
       { timeout: 5000 },
     );
 
-    const modeEx = await page.locator('#flow-step-3').getAttribute('data-playlist-mode');
-    if (modeEx !== 'existing') throw new Error(`Förväntade data-playlist-mode="existing", fick ${modeEx}`);
+    const modeEx = await page.locator('#flow-step-2').getAttribute('data-playlist-mode');
+    if (modeEx !== 'existing') throw new Error(`Förväntade data-playlist-mode="existing" på steg 2, fick ${modeEx}`);
 
     const existingVisible = await page.locator('#block-existing-playlist').isVisible();
     if (!existingVisible) {
@@ -118,19 +115,30 @@ async function main() {
     }
 
     const outDir = path.join(root, 'test-results');
-    await page.screenshot({ path: path.join(outDir, 'step3-existing-mode.png'), fullPage: true });
+    await page.screenshot({ path: path.join(outDir, 'step2-existing-mode.png'), fullPage: true });
 
     await page.evaluate(() => {
       document.querySelector('#flow-step-2 input[name="pl-mode"][value="new"]')?.click();
     });
     await page.waitForFunction(
-      () => document.getElementById('flow-step-3')?.getAttribute('data-playlist-mode') === 'new',
+      () => document.getElementById('flow-step-2')?.getAttribute('data-playlist-mode') === 'new',
       { timeout: 5000 },
     );
-    await page.screenshot({ path: path.join(outDir, 'step3-new-mode.png'), fullPage: true });
+    await page.screenshot({ path: path.join(outDir, 'step2-new-mode.png'), fullPage: true });
+
+    /** Steg 3: sammanfattningskort och aside-kortet ska vara dolt. */
+    await page.locator('.flow-breadcrumbs__crumb[data-flow-step="3"]').click();
+    await page.locator('#flow-step-3.is-active').waitFor({ state: 'visible', timeout: 10000 });
+    const step3Mode = await page.locator('#flow-step-3').getAttribute('data-playlist-mode');
+    if (step3Mode !== 'new') throw new Error(`Förväntade data-playlist-mode="new" på steg 3, fick ${step3Mode}`);
+    const asideHidden = await page.locator('#summary-aside-card').isHidden();
+    if (!asideHidden) throw new Error('Höger summary-card ska döljas på steg 3.');
+    const lockedTipVisible = await page.locator('#step3-locked-tip').isVisible();
+    if (!lockedTipVisible) throw new Error('step3-locked-tip ska synas när Genomför är låst.');
+    await page.screenshot({ path: path.join(outDir, 'step3-summary.png'), fullPage: true });
 
     // eslint-disable-next-line no-console
-    console.log('OK: steg 3 döljer uppdaterings-UI för ny spellista och visar den för befintlig.');
+    console.log('OK: steg 2 byter block, steg 3 visar sammanfattning och locked-tip när låst.');
   } finally {
     await browser.close();
     try {

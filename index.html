@@ -357,7 +357,14 @@
               </div>
             </section>
 
-            <section id="flow-step-2" class="flow-step" data-flow-panel="2" tabindex="-1" aria-labelledby="heading-pl-mode">
+            <section
+              id="flow-step-2"
+              class="flow-step"
+              data-flow-panel="2"
+              data-playlist-mode="new"
+              tabindex="-1"
+              aria-labelledby="heading-pl-mode"
+            >
               <div class="flow-card">
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
@@ -394,21 +401,8 @@
                     </span>
                   </label>
                 </div>
-                <div class="flow-nav">
-                  <button type="button" class="btn" data-flow-goto="1">Tillbaka: Välj musik</button>
-                  <button type="button" class="btn btn--primary" data-flow-goto="3">Nästa: Genomför</button>
-                </div>
               </div>
-            </section>
 
-            <section
-              id="flow-step-3"
-              class="flow-step"
-              data-flow-panel="3"
-              data-playlist-mode="new"
-              tabindex="-1"
-              aria-labelledby="heading-playlist"
-            >
               <div class="flow-card" aria-labelledby="heading-playlist">
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
@@ -534,6 +528,74 @@
                     </div>
                   </div>
                 </div>
+
+              </div>
+
+              <div class="flow-nav">
+                <button type="button" class="btn" data-flow-goto="1">Tillbaka: Välj musik</button>
+                <button type="button" class="btn btn--primary" data-flow-goto="3">Nästa: Genomför</button>
+              </div>
+            </section>
+
+            <section
+              id="flow-step-3"
+              class="flow-step"
+              data-flow-panel="3"
+              data-playlist-mode="new"
+              tabindex="-1"
+              aria-labelledby="heading-step3-summary"
+            >
+              <div class="flow-card flow-card--summary" aria-labelledby="heading-step3-summary">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-clipboard" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title flow-card__title--hero-step" id="heading-step3-summary">Sammanfattning</h2>
+                    <p class="flow-card__subtitle" id="heading-step3-summary-sub">
+                      Kontrollera dina val innan du klickar Genomför på Spotify.
+                    </p>
+                  </div>
+                </div>
+
+                <ul class="step3-summary-list" id="step3-summary-list">
+                  <li class="step3-summary-list__item">
+                    <span class="step3-summary-list__icon-wrap" aria-hidden="true">
+                      <svg class="step3-summary-list__glyph"><use href="#sym-note" /></svg>
+                    </span>
+                    <div class="step3-summary-list__body">
+                      <span class="step3-summary-list__label">Valda låtar</span>
+                      <span class="step3-summary-list__value" id="step3-sum-tracks">—</span>
+                    </div>
+                  </li>
+                  <li class="step3-summary-list__item">
+                    <span class="step3-summary-list__icon-wrap" aria-hidden="true">
+                      <svg class="step3-summary-list__glyph"><use href="#sym-playlist" /></svg>
+                    </span>
+                    <div class="step3-summary-list__body">
+                      <span class="step3-summary-list__label">Spellista</span>
+                      <span class="step3-summary-list__value" id="step3-sum-playlist">—</span>
+                    </div>
+                  </li>
+                  <li class="step3-summary-list__item">
+                    <span class="step3-summary-list__icon-wrap" aria-hidden="true">
+                      <svg class="step3-summary-list__glyph"><use href="#sym-lightning" /></svg>
+                    </span>
+                    <div class="step3-summary-list__body">
+                      <span class="step3-summary-list__label">Åtgärd</span>
+                      <span class="step3-summary-list__value" id="step3-sum-action">—</span>
+                    </div>
+                  </li>
+                  <li class="step3-summary-list__item" id="step3-sum-row-extra" hidden>
+                    <span class="step3-summary-list__icon-wrap" aria-hidden="true">
+                      <svg class="step3-summary-list__glyph"><use href="#sym-link" /></svg>
+                    </span>
+                    <div class="step3-summary-list__body">
+                      <span class="step3-summary-list__label" id="step3-sum-extra-label">Källa</span>
+                      <span class="step3-summary-list__value" id="step3-sum-extra">—</span>
+                    </div>
+                  </li>
+                </ul>
 
                 <div class="row row--wrap row--apply">
                   <p class="help row--apply__hint" id="apply-hint" aria-live="polite"></p>
@@ -684,7 +746,16 @@
           </div>
 
           <aside class="app-summary" aria-label="Sammanfattning">
-            <div class="summary-card">
+            <div class="step3-locked-tip" id="step3-locked-tip" hidden>
+              <div class="step3-locked-tip__head">
+                <svg class="step3-locked-tip__icon" aria-hidden="true"><use href="#sym-bulb" /></svg>
+                <h2 class="step3-locked-tip__title">Det saknas något</h2>
+              </div>
+              <p class="step3-locked-tip__text" id="step3-locked-tip-text">
+                Fyll i alla steg innan du kör Genomför på Spotify.
+              </p>
+            </div>
+            <div class="summary-card" id="summary-aside-card">
               <div class="summary-card__head">
                 <span class="summary-card__head-ring" aria-hidden="true">
                   <svg class="summary-card__head-icon"><use href="#sym-clipboard" /></svg>

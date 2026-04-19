@@ -548,15 +548,21 @@ let currentFlowStep = '0';
 
 function syncPageLeadStep3() {
   const lead = document.getElementById('app-page-lead');
-  if (!lead || currentFlowStep !== '3') return;
-  const mode = getPlaylistMode();
-  lead.textContent =
-    mode === 'new'
-      ? 'Skapa och publicera din spellista på Spotify. Följ stegen nedan och utför åtgärden när du är redo.'
-      : 'Välj hur du hittar spellistan och hur låtarna ska läggas till innan du kör Genomför på Spotify.';
+  if (!lead) return;
+  if (currentFlowStep === '2') {
+    const mode = getPlaylistMode();
+    lead.textContent =
+      mode === 'new'
+        ? 'Skapa en ny spellista — ange ett namn och välj om den ska vara publik.'
+        : 'Välj hur du hittar spellistan och hur låtarna ska läggas till.';
+    return;
+  }
+  if (currentFlowStep === '3') {
+    lead.textContent = 'Kontrollera dina val och kör Genomför på Spotify när allt är klart.';
+  }
 }
 
-/** Rubrik i kortet steg 3 växlar mellan ny / befintlig spellista. */
+/** Rubrik i kortet för spelliste-val (nu steg 2) växlar mellan ny / befintlig spellista. */
 function syncStep3CardHeadings() {
   const title = document.getElementById('heading-playlist');
   const sub = document.getElementById('heading-playlist-sub');
@@ -610,19 +616,20 @@ function setFlowStep(step, opts = {}) {
   const leads = {
     '0': 'Konfigurera och logga in på Spotify så att flödet kan skapa eller uppdatera din spellista.',
     '1': 'Klistra in låtar, hitta rätt spår på Spotify och välj vilka som ska läggas till i spellistan.',
-    '2': 'Välj hur låtarna ska sparas och ange vilken befintlig spellista som ska användas.',
+    '2': '',
     '3': '',
     settings: 'Konfigurera hur appen beter sig lokalt på din enhet.',
   };
   const lead = document.getElementById('app-page-lead');
   if (lead) {
-    if (step === '3') {
+    if (step === '2' || step === '3') {
       syncPageLeadStep3();
       syncStep3CardHeadings();
     } else if (leads[step]) {
       lead.textContent = leads[step];
     }
   }
+  document.body.setAttribute('data-flow-step', step);
   if (step === '0' && !skipSpotifyWarmup) {
     void syncSpotifySessionToUi();
   }
@@ -667,11 +674,11 @@ function updateSummaryTip(step) {
   const tip = document.getElementById('sum-tip-text');
   if (!tip) return;
   const plMode = getPlaylistMode();
-  if ((step === '2' || step === '3') && plMode === 'existing') {
+  if (step === '2' && plMode === 'existing') {
     tip.textContent = 'Listan visar bara spellistor du äger och som matchar ditt prefix.';
     return;
   }
-  if (step === '3' && plMode === 'new') {
+  if (step === '2' && plMode === 'new') {
     tip.textContent = 'Prefixet hämtas från Inställningar och läggs till automatiskt.';
     return;
   }
@@ -680,7 +687,7 @@ function updateSummaryTip(step) {
       'Fyll i Client ID och tryck Logga in med Spotify. Inloggningen sker hos Spotify — inget lösenord sparas här. Gå sedan vidare via Nästa: Välj musik.',
     '1': 'Välj vilka låtar som ska tas med och markera den version du vill använda.',
     '2': 'Du måste vara inloggad via Spotify för att fortsätta.',
-    '3': 'Kontrollera sammanfattningen till höger innan du klickar Genomför på Spotify.',
+    '3': 'Kontrollera sammanfattningen och klicka Genomför på Spotify när allt är klart.',
     settings: 'Prefixet används när du skapar nya spellistor och när listor filtreras på prefix.',
   };
   tip.textContent = tips[step] ?? tips['0'];
@@ -785,8 +792,72 @@ function refreshSummary() {
     sumFoot.textContent = 'Redo att genomföra på Spotify.';
   }
 
+  refreshStep3SummaryCard();
   updateSummaryTip(currentFlowStep);
   updateApplyEnabled();
+}
+
+/** Speglar sammanfattningen till steg 3:s huvudkort (Valda låtar / Spellista / Åtgärd / Källa). */
+function refreshStep3SummaryCard() {
+  const tracks = document.getElementById('step3-sum-tracks');
+  const playlist = document.getElementById('step3-sum-playlist');
+  const action = document.getElementById('step3-sum-action');
+  const rowExtra = document.getElementById('step3-sum-row-extra');
+  const extraLabel = document.getElementById('step3-sum-extra-label');
+  const extra = document.getElementById('step3-sum-extra');
+  if (!tracks || !playlist || !action) return;
+  const asideTracks = document.getElementById('sum-tracks');
+  const asidePlaylist = document.getElementById('sum-playlist');
+  const asideAction = document.getElementById('sum-action');
+  const asideRowExtra = document.getElementById('sum-row-extra');
+  const asideExtraLabel = document.getElementById('sum-extra-label');
+  const asideExtra = document.getElementById('sum-extra');
+  if (asideTracks) tracks.textContent = asideTracks.textContent ?? '—';
+  if (asidePlaylist) playlist.textContent = asidePlaylist.textContent ?? '—';
+  if (asideAction) action.textContent = asideAction.textContent ?? '—';
+  if (rowExtra && asideRowExtra) {
+    rowExtra.hidden = asideRowExtra.hidden;
+    if (extraLabel && asideExtraLabel) extraLabel.textContent = asideExtraLabel.textContent ?? 'Källa';
+    if (extra && asideExtra) extra.textContent = asideExtra.textContent ?? '—';
+  }
+  syncStep3LockedTip();
+}
+
+/** På steg 3: visa tipskort där högerpanelen normalt ligger när Genomför är låst. Göms när knappen är aktiv. */
+function syncStep3LockedTip() {
+  const wrap = document.getElementById('step3-locked-tip');
+  const text = document.getElementById('step3-locked-tip-text');
+  if (!wrap || !text) return;
+  const onStep3 = currentFlowStep === '3';
+  const ready = isStep3ApplyReady();
+  if (!onStep3 || ready) {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  if (!spotifyClient) {
+    text.textContent = 'Logga in med Spotify under steg 0 för att kunna genomföra.';
+    return;
+  }
+  if (resultRows.length === 0) {
+    text.textContent = 'Klistra in en låtlista och kör Sök på Spotify (Välj musik) innan du genomför.';
+    return;
+  }
+  if (selectedUrisForPlaylist().length === 0) {
+    text.textContent = 'Slå på Välj och välj version för minst en rad med träff (Välj musik) innan du genomför.';
+    return;
+  }
+  const mode = getPlaylistMode();
+  if (mode === 'new') {
+    text.textContent = 'Ange ett namn (suffix) för den nya spellistan under Välj spellista innan du genomför.';
+    return;
+  }
+  const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
+  if (src === 'from-list') {
+    text.textContent = 'Välj en befintlig spellista under Välj spellista innan du genomför.';
+    return;
+  }
+  text.textContent = 'Ange en giltig Spotify-länk eller spelliste-ID under Välj spellista innan du genomför.';
 }
 
 function wireFlow() {
@@ -915,6 +986,8 @@ function maybeRefreshPlaylistsWhenTabVisible() {
 function syncPlaylistModeBlocks() {
   const v = getPlaylistMode();
   const isNew = v === 'new';
+  const step2 = document.getElementById('flow-step-2');
+  if (step2) step2.setAttribute('data-playlist-mode', v);
   const step3 = document.getElementById('flow-step-3');
   if (step3) step3.setAttribute('data-playlist-mode', v);
   $('block-new-playlist').hidden = !isNew;
