@@ -1617,7 +1617,6 @@ async function runSearch() {
   renderResults();
   setSearchProgress(true);
   try {
-    let cacheHits = 0;
     for (let i = 0; i < resultRows.length; i += 1) {
       if (signal.aborted) break;
       $('search-progress-line').textContent = `Söker ${i + 1} av ${resultRows.length} …`;
@@ -1627,7 +1626,6 @@ async function runSearch() {
       /** Paus mellan rader ska bara följa efter Spotify-anrop — cache är lokalt och ska inte fördröja nästa rad */
       let rowFetchedFromSpotify = false;
       if (cached != null) {
-        cacheHits += 1;
         row.tracks = cached;
         logSpotify({
           t: new Date().toISOString(),
@@ -1651,13 +1649,6 @@ async function runSearch() {
       if (i < resultRows.length - 1 && rowFetchedFromSpotify) {
         await sleepAbortable(SEARCH_ROW_GAP_MS + Math.random() * SEARCH_ROW_JITTER_MS, signal);
       }
-    }
-    if (!signal.aborted) {
-      showToast(
-        cacheHits > 0
-          ? `Sökning klar. ${cacheHits} av ${resultRows.length} rader från cache, övriga från Spotify.`
-          : 'Sökning klar.',
-      );
     }
   } catch (e) {
     if (!signal.aborted) {
