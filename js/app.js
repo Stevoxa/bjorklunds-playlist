@@ -1180,6 +1180,7 @@ async function refreshExistingPlaylistSelect(opts = {}) {
 
 function maybeRefreshPlaylistsWhenTabVisible() {
   if (document.visibilityState !== 'visible') return;
+  if (currentFlowStep !== '2') return;
   const mode = getPlaylistMode();
   const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
   if (mode !== 'existing' || !fromList || !spotifyClient) return;
@@ -1199,7 +1200,8 @@ function syncPlaylistModeBlocks() {
   if (!isNew) {
     updateExistingPlaylistSourceUi();
     const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
-    if (src === 'from-list' && spotifyClient) {
+    /** Ingen spelliste-fetch förrän användaren är på steg 2 (annars triggas 429 t.ex. om BFCache återställer ”befintlig”). */
+    if (src === 'from-list' && spotifyClient && currentFlowStep === '2') {
       refreshExistingPlaylistSelect({ quiet: true }).catch((e) => showToast(String(e?.message ?? e), true));
     }
   }
@@ -1222,7 +1224,7 @@ function wirePlaylistMode() {
   document.querySelectorAll('input[name="pl-existing-source"]').forEach((r) => {
     r.addEventListener('change', () => {
       updateExistingPlaylistSourceUi();
-      if (r.value === 'from-list' && spotifyClient) {
+      if (r.value === 'from-list' && spotifyClient && currentFlowStep === '2') {
         refreshExistingPlaylistSelect({ quiet: true }).catch((e) => showToast(String(e?.message ?? e), true));
       }
       touchPlaylistApplyPostSuccessDirty();
@@ -1937,7 +1939,7 @@ async function boot() {
       playlistPrefixDebounceTimer = null;
       const mode = getPlaylistMode();
       const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
-      if (mode === 'existing' && fromList && spotifyClient) {
+      if (mode === 'existing' && fromList && spotifyClient && currentFlowStep === '2') {
         refreshExistingPlaylistSelect({ quiet: true }).catch(() => {});
       }
       touchPlaylistApplyPostSuccessDirty();
@@ -1949,7 +1951,7 @@ async function boot() {
     showToast('Prefix återställt. Spara under Inställningar om det ska in i valvet.');
     const mode = getPlaylistMode();
     const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
-    if (mode === 'existing' && fromList && spotifyClient) {
+    if (mode === 'existing' && fromList && spotifyClient && currentFlowStep === '2') {
       refreshExistingPlaylistSelect({ quiet: true }).catch(() => {});
     }
     touchPlaylistApplyPostSuccessDirty();
