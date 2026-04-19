@@ -1056,21 +1056,29 @@ async function refreshExistingPlaylistSelect(opts = {}) {
   try {
     const prefix = getPlaylistPrefixFromInput();
     const sel = $('existing-pl-select');
+    /** Id som ska återställas efter omladdning (t.ex. val innan stegbyte — syncPlaylistModeBlocks kör refresh utan id). */
+    const preserveId = sel.value.trim();
+    const list = await spotifyClient.listMyPlaylistsByPrefix(prefix, signal);
     sel.replaceChildren();
     const ph = document.createElement('option');
     ph.value = '';
     ph.textContent = '- Välj spellista -';
     sel.append(ph);
-    const list = await spotifyClient.listMyPlaylistsByPrefix(prefix, signal);
     for (const p of list) {
       const opt = document.createElement('option');
       opt.value = p.id;
       opt.textContent = p.name;
       sel.append(opt);
     }
-    if (selectPlaylistId && list.some((p) => p.id === selectPlaylistId)) {
-      sel.value = selectPlaylistId;
+    const explicit =
+      selectPlaylistId != null && String(selectPlaylistId).trim() !== ''
+        ? String(selectPlaylistId).trim()
+        : '';
+    const idToRestore = explicit || preserveId;
+    if (idToRestore && list.some((p) => p.id === idToRestore)) {
+      sel.value = idToRestore;
     }
+    refreshSummary();
     if (!quiet) {
       showToast(list.length ? `${list.length} spellistor med prefix.` : 'Inga spellistor matchar prefixet.');
     }
