@@ -294,11 +294,9 @@ async function loadEncryptedVault() {
         : DEFAULT_PLAYLIST_NAME_PREFIX;
     applyTheme($('pref-theme').value);
     updateNewPlaylistPreview();
-    initSpotifyClient();
-    await refreshSpotifyUserDisplay();
+    await syncSpotifySessionToUi();
     showToast('Data läst in.');
     syncSpotifySessionToStorage();
-    setAuthStatus();
     updateApplyEnabled();
   } catch {
     showToast('Kunde inte läsa valvet. Fel lösenfras?', true);
@@ -375,6 +373,17 @@ async function refreshSpotifyUserDisplay() {
   } catch {
     spotifyUserDisplay = '';
   }
+}
+
+/**
+ * Gemensam Spotify-session i UI: återskapa klient från valv, GET /me för visning, statuskort.
+ * Access token förnyas bara centralt i spotify-api (ensureAccess) när utgång närmar sig.
+ * @param {string} [extraHint] till setAuthStatus (t.ex. vid kallstart utan token i minnet).
+ */
+async function syncSpotifySessionToUi(extraHint = '') {
+  initSpotifyClient();
+  await refreshSpotifyUserDisplay();
+  setAuthStatus(extraHint);
 }
 
 const SPOTIFY_DASHBOARD_URL = 'https://developer.spotify.com/dashboard';
@@ -519,13 +528,12 @@ function mergeOAuthTokens(tokens, clientIdFromOAuth) {
   vaultData.clientId = cid;
   $('client-id').value = cid;
   vaultData.settings = { ...defaultVault().settings, ...vaultData.settings };
-  initSpotifyClient();
   updateNewPlaylistPreview();
   showToast(
     'Spotify-inloggning klar. Du kan ladda om sidan utan ny inloggning (samma flik). Under Inställningar: Spara lokalt med lösenfras för att behålla tokens efter stängd flik.',
   );
   updateApplyEnabled();
-  void refreshSpotifyUserDisplay().then(() => setAuthStatus());
+  void syncSpotifySessionToUi();
 }
 
 async function handleOAuthReturn() {
@@ -575,10 +583,11 @@ function scrollAppToTop() {
 
 /**
  * @param {'0' | '1' | '2' | '3' | 'settings'} step
- * @param {{ focusPanel?: boolean }} [opts] focusPanel: flytta fokus till aktivt steg (t.ex. efter klick i steglisten), inte vid sidladdning.
+ * @param {{ focusPanel?: boolean, skipSpotifyWarmup?: boolean }} [opts] focusPanel: flytta fokus till aktivt steg (t.ex. efter klick i steglisten), inte vid sidladdning.
+ *   skipSpotifyWarmup: vid steg 0 undvik dublett av init + /me när boot() redan kört syncSpotifySessionToUi.
  */
 function setFlowStep(step, opts = {}) {
-  const { focusPanel = false } = opts;
+  const { focusPanel = false, skipSpotifyWarmup = false } = opts;
   syncClientIdFromFormIntoVault();
   currentFlowStep = /** @type {'0' | '1' | '2' | '3' | 'settings'} */ (step);
   if (FEATURE_ROW_FULL_PLAYBACK && step !== '1') {
@@ -617,16 +626,14 @@ function setFlowStep(step, opts = {}) {
       lead.textContent = leads[step];
     }
   }
-  if (step === '0') {
-    initSpotifyClient();
-    void refreshSpotifyUserDisplay().then(() => setAuthStatus());
+  if (step === '0' && !skipSpotifyWarmup) {
+    void syncSpotifySessionToUi();
   }
   if (step === '1') {
-    initSpotifyClient();
+    void syncSpotifySessionToUi();
     updateApplyEnabled();
     updateNewPlaylistPreview();
     if (resultRows.length > 0) renderResults();
-    void refreshSpotifyUserDisplay().then(() => setAuthStatus());
   }
   updateSummarySubtitle(step);
   updateSummaryTip(step);
@@ -1607,10 +1614,8 @@ async function boot() {
     const cid = getClientId().trim();
     if (!cid) return;
     vaultData.clientId = cid;
-    initSpotifyClient();
     updateApplyEnabled();
-    void refreshSpotifyUserDisplay().then(() => {
-      setAuthStatus();
+    void syncSpotifySessionToUi().then(() => {
       if (resultRows.length > 0) renderResults();
     });
   });
@@ -1701,13 +1706,11 @@ async function boot() {
   }
 
   const exists = await idbGet(VAULT_KEY);
-  initSpotifyClient();
-  await refreshSpotifyUserDisplay();
   const vaultHint =
     exists && !vaultData?.tokens?.accessToken
       ? 'Det finns sparad krypterad data. Under Inställningar: ange lösenfras och klicka ”Läs in sparad data”.'
       : '';
-  setAuthStatus(vaultHint);
+  await syncSpotifySessionToUi(vaultHint);
 
   const passInp = $('crypto-pass');
   const passTog = $('btn-toggle-pass-visibility');
@@ -1725,7 +1728,7 @@ async function boot() {
   applyTheme($('pref-theme').value);
   updateNewPlaylistPreview();
   updateApplyEnabled();
-  setFlowStep('0', { focusPanel: false });
+  setFlowStep('0', { focusPanel: false, skipSpotifyWarmup: true });
   await registerServiceWorker();
 }
 

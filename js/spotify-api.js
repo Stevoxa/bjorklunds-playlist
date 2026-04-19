@@ -389,6 +389,9 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
 export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
   let t = { ...tokens };
 
+  /** @type {Promise<void> | null} */
+  let refreshCoalesce = null;
+
   async function forceRefreshAccess() {
     if (!t.refreshToken) throw new Error('Ingen refresh token');
     const next = await refreshAccessToken(t.refreshToken, clientId);
@@ -396,9 +399,25 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     if (onTokensUpdate) onTokensUpdate(t);
   }
 
+  /**
+   * Ett enda POST /api/token åt gången — parallella anrop (t.ex. många GET) delar samma förnyelse.
+   */
+  async function refreshAccessCoalesced() {
+    if (!refreshCoalesce) {
+      refreshCoalesce = forceRefreshAccess().finally(() => {
+        refreshCoalesce = null;
+      });
+    }
+    await refreshCoalesce;
+  }
+
+  /**
+   * Returnerar giltig access token. Förnyar **endast** när utgång närmar sig (SPOTIFY_TOKEN_REFRESH_LEEWAY_MS).
+   * All Spotify-trafik i denna klient går hit eller via getAccessToken() — ingen sidoeffekt vid omladdning om token är färsk.
+   */
   async function ensureAccess() {
     if (Date.now() < t.expiresAt - SPOTIFY_TOKEN_REFRESH_LEEWAY_MS) return t.accessToken;
-    await forceRefreshAccess();
+    await refreshAccessCoalesced();
     return t.accessToken;
   }
 
@@ -406,7 +425,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     let access = await ensureAccess();
     let res = await apiGetWith429Retry(access, path, max429, signal);
     if (res.status === 401 && t.refreshToken) {
-      await forceRefreshAccess();
+      await refreshAccessCoalesced();
       access = t.accessToken;
       res = await apiGetWith429Retry(access, path, max429, signal);
     }
@@ -417,7 +436,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     let access = await ensureAccess();
     let res = await api(access, path, init);
     if (res.status === 401 && t.refreshToken) {
-      await forceRefreshAccess();
+      await refreshAccessCoalesced();
       res = await api(t.accessToken, path, init);
     }
     return res;
