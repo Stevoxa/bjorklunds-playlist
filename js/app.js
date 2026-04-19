@@ -167,8 +167,6 @@ function hideStep3ApplyResultUi() {
     card.hidden = true;
     card.classList.remove('step3-apply-result-card--error');
   }
-  const actions = document.getElementById('step3-apply-result-actions');
-  if (actions) actions.hidden = true;
   playlistApplyPostSuccess = false;
 }
 
@@ -183,7 +181,6 @@ function showStep3PlaylistApplyResult(opts) {
   const linkWrap = document.getElementById('step3-apply-result-link-wrap');
   const linkEl = document.getElementById('step3-apply-result-link');
   const iconUse = document.getElementById('step3-apply-result-icon-use');
-  const actions = document.getElementById('step3-apply-result-actions');
   if (!card || !titleEl || !msgEl || !linkWrap || !linkEl || !iconUse) return;
 
   card.classList.toggle('step3-apply-result-card--error', !opts.ok);
@@ -206,7 +203,6 @@ function showStep3PlaylistApplyResult(opts) {
     linkEl.textContent = '';
   }
 
-  if (actions) actions.hidden = Boolean(opts.ok);
   playlistApplyPostSuccess = Boolean(opts.ok);
   card.hidden = false;
   refreshSummary();
@@ -1973,15 +1969,6 @@ async function boot() {
   });
 
   $('btn-apply-playlist').addEventListener('click', () => applyPlaylist());
-
-  const step3ApplyDismiss = document.getElementById('btn-step3-apply-result-dismiss');
-  if (step3ApplyDismiss) {
-    step3ApplyDismiss.addEventListener('click', () => {
-      hideStep3ApplyResultUi();
-      updateApplyEnabled();
-      syncApplyHint();
-    });
-  }
 
   document.querySelectorAll('[data-playlist-result-close]').forEach((el) => {
     el.addEventListener('click', () => hidePlaylistResultDialog());

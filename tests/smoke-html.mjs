@@ -54,7 +54,6 @@ const REQUIRED_IDS = [
   'step3-apply-result-card',
   'step3-apply-result-title',
   'step3-apply-result-message',
-  'btn-step3-apply-result-dismiss',
 ];
 
 function main() {

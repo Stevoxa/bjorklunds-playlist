@@ -1207,61 +1207,118 @@ body[data-flow-step='3'] #summary-aside-card {
   }
 }
 
-/* Resultat efter Genomför (högerpanel steg 3) — samma uttryck som tidigare modal */
+/* Resultat efter Genomför: bara steg 3 (högerpanel används inte så på övriga steg). */
+body:not([data-flow-step='3']) #step3-apply-result-card {
+  display: none !important;
+}
+
 .step3-apply-result-card[hidden] {
   display: none !important;
 }
 
+/* Kort som sammanfattning; lyckat läge = tips (ljusgrönt + mörkgrön text). */
 .step3-apply-result-card {
+  --summary-forest: #1a5c42;
+  --summary-forest-soft: color-mix(in srgb, var(--summary-forest) 72%, var(--text-muted));
+  border-radius: var(--radius);
   box-shadow: 0 8px 32px rgba(15, 20, 25, 0.07);
   border: 1px solid var(--shell-summary-border);
-  padding: 1.35rem 1.25rem 1.2rem;
+  padding: 1.35rem 1.25rem 1.3rem;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
 }
 
-[data-theme='dark'] .step3-apply-result-card {
+.step3-apply-result-card:not(.step3-apply-result-card--error) {
+  background: color-mix(in srgb, var(--shell-mint) 50%, var(--surface));
+}
+
+.step3-apply-result-card--error {
+  background: var(--surface);
+}
+
+[data-theme='dark'] .step3-apply-result-card:not(.step3-apply-result-card--error) {
+  --summary-forest: #6ecf9f;
+  --summary-forest-soft: color-mix(in srgb, var(--summary-forest) 55%, var(--text-muted));
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  background: color-mix(in srgb, var(--summary-forest) 14%, var(--surface));
+}
+
+[data-theme='dark'] .step3-apply-result-card--error {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .step3-apply-result-card:not(.step3-apply-result-card--error) {
+    --summary-forest: #6ecf9f;
+    --summary-forest-soft: color-mix(in srgb, var(--summary-forest) 55%, var(--text-muted));
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    background: color-mix(in srgb, var(--summary-forest) 14%, var(--surface));
+  }
+
+  :root:not([data-theme='light']) .step3-apply-result-card--error {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  }
 }
 
 .step3-apply-result-card__hero {
   display: flex;
-  align-items: center;
-  gap: 0.85rem;
+  align-items: flex-start;
+  gap: 1rem;
 }
 
+/* Samma ring- och ikonstorlek som flow-card__head (vänster sektion). */
 .step3-apply-result-card__icon-ring {
   flex-shrink: 0;
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 4.45rem;
+  height: 4.45rem;
   border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--shell-mint) 78%, var(--surface));
-  color: #1a5c42;
 }
 
-[data-theme='dark'] .step3-apply-result-card__icon-ring {
-  background: rgba(255, 255, 255, 0.1);
-  color: #6ecf9f;
+.step3-apply-result-card__icon {
+  width: 2.85rem;
+  height: 2.85rem;
+  display: block;
+}
+
+.step3-apply-result-card:not(.step3-apply-result-card--error) .step3-apply-result-card__icon-ring {
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--summary-forest) 22%, var(--border));
+  color: var(--summary-forest);
 }
 
 .step3-apply-result-card--error .step3-apply-result-card__icon-ring {
   background: color-mix(in srgb, #c62828 12%, var(--surface));
   color: #c62828;
+  border: 1px solid color-mix(in srgb, #c62828 18%, var(--border));
+}
+
+[data-theme='dark'] .step3-apply-result-card:not(.step3-apply-result-card--error) .step3-apply-result-card__icon-ring {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: color-mix(in srgb, var(--summary-forest) 35%, transparent);
+  color: var(--summary-forest);
 }
 
 .step3-apply-result-card__title {
   margin: 0;
+  padding-top: 0.35rem;
   font-size: 1.12rem;
   font-weight: 600;
   letter-spacing: -0.015em;
+}
+
+.step3-apply-result-card:not(.step3-apply-result-card--error) .step3-apply-result-card__title {
+  color: var(--summary-forest);
+}
+
+.step3-apply-result-card--error .step3-apply-result-card__title {
   color: color-mix(in srgb, var(--shell-navy) 55%, #4a5c56 45%);
 }
 
-[data-theme='dark'] .step3-apply-result-card__title {
+[data-theme='dark'] .step3-apply-result-card--error .step3-apply-result-card__title {
   color: color-mix(in srgb, var(--text) 78%, rgb(160 185 175) 22%);
 }
 
@@ -1269,6 +1326,13 @@ body[data-flow-step='3'] #summary-aside-card {
   margin: 0;
   font-size: 0.92rem;
   line-height: 1.5;
+}
+
+.step3-apply-result-card:not(.step3-apply-result-card--error) .step3-apply-result-card__message {
+  color: var(--summary-forest-soft);
+}
+
+.step3-apply-result-card--error .step3-apply-result-card__message {
   color: var(--text-muted);
 }
 
@@ -1279,21 +1343,21 @@ body[data-flow-step='3'] #summary-aside-card {
 .step3-apply-result-card__spotify-link {
   font-size: 0.92rem;
   font-weight: 600;
-  color: var(--summary-forest, #1a5c42);
   text-decoration: underline;
   text-underline-offset: 0.12em;
   word-break: break-word;
 }
 
-.step3-apply-result-card__spotify-link:hover {
-  text-decoration-thickness: 0.12em;
+.step3-apply-result-card:not(.step3-apply-result-card--error) .step3-apply-result-card__spotify-link {
+  color: var(--summary-forest);
 }
 
-.step3-apply-result-card__actions {
-  margin-top: auto;
-  padding-top: 0.5rem;
-  display: flex;
-  justify-content: flex-end;
+.step3-apply-result-card--error .step3-apply-result-card__spotify-link {
+  color: var(--summary-forest, #1a5c42);
+}
+
+.step3-apply-result-card__spotify-link:hover {
+  text-decoration-thickness: 0.12em;
 }
 
 /* Steg 3-tipskort (större, i högerpanelens plats när Genomför är låst). */
