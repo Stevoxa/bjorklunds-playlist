@@ -33,7 +33,7 @@ const REQUIRED_IDS = [
   'sum-tracks',
   'sum-playlist',
   'sum-action',
-  'sum-token',
+  'step3-sum-spotify',
   'sum-foot',
   'sum-tip-text',
   'rate-limit-countdown-wrap',

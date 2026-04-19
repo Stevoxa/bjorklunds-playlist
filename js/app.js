@@ -763,16 +763,21 @@ function refreshSummary() {
   const sumTracks = document.getElementById('sum-tracks');
   const sumPlaylist = document.getElementById('sum-playlist');
   const sumAction = document.getElementById('sum-action');
-  const sumToken = document.getElementById('sum-token');
   const sumFoot = document.getElementById('sum-foot');
   const sumRowExtra = document.getElementById('sum-row-extra');
   const sumExtra = document.getElementById('sum-extra');
   const sumExtraLabel = document.getElementById('sum-extra-label');
-  if (!sumSpotify || !sumTracks || !sumPlaylist || !sumAction || !sumToken || !sumFoot) return;
+  if (!sumSpotify || !sumTracks || !sumPlaylist || !sumAction || !sumFoot) return;
 
   const hasToken = Boolean(vaultData?.tokens?.accessToken);
   const cid = (vaultData?.clientId || '').trim() || getClientId().trim();
-  if (hasToken && spotifyClient) {
+  const expiresAt = vaultData?.tokens?.expiresAt;
+  if (hasToken && spotifyClient && expiresAt) {
+    const t = new Date(expiresAt);
+    const timeStr = t.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+    sumSpotify.textContent = `Giltig Spotify-token finns till ${timeStr}`;
+    sumSpotify.classList.add('summary-list__value--ok');
+  } else if (hasToken && spotifyClient) {
     sumSpotify.textContent = 'Inloggad';
     sumSpotify.classList.add('summary-list__value--ok');
   } else if (hasToken && !cid) {
@@ -849,16 +854,6 @@ function refreshSummary() {
     sumExtra.textContent = src === 'from-list' ? 'Mina listor med prefix' : 'Spotify-länk';
   }
 
-  if (vaultData?.tokens?.expiresAt) {
-    const t = new Date(vaultData.tokens.expiresAt);
-    const timeStr = t.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
-    sumToken.textContent = `Giltig Spotify-token finns till ${timeStr}`;
-    sumToken.classList.add('summary-list__value--ok');
-  } else {
-    sumToken.textContent = '—';
-    sumToken.classList.remove('summary-list__value--ok');
-  }
-
   if (!hasToken) {
     sumFoot.textContent = 'Logga in under steg 0 för att fortsätta.';
   } else if (mode === 'existing') {
@@ -885,8 +880,9 @@ function refreshSummary() {
   updateApplyEnabled();
 }
 
-/** Speglar sammanfattningen till steg 3:s huvudkort (Valda låtar / Spellista / Åtgärd / Källa). */
+/** Speglar sammanfattningen till steg 3:s huvudkort (Spotify-Token / Valda låtar / …). */
 function refreshStep3SummaryCard() {
+  const spotify = document.getElementById('step3-sum-spotify');
   const tracks = document.getElementById('step3-sum-tracks');
   const playlist = document.getElementById('step3-sum-playlist');
   const action = document.getElementById('step3-sum-action');
@@ -894,12 +890,17 @@ function refreshStep3SummaryCard() {
   const extraLabel = document.getElementById('step3-sum-extra-label');
   const extra = document.getElementById('step3-sum-extra');
   if (!tracks || !playlist || !action) return;
+  const asideSpotify = document.getElementById('sum-spotify');
   const asideTracks = document.getElementById('sum-tracks');
   const asidePlaylist = document.getElementById('sum-playlist');
   const asideAction = document.getElementById('sum-action');
   const asideRowExtra = document.getElementById('sum-row-extra');
   const asideExtraLabel = document.getElementById('sum-extra-label');
   const asideExtra = document.getElementById('sum-extra');
+  if (spotify && asideSpotify) {
+    spotify.textContent = asideSpotify.textContent ?? '—';
+    spotify.classList.toggle('step3-summary-list__value--ok', asideSpotify.classList.contains('summary-list__value--ok'));
+  }
   if (asideTracks) tracks.textContent = asideTracks.textContent ?? '—';
   if (asidePlaylist) playlist.textContent = asidePlaylist.textContent ?? '—';
   if (asideAction) action.textContent = asideAction.textContent ?? '—';
