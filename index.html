@@ -505,12 +505,15 @@
                       ></button>
                       <span aria-hidden="true">.</span>
                     </p>
-                    <button type="button" class="btn btn--with-icon" id="btn-refresh-pl-list">
-                      <span class="btn__icon-wrap" aria-hidden="true">
-                        <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
-                      </span>
-                      <span>Hämta om lista</span>
-                    </button>
+                    <div class="existing-pl-refresh-row">
+                      <button type="button" class="btn btn--with-icon" id="btn-refresh-pl-list">
+                        <span class="btn__icon-wrap" aria-hidden="true">
+                          <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
+                        </span>
+                        <span>Hämta om lista</span>
+                      </button>
+                      <p class="help existing-pl-updated-at" id="existing-pl-updated-at" aria-live="polite" hidden></p>
+                    </div>
                     <p class="help help--warning" id="existing-pl-truncated-warning" hidden>
                       Du har ovanligt många spellistor. Appen visar de första 1000 som börjar med prefixet.
                       Saknas en spellista kan du istället använda en Spotify-länk.

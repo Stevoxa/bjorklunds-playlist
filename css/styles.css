@@ -166,6 +166,22 @@ body {
   margin-top: 0.5rem;
 }
 
+.existing-pl-refresh-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+}
+
+.existing-pl-updated-at {
+  margin: 0;
+  font-size: 0.85rem;
+  text-align: right;
+  min-width: 0;
+}
+
 .existing-pl-select-help-row {
   display: flex;
   flex-wrap: wrap;

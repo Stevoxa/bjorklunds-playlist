@@ -476,6 +476,11 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       return ensureAccess();
     },
 
+    /** @returns {string | null} Senast kända Spotify user-id från /me eller listMyPlaylistsByPrefix (ingen nätverksaktivitet). */
+    getCachedUserId() {
+      return cachedSpotifyUserId;
+    },
+
     /**
      * Svar på `/me` cachas i klienten — konto-id och display-name/email ändras sällan.
      * Så slipper UI-synk (steg 0 + steg 1) samt spelliste-filtret skicka separata GET /me-anrop.

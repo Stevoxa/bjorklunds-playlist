@@ -12,6 +12,11 @@ import { parseTrackList } from './parser.js';
 import { createSpotifyClient, parsePlaylistIdFromInput } from './spotify-api.js';
 import { subscribeSpotifyLog, clearSpotifyLog, logSpotify } from './spotify-log.js';
 import { makeSearchCacheKey, getSearchCache, setSearchCache, clearSearchCache } from './search-cache.js';
+import {
+  readPlaylistListCache,
+  writePlaylistListCache,
+  deletePlaylistListCache,
+} from './playlist-list-cache.js';
 import { readSpotifySession, writeSpotifySession, clearSpotifySession } from './token-session.js';
 import {
   bindRowPlaybackControls,
@@ -55,8 +60,19 @@ let playlistPrefixDebounceTimer = /** @type {ReturnType<typeof setTimeout> | nul
 /** @type {{ prefix: string, at: number, list: { id: string, name: string }[], truncated: boolean, userId: string } | null} */
 let existingPlaylistListCache = null;
 
-function invalidateExistingPlaylistListCache() {
+/**
+ * @param {{ persistent?: boolean, userId?: string | null }} [opts]
+ *   persistent: om true, rensa även IDB-cachen (t.ex. vid logout). Default: bara in-memory.
+ */
+function invalidateExistingPlaylistListCache(opts = {}) {
+  const prevUserId = existingPlaylistListCache?.userId ?? null;
   existingPlaylistListCache = null;
+  updatePlaylistListUpdatedAt(null, false);
+  updatePlaylistListTruncatedWarning(false);
+  if (opts.persistent) {
+    const uid = opts.userId ?? prevUserId;
+    if (uid) void deletePlaylistListCache(uid);
+  }
 }
 
 /**
@@ -1171,6 +1187,23 @@ async function refreshExistingPlaylistSelect(opts = {}) {
   /** Id som ska återställas efter omladdning (t.ex. val innan stegbyte — syncPlaylistModeBlocks kör refresh utan id). */
   const preserveNow = selNow.value.trim();
 
+  /** Ingen in-memory cache ännu? Försök ladda från IDB (gratis, ingen nätverk). */
+  if (!existingPlaylistListCache) {
+    const userIdKnown = typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null;
+    if (userIdKnown) {
+      const persisted = await readPlaylistListCache(userIdKnown);
+      if (persisted && persisted.prefix === prefixNow) {
+        existingPlaylistListCache = {
+          prefix: persisted.prefix,
+          at: persisted.at,
+          list: persisted.list,
+          truncated: persisted.truncated,
+          userId: persisted.userId,
+        };
+      }
+    }
+  }
+
   const cacheFresh =
     !force &&
     existingPlaylistListCache &&
@@ -1192,6 +1225,8 @@ async function refreshExistingPlaylistSelect(opts = {}) {
 
   if (cacheFresh) {
     populateExistingPlaylistSelectFromList(selNow, existingPlaylistListCache.list, preserveNow, selectPlaylistId);
+    updatePlaylistListTruncatedWarning(existingPlaylistListCache.truncated);
+    updatePlaylistListUpdatedAt(existingPlaylistListCache.at, /* stale */ false);
     refreshSummary();
     return;
   }
@@ -1224,15 +1259,19 @@ async function refreshExistingPlaylistSelect(opts = {}) {
       const sel = $('existing-pl-select');
       const preserveId = sel.value.trim();
       const { list, truncated, userId } = await spotifyClient.listMyPlaylistsByPrefix(prefix, signal);
+      const at = Date.now();
       existingPlaylistListCache = {
         prefix,
-        at: Date.now(),
+        at,
         list: list.map((p) => ({ id: p.id, name: p.name })),
         truncated,
         userId,
       };
+      /** Skriv till IDB i bakgrunden — fel där ska inte störa UI. */
+      void writePlaylistListCache(userId, prefix, list, truncated);
       populateExistingPlaylistSelectFromList(sel, list, preserveId, selectPlaylistId);
       updatePlaylistListTruncatedWarning(truncated);
+      updatePlaylistListUpdatedAt(at, /* stale */ false);
       refreshSummary();
       if (!quiet) {
         showToast(list.length ? `${list.length} spellistor matchar prefixet.` : 'Inga spellistor matchar prefixet.');
@@ -1240,7 +1279,10 @@ async function refreshExistingPlaylistSelect(opts = {}) {
     } catch (e) {
       if (signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return;
       /** Stale-if-error: låt användaren få ut något vid nätverks-/429-fel. */
-      maybePopulateFromStaleCache(selNow, prefixNow, preserveNow, selectPlaylistId);
+      const fellBack = maybePopulateFromStaleCache(selNow, prefixNow, preserveNow, selectPlaylistId);
+      if (fellBack && !quiet) {
+        showToast('Kunde inte uppdatera listan från Spotify just nu — visar senast kända lista.', true);
+      }
       throw e;
     } finally {
       if (existingPlSelectRefreshAbort === ac) existingPlSelectRefreshAbort = null;
@@ -1266,6 +1308,7 @@ function maybePopulateFromStaleCache(sel, prefixNow, preserveNow, selectPlaylist
   if (age < 0 || age > PLAYLIST_LIST_STALE_IF_ERROR_MS) return false;
   populateExistingPlaylistSelectFromList(sel, c.list, preserveNow, selectPlaylistId);
   updatePlaylistListTruncatedWarning(c.truncated);
+  updatePlaylistListUpdatedAt(c.at, /* stale */ true);
   refreshSummary();
   return true;
 }
@@ -1278,6 +1321,53 @@ function updatePlaylistListTruncatedWarning(truncated) {
   const el = document.getElementById('existing-pl-truncated-warning');
   if (!el) return;
   el.hidden = !truncated;
+}
+
+/**
+ * Visar "Uppdaterad för X min sedan" intill Hämta om lista.
+ * Uppdateras live var 30:e sekund så texten inte fastnar.
+ * @param {number | null} at Epok-ms eller null för att dölja.
+ * @param {boolean} stale Om cachen är hämtad som stale-if-error-fallback.
+ */
+/** @type {ReturnType<typeof setInterval> | null} */
+let playlistListUpdatedAtTicker = null;
+/** @type {{ at: number, stale: boolean } | null} */
+let playlistListUpdatedAtState = null;
+
+function updatePlaylistListUpdatedAt(at, stale) {
+  const el = document.getElementById('existing-pl-updated-at');
+  if (!el) return;
+  if (at == null) {
+    playlistListUpdatedAtState = null;
+    el.hidden = true;
+    el.textContent = '';
+    if (playlistListUpdatedAtTicker) {
+      clearInterval(playlistListUpdatedAtTicker);
+      playlistListUpdatedAtTicker = null;
+    }
+    return;
+  }
+  playlistListUpdatedAtState = { at, stale };
+  renderPlaylistListUpdatedAtText();
+  if (!playlistListUpdatedAtTicker) {
+    playlistListUpdatedAtTicker = setInterval(renderPlaylistListUpdatedAtText, 30_000);
+  }
+}
+
+function renderPlaylistListUpdatedAtText() {
+  const el = document.getElementById('existing-pl-updated-at');
+  if (!el || !playlistListUpdatedAtState) return;
+  const { at, stale } = playlistListUpdatedAtState;
+  const ageMs = Math.max(0, Date.now() - at);
+  const ageMin = Math.floor(ageMs / 60_000);
+  let rel;
+  if (ageMs < 60_000) rel = 'nu nyss';
+  else if (ageMin < 60) rel = `för ${ageMin} min sedan`;
+  else if (ageMin < 60 * 24) rel = `för ${Math.floor(ageMin / 60)} tim sedan`;
+  else rel = `för ${Math.floor(ageMin / (60 * 24))} dag(ar) sedan`;
+  el.textContent = stale ? `Senast uppdaterad ${rel} (ej verifierad mot Spotify just nu).` : `Uppdaterad ${rel}.`;
+  el.classList.toggle('help--warning', stale);
+  el.hidden = false;
 }
 
 /** Synkar steg 3: ny vs befintlig spellista (måste köras vid stegbyte, inte bara vid pl-mode change). */
@@ -2103,9 +2193,10 @@ async function boot() {
       playlistNamePrefix: $('playlist-prefix').value,
     };
     vaultData.tokens = null;
+    const uidForCacheWipe = spotifyClient?.getCachedUserId?.() ?? null;
     spotifyClient = null;
     spotifyUserDisplay = '';
-    invalidateExistingPlaylistListCache();
+    invalidateExistingPlaylistListCache({ persistent: true, userId: uidForCacheWipe });
     clearSpotifySession();
     const pass = getPassphrase();
     if (pass.length >= 8) {
