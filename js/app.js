@@ -165,8 +165,8 @@ function showPlaylistResultDialog(opts) {
       (opts.playlistOpenUrl && String(opts.playlistOpenUrl).trim()) || spotifyOpenPlaylistUrl(opts.playlistId);
     linkEl.href = ext;
     linkEl.textContent = opts.playlistName
-      ? `Öppna spellistan ”${opts.playlistName}” på Spotify`
-      : 'Öppna spellistan på Spotify';
+      ? `Öppna spellistan ”${opts.playlistName}” i Spotify`
+      : 'Öppna spellistan i Spotify';
     linkWrap.hidden = false;
   } else {
     linkWrap.hidden = true;
@@ -222,8 +222,8 @@ function showStep3PlaylistApplyResult(opts) {
       (opts.playlistOpenUrl && String(opts.playlistOpenUrl).trim()) || spotifyOpenPlaylistUrl(opts.playlistId);
     linkEl.href = ext;
     linkEl.textContent = opts.playlistName
-      ? `Öppna spellistan ”${opts.playlistName}” på Spotify`
-      : 'Öppna spellistan på Spotify';
+      ? `Öppna spellistan ”${opts.playlistName}” i Spotify`
+      : 'Öppna spellistan i Spotify';
     linkWrap.hidden = false;
   } else {
     linkWrap.hidden = true;
@@ -260,7 +260,7 @@ function showToast(message, isError = false) {
     t.title = 'Tryck här för att stänga meddelandet';
     const longHelp =
       message.length > 100 ||
-      /scope|behörighet|Forbidden|403|401|Dashboard|Rensa session|privat spellista/i.test(message);
+      /scope|behörighet|Forbidden|403|401|Dashboard|Logga ut|privat spellista/i.test(message);
     showToast._durationMs = longHelp ? 26_000 : 12_000;
     const dismiss = () => {
       clearTimeout(showToast._timer);
@@ -337,12 +337,12 @@ function persistTokensFromClient() {
 async function saveEncryptedVault() {
   const pass = getPassphrase();
   if (pass.length < 8) {
-    showToast('Lösenfras måste vara minst 8 tecken.', true);
+    showToast('Lösenfrasen måste vara minst 8 tecken.', true);
     return;
   }
   const cid = getClientId();
   if (!cid) {
-    showToast('Ange Client ID.', true);
+    showToast('Ange ett Client ID.', true);
     return;
   }
   vaultData = vaultData ?? defaultVault();
@@ -356,7 +356,7 @@ async function saveEncryptedVault() {
   persistTokensFromClient();
   await saveVault(vaultData, pass);
   syncSpotifySessionToStorage();
-  showToast('Sparat krypterat i IndexedDB.');
+  showToast('Sparat krypterat lokalt i din webbläsare.');
   setAuthStatus();
   updateApplyEnabled();
 }
@@ -364,13 +364,13 @@ async function saveEncryptedVault() {
 async function loadEncryptedVault() {
   const pass = getPassphrase();
   if (pass.length < 8) {
-    showToast('Ange samma lösenfras som vid sparande (minst 8 tecken).', true);
+    showToast('Ange samma lösenfras som du använde när du sparade (minst 8 tecken).', true);
     return;
   }
   try {
     const data = await loadVault(pass);
     if (!data) {
-      showToast('Ingen sparad data hittades.', true);
+      showToast('Det finns ingen sparad data.', true);
       return;
     }
     vaultData = { ...defaultVault(), ...data };
@@ -384,11 +384,11 @@ async function loadEncryptedVault() {
     applyTheme($('pref-theme').value);
     updateNewPlaylistPreview();
     await syncSpotifySessionToUi();
-    showToast('Data läst in.');
+    showToast('Sparad data inläst.');
     syncSpotifySessionToStorage();
     updateApplyEnabled();
   } catch {
-    showToast('Kunde inte läsa valvet. Fel lösenfras?', true);
+    showToast('Kunde inte läsa sparad data. Är lösenfrasen korrekt?', true);
   }
 }
 
@@ -516,7 +516,7 @@ function setAuthStatus(extraHint = '') {
     body.className = 'auth-status-card__body';
     const title = document.createElement('p');
     title.className = 'auth-status-card__title';
-    title.textContent = 'Inte inloggad på Spotify.';
+    title.textContent = 'Du är inte inloggad på Spotify.';
     body.append(title);
     appendSpotifyClientSetupExplainer(body);
     if (extraHint) {
@@ -542,11 +542,11 @@ function setAuthStatus(extraHint = '') {
     body.className = 'auth-status-card__body';
     const title = document.createElement('p');
     title.className = 'auth-status-card__title';
-    title.textContent = 'Tokens finns men Client ID saknas';
+    title.textContent = 'Token finns, men Client ID saknas';
     const note = document.createElement('p');
     note.className = 'auth-status-card__note';
     note.textContent =
-      'Vanligt efter omdirigering. Ange Client ID i fältet ovan — spara under Inställningar när du klickar Spara lokalt.';
+      'Det här kan hända efter omdirigering. Ange Client ID i fältet ovan och logga in igen.';
     body.append(title, note);
     card.append(icon, body);
     host.append(card);
@@ -570,11 +570,11 @@ function setAuthStatus(extraHint = '') {
 
   const title = document.createElement('p');
   title.className = 'auth-status-card__title';
-  title.textContent = spotifyUserDisplay ? `Inloggad som ${spotifyUserDisplay}` : 'Inloggad på Spotify.';
+  title.textContent = spotifyUserDisplay ? `Inloggad som ${spotifyUserDisplay}` : 'Du är inloggad på Spotify.';
 
   const meta = document.createElement('p');
   meta.className = 'auth-status-card__meta';
-  meta.textContent = `Access token giltig till ${exp}.`;
+  meta.textContent = `Spotify-token giltig till ${exp}.`;
 
   body.append(title, meta);
   if (gs) {
@@ -583,21 +583,21 @@ function setAuthStatus(extraHint = '') {
     const alert = document.createElement('p');
     alert.className = 'auth-status-card__alert';
     alert.textContent =
-      'Spotify skickade ingen scope-lista i token-svaret (ovanligt). Om spellistor nekas: logga in igen efter att du återkallat appen (403-hjälpen nedan).';
+      'Spotify skickade ingen lista över behörigheter i tokensvaret. Om spellistor nekas, koppla bort appen och logga in igen. Se instruktionerna gällande Forbidden (403) nedan.';
     body.append(alert);
   }
   if (gs && !hasPlaylistScope) {
     const alert = document.createElement('p');
     alert.className = 'auth-status-card__alert';
     alert.textContent =
-      'Denna token saknar playlist-modify-public/private — spellistor kan inte skapas eller ändras. Återkalla appen på spotify.com/account/apps och logga in igen.';
+      'Din token saknar behörigheten playlist-modify-public eller playlist-modify-private. Koppla bort appen på spotify.com/account/apps, kontrollera att du finns under User management i Spotify Developer Dashboard och logga sedan in igen.';
     body.append(alert);
   }
 
   const foot = document.createElement('p');
   foot.className = 'auth-status-card__note';
   foot.textContent =
-    'Access token förnyas automatiskt i god tid via refresh token. Omladdning av sidan behåller inloggning i samma webbläsarflik; stäng fliken eller tryck Rensa session för att logga ut lokalt.';
+    'Spotify-token förnyas automatiskt tills webbläsarsidan stängs eller att du klickar på knappen Logga ut.';
   body.append(foot);
 
   card.append(iconWrap, body);
@@ -626,7 +626,7 @@ async function handleOAuthReturn() {
   const result = await consumeOAuthCallback();
   if (!result) return;
   if ('error' in result) {
-    showToast(`Inloggning avbruten: ${result.error}`, true);
+    showToast(`Inloggningen avbröts: ${result.error}`, true);
     return;
   }
   mergeOAuthTokens(result.tokens, result.clientId);
@@ -642,12 +642,12 @@ function syncPageLeadStep3() {
     const mode = getPlaylistMode();
     lead.textContent =
       mode === 'new'
-        ? 'Skapa en ny spellista — ange ett namn och välj om den ska vara publik.'
+        ? 'Ange ett namn på den nya spellistan och välj om den ska vara publik.'
         : 'Välj hur du hittar spellistan och hur låtarna ska läggas till.';
     return;
   }
   if (currentFlowStep === '3') {
-    lead.textContent = 'Kontrollera dina val och kör Genomför på Spotify när allt är klart.';
+    lead.textContent = 'Kontrollera dina val och klicka på Genomför på Spotify när allt är klart.';
   }
 }
 
@@ -659,7 +659,7 @@ function syncStep3CardHeadings() {
   const mode = getPlaylistMode();
   if (mode === 'new') {
     title.textContent = 'Skapa ny spellista';
-    sub.textContent = 'Ange namn och välj om spellistan skall vara publik.';
+    sub.textContent = 'Ange ett namn och välj om spellistan ska vara publik.';
   } else {
     title.textContent = 'Uppdatera befintlig spellista';
     sub.textContent = 'Välj hur du hittar spellistan som ska uppdateras och hur låtarna ska läggas till.';
@@ -703,11 +703,11 @@ function setFlowStep(step, opts = {}) {
     else btn.removeAttribute('aria-current');
   });
   const leads = {
-    '0': 'Konfigurera och logga in på Spotify så att flödet kan skapa eller uppdatera din spellista.',
+    '0': 'För att använda appen behöver du först ange ditt Client ID och logga in på Spotify.',
     '1': 'Klistra in låtar, hitta rätt spår på Spotify och välj vilka som ska läggas till i spellistan.',
     '2': '',
     '3': '',
-    settings: 'Konfigurera hur appen beter sig lokalt på din enhet.',
+    settings: 'Anpassa hur appen fungerar lokalt på din enhet.',
   };
   const lead = document.getElementById('app-page-lead');
   if (lead) {
@@ -752,9 +752,9 @@ function updateSummarySubtitle(step) {
   if (!el) return;
   const lines = {
     '0': 'Status för inloggning och nästa steg.',
-    '1': 'Kontrollera dina val innan du går vidare till spellista.',
+    '1': 'Kontrollera dina val innan du går vidare till spellistan.',
     '2': 'Kontrollera dina val innan du fortsätter.',
-    '3': 'Kontrollera dina val innan du klickar Genomför på Spotify.',
+    '3': 'Kontrollera dina val innan du genomför.',
     settings: 'Kontrollera dina val innan du fortsätter.',
   };
   el.textContent = lines[step] ?? '';
@@ -765,7 +765,7 @@ function updateSummaryTip(step) {
   if (!tip) return;
   const plMode = getPlaylistMode();
   if (step === '2' && plMode === 'existing') {
-    tip.textContent = 'Listan visar bara spellistor du äger och som matchar ditt prefix.';
+    tip.textContent = 'Listan visar endast spellistor du äger och som matchar ditt prefix.';
     return;
   }
   if (step === '2' && plMode === 'new') {
@@ -774,11 +774,11 @@ function updateSummaryTip(step) {
   }
   const tips = {
     '0':
-      'Fyll i Client ID och tryck Logga in med Spotify. Inloggningen sker hos Spotify — inget lösenord sparas här. Gå sedan vidare via Nästa: Välj musik.',
+      'Fyll i Client ID och klicka på Logga in med Spotify. Inloggningen sker hos Spotify och inget lösenord sparas här. Gå sedan vidare till Välj musik.',
     '1': 'Välj vilka låtar som ska tas med och markera den version du vill använda.',
-    '2': 'Du måste vara inloggad via Spotify för att fortsätta.',
-    '3': 'Kontrollera sammanfattningen och klicka Genomför på Spotify när allt är klart.',
-    settings: 'Prefixet används när du skapar nya spellistor och när listor filtreras på prefix.',
+    '2': 'Du behöver vara inloggad på Spotify för att fortsätta.',
+    '3': 'Kontrollera sammanfattningen och klicka på Genomför på Spotify när allt är klart.',
+    settings: 'Prefixet används när du skapar nya spellistor och för att filtrera dina spellistor.',
   };
   tip.textContent = tips[step] ?? tips['0'];
 }
@@ -800,16 +800,16 @@ function refreshSummary() {
   if (hasToken && spotifyClient && expiresAt) {
     const t = new Date(expiresAt);
     const timeStr = t.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
-    sumSpotify.textContent = `Giltig Spotify-token finns till ${timeStr}`;
+    sumSpotify.textContent = `Spotify-token giltig till ${timeStr}`;
     sumSpotify.classList.add('summary-list__value--ok');
   } else if (hasToken && spotifyClient) {
     sumSpotify.textContent = 'Inloggad';
     sumSpotify.classList.add('summary-list__value--ok');
   } else if (hasToken && !cid) {
-    sumSpotify.textContent = 'Token finns · ange Client ID';
+    sumSpotify.textContent = 'Token finns, men Client ID saknas';
     sumSpotify.classList.remove('summary-list__value--ok');
   } else {
-    sumSpotify.textContent = 'Ej inloggad';
+    sumSpotify.textContent = 'Inte inloggad';
     sumSpotify.classList.remove('summary-list__value--ok');
   }
 
@@ -876,7 +876,7 @@ function refreshSummary() {
     sumRowExtra.removeAttribute('aria-hidden');
     const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
     sumExtraLabel.textContent = 'Källa';
-    sumExtra.textContent = src === 'from-list' ? 'Vald från mina listor med prefix' : 'Spotify-länk';
+    sumExtra.textContent = src === 'from-list' ? 'Vald från mina spellistor på Spotify' : 'Spotify-länk';
     document
       .getElementById('sum-extra-icon-use')
       ?.setAttribute('href', src === 'from-list' ? '#sym-list' : '#sym-link');
@@ -906,24 +906,24 @@ function refreshSummary() {
   }
 
   if (!hasToken) {
-    sumFoot.textContent = 'Logga in under steg 0 för att fortsätta.';
+    sumFoot.textContent = 'Du behöver logga in på Spotify för att fortsätta.';
   } else if (mode === 'existing') {
     const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
     if (src === 'from-list' && !$('existing-pl-select').value) {
-      sumFoot.textContent = 'Välj en spellista för att kunna fortsätta.';
+      sumFoot.textContent = 'Välj en spellista för att fortsätta.';
     } else if (src === 'from-link' && !$('existing-pl-id').value.trim()) {
-      sumFoot.textContent = 'Ange Spotify-länk eller spelliste-ID.';
+      sumFoot.textContent = 'Ange en Spotify-länk eller ett spellista-ID.';
     } else if (trackCount === 0) {
-      sumFoot.textContent = 'Välj minst en låt med träff (steg 1).';
+      sumFoot.textContent = 'Välj minst en låt under steg 1.';
     } else {
-      sumFoot.textContent = 'Redo att utföra åtgärden.';
+      sumFoot.textContent = 'Redo att uppdatera spellistan på Spotify.';
     }
   } else if (trackCount === 0) {
-    sumFoot.textContent = 'Välj låtar under steg 1 för att fortsätta.';
+    sumFoot.textContent = 'Välj minst en låt för att fortsätta.';
   } else if (!$('new-pl-name').value.trim()) {
-    sumFoot.textContent = 'Ange ett namn för den nya spellistan.';
+    sumFoot.textContent = 'Ange ett namn på den nya spellistan.';
   } else {
-    sumFoot.textContent = 'Redo att genomföra på Spotify.';
+    sumFoot.textContent = 'Redo att skapa spellistan på Spotify.';
   }
 
   refreshStep3SummaryCard();
@@ -1029,28 +1029,28 @@ function syncStep3LockedTip() {
   }
   wrap.hidden = false;
   if (!spotifyClient) {
-    text.textContent = 'Logga in med Spotify under steg 0 för att kunna genomföra.';
+    text.textContent = 'Logga in på Spotify för att kunna genomföra.';
     return;
   }
   if (resultRows.length === 0) {
-    text.textContent = 'Klistra in en låtlista och kör Sök på Spotify (Välj musik) innan du genomför.';
+    text.textContent = 'Du behöver söka och sen välja minst en låt under ”Välj musik” innan du genomför.';
     return;
   }
   if (selectedUrisForPlaylist().length === 0) {
-    text.textContent = 'Slå på Välj och välj version för minst en rad med träff (Välj musik) innan du genomför.';
+    text.textContent = 'Du behöver välja minst en låt under ”Välj musik” innan du genomför.';
     return;
   }
   const mode = getPlaylistMode();
   if (mode === 'new') {
-    text.textContent = 'Ange ett namn för den nya spellistan under Välj spellista innan du genomför.';
+    text.textContent = 'Du behöver ange ett namn på den nya spellistan under ”Välj spellista” innan du genomför.';
     return;
   }
   const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
   if (src === 'from-list') {
-    text.textContent = 'Välj en befintlig spellista under Välj spellista innan du genomför.';
+    text.textContent = 'Du behöver välja en befintlig spellista under ”Välj spellista” innan du genomför.';
     return;
   }
-  text.textContent = 'Ange en giltig Spotify-länk eller spelliste-ID under Välj spellista innan du genomför.';
+  text.textContent = 'Du behöver ange en giltig Spotify-länk eller ett giltigt spellista-ID under ”Välj spellista” innan du genomför.';
 }
 
 function wireFlow() {
@@ -1131,7 +1131,7 @@ function populateExistingPlaylistSelectFromList(sel, list, preserveId, selectPla
   sel.replaceChildren();
   const ph = document.createElement('option');
   ph.value = '';
-  ph.textContent = '- Välj spellista -';
+  ph.textContent = 'Välj en spellista';
   sel.append(ph);
   for (const p of list) {
     const opt = document.createElement('option');
@@ -1155,7 +1155,7 @@ function populateExistingPlaylistSelectFromList(sel, list, preserveId, selectPla
 async function refreshExistingPlaylistSelect(opts = {}) {
   const { quiet = false, selectPlaylistId, force = false, manual = false } = opts;
   if (!spotifyClient) {
-    showToast('Logga in på Spotify under steg 0 (Logga in) först.', true);
+    showToast('Du behöver logga in på Spotify först.', true);
     return;
   }
   const prefixNow = getPlaylistPrefixFromInput();
@@ -1180,7 +1180,7 @@ async function refreshExistingPlaylistSelect(opts = {}) {
     const leftSec = Math.max(1, Math.ceil(remainingExistingPlaylistListCooldownMs() / 1000));
     if (!quiet) {
       showToast(
-        `Spotify rate-limitar just nu dina spellistor. Vänta cirka ${leftSec} s och tryck sedan Hämta om lista.`,
+        `Spotify har pausat vidare anrop. Försök igen om cirka ${leftSec} sekunder eller klicka på Hämta om lista.`,
         true,
       );
     }
@@ -1209,7 +1209,7 @@ async function refreshExistingPlaylistSelect(opts = {}) {
       populateExistingPlaylistSelectFromList(sel, list, preserveId, selectPlaylistId);
       refreshSummary();
       if (!quiet) {
-        showToast(list.length ? `${list.length} spellistor med prefix.` : 'Inga spellistor matchar prefixet.');
+        showToast(list.length ? `${list.length} spellistor matchar prefixet.` : 'Inga spellistor matchar prefixet.');
       }
     } catch (e) {
       if (signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return;
@@ -1288,7 +1288,7 @@ function wirePlaylistMode() {
     existingPlaylistListRateLimitUntil = Date.now() + cooldown;
     const min = Math.max(1, Math.round(cooldown / 60_000));
     showToast(
-      `Spotify rate-limitar spellistelistning. Vänta ca ${min} minut(er) och tryck sedan Hämta om lista.`,
+      `Spotify har pausat vidare anrop. Vänta cirka ${min} minut(er) och klicka sedan på Hämta om lista.`,
       true,
     );
   });
@@ -1339,9 +1339,9 @@ function finalizeResultsSummary() {
   const matched = resultRows.filter((r) => r.tracks && r.tracks.length > 0).length;
   const pending = resultRows.some((r) => r.tracks === null);
   if (pending) {
-    $('results-summary').textContent = `${n} sökningar — ${matched} med träff hittills, resten ej sökta ännu.`;
+    $('results-summary').textContent = `${n} sökningar. ${matched} har träff hittills, resten har inte sökts ännu.`;
   } else {
-    $('results-summary').textContent = `${n} sökningar, ${matched} med minst en träff.`;
+    $('results-summary').textContent = `${n} sökningar. ${matched} har minst en träff.`;
   }
 }
 
@@ -1450,12 +1450,12 @@ function renderResults() {
     if (row.tracks === null) {
       const wait = document.createElement('p');
       wait.className = 'match-block__status row-muted';
-      wait.textContent = searchInProgress ? 'Söker…' : 'Kör ”Sök på Spotify” för att hämta träffar.';
+      wait.textContent = searchInProgress ? 'Söker…' : 'Klicka på Sök på Spotify för att fortsätta.';
       optionsWrap.append(wait);
     } else if (row.tracks.length === 0) {
       const none = document.createElement('p');
       none.className = 'match-block__status row-muted';
-      none.textContent = 'Ingen träff';
+      none.textContent = 'Ingen träff hittades';
       optionsWrap.append(none);
     } else {
       const pickId = `pick-${idx}`;
@@ -1513,44 +1513,44 @@ function syncApplyHint() {
   const el = document.getElementById('apply-hint');
   if (!el) return;
   if (playlistApplyPostSuccess) {
-    el.textContent = 'Spellistan är uppdaterad. Ändra låtar eller spellista under tidigare steg om du vill köra Genomför igen.';
+    el.textContent = 'Spellistan är uppdaterad. Om du vill genomföra igen behöver du först ändra låtar eller spellista under tidigare steg.';
     return;
   }
   if (!spotifyClient) {
-    el.textContent = 'Logga in under steg 0 för att kunna utföra åtgärden.';
+    el.textContent = 'Du behöver logga in på Spotify för att kunna genomföra.';
     return;
   }
   if (resultRows.length === 0) {
-    el.textContent = 'Välj låtar med träff under steg 1 först.';
+    el.textContent = 'Du behöver välja minst en låt under ”Välj musik” först.';
     return;
   }
   if (selectedUrisForPlaylist().length === 0) {
-    el.textContent = 'Slå på Välj och välj version för minst en rad med träff innan du kör Genomför på Spotify.';
+    el.textContent = 'Du behöver välja minst en låt under ”Välj musik” innan du genomför.';
     return;
   }
   const mode = getPlaylistMode();
   if (mode === 'new') {
     if (!$('new-pl-name').value.trim()) {
-      el.textContent = 'Ange suffixnamn för spellistan (obligatoriskt) innan du kör Genomför på Spotify.';
+      el.textContent = 'Du behöver ange ett namn på den nya spellistan innan du genomför.';
       return;
     }
-    el.textContent = 'Skapar en ny spellista i ditt Spotify-konto med prefix + suffix.';
+    el.textContent = 'Skapar en ny spellista på ditt Spotify-konto med prefix och namn.';
     return;
   }
   const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
   if (src === 'from-list' && !$('existing-pl-select').value.trim()) {
-    el.textContent = 'Välj en spellista i listan innan du kör Genomför på Spotify.';
+    el.textContent = 'Du behöver välja en befintlig spellista under ”Välj spellista” innan du genomför.';
     return;
   }
   if (src === 'from-link' && !parsePlaylistIdFromInput($('existing-pl-id').value)) {
-    el.textContent = 'Ange en giltig Spotify-länk eller spelliste-ID innan du kör Genomför på Spotify.';
+    el.textContent = 'Du behöver ange en giltig Spotify-länk eller ett giltigt spellista-ID under ”Välj spellista” innan du genomför.';
     return;
   }
   const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
   el.textContent =
     um === 'replace'
-      ? 'Alla befintliga låtar i vald spellista ersätts med de valda låtarna.'
-      : 'Låtarna läggs till i vald spellista på Spotify.';
+      ? 'Alla befintliga låtar i den valda spellistan ersätts med de valda låtarna.'
+      : 'Låtarna läggs till sist i den valda spellistan på Spotify.';
 }
 
 function isStep3ApplyReady() {
@@ -1587,19 +1587,19 @@ function updateStep2StickyNav() {
   if (mode === 'new') {
     hint.textContent = $('new-pl-name').value.trim()
       ? 'Du kan gå vidare för att granska och genomföra.'
-      : 'Ange ett namn för den nya spellistan.';
+      : 'Ange ett namn på den nya spellistan.';
     return;
   }
   const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
   if (src === 'from-list') {
     hint.textContent = $('existing-pl-select').value.trim()
       ? 'Du kan gå vidare för att granska och genomföra.'
-      : 'Välj en spellista i listan, eller byt till Spotify-länk.';
+      : 'Du behöver välja en spellista från listan.';
     return;
   }
   hint.textContent = parsePlaylistIdFromInput($('existing-pl-id').value)
     ? 'Du kan gå vidare för att granska och genomföra.'
-    : 'Ange en giltig Spotify-länk eller spelliste-ID.';
+    : 'Ange en giltig Spotify-länk eller ett giltigt spellista-ID.';
 }
 
 function updateStep1StickyNav() {
@@ -1619,15 +1619,15 @@ function updateStep1StickyNav() {
   btn.setAttribute('aria-disabled', ready ? 'false' : 'true');
 
   if (busy) {
-    hint.textContent = 'Sökning pågår — vänta tills alla rader har svarats.';
+    hint.textContent = 'Sökning pågår. Vänta tills alla rader är klara.';
   } else if (resultRows.length === 0) {
-    hint.textContent = 'Klistra in en låtlista och kör Sök på Spotify — därefter kan du gå vidare.';
+    hint.textContent = 'Klistra in en låtlista och sök på Spotify. När träffarna är klara kan du gå vidare.';
   } else if (pendingSearch) {
-    hint.textContent = 'Vänta tills sökningen är klar för alla rader.';
+    hint.textContent = 'Vänta tills sökningen är klar.';
   } else if (selectedUrisForPlaylist().length === 0) {
-    hint.textContent = 'Slå på Välj för minst en rad med träff, eller välj en version av spåret, för att gå vidare.';
+    hint.textContent = 'Du behöver välja minst en låt för att gå vidare.';
   } else {
-    hint.textContent = 'När träffarna ser rätt ut — fortsätt till spellista.';
+    hint.textContent = 'När du är nöjd med urvalet kan du fortsätta till spellistan.';
   }
 }
 
@@ -1655,16 +1655,16 @@ function selectedUrisForPlaylist() {
 
 async function runSearch() {
   if (!spotifyClient) {
-    showToast('Logga in på Spotify under steg 0 (Logga in) först.', true);
+    showToast('Du behöver logga in på Spotify först.', true);
     return;
   }
   if (searchInProgress) {
-    showToast('En sökning pågår redan — vänta eller tryck ”Avbryt sökning”.', true);
+    showToast('En sökning pågår redan. Vänta eller klicka på Avbryt sökning.', true);
     return;
   }
   const parsed = parseTrackList($('paste-area').value);
   if (parsed.length === 0) {
-    showToast('Inga rader att söka. Klistra in en låtlista först.', true);
+    showToast('Det finns inga rader att söka på. Klistra in en låtlista först.', true);
     return;
   }
   if (FEATURE_ROW_FULL_PLAYBACK) void stopRowPlayback();
@@ -1678,7 +1678,7 @@ async function runSearch() {
   try {
     for (let i = 0; i < resultRows.length; i += 1) {
       if (signal.aborted) break;
-      $('search-progress-line').textContent = `Söker ${i + 1} av ${resultRows.length} …`;
+      $('search-progress-line').textContent = `Söker rad ${i + 1} av ${resultRows.length} …`;
       const row = resultRows[i];
       const cacheKey = makeSearchCacheKey(row.query, row.artist, row.title);
       const cached = getSearchCache(cacheKey);
@@ -1729,7 +1729,7 @@ async function runSearch() {
     updateApplyEnabled();
     if (signal.aborted) {
       const done = resultRows.filter((r) => r.tracks !== null).length;
-      showToast(`Sökning avbruten. ${done} av ${resultRows.length} rader hann sökas.`);
+      showToast(`Sökningen avbröts. ${done} av ${resultRows.length} rader hann sökas.`);
     }
     refreshSummary();
   }
@@ -1737,17 +1737,17 @@ async function runSearch() {
 
 async function applyPlaylist() {
   if (!spotifyClient || !vaultData) {
-    showToast('Saknar inloggning eller valv.', true);
+    showToast('Inloggning saknas.', true);
     return;
   }
   const uris = selectedUrisForPlaylist();
   if (uris.length === 0) {
-    showToast('Välj minst en låt med träff.', true);
+    showToast('Välj minst en låt.', true);
     return;
   }
   const mode = getPlaylistMode();
   if (mode === 'new' && !$('new-pl-name').value.trim()) {
-    showToast('Ange namn (suffix) för den nya spellistan.', true);
+    showToast('Ange ett namn på den nya spellistan.', true);
     return;
   }
   hidePlaylistResultDialog();
@@ -1767,14 +1767,14 @@ async function applyPlaylist() {
         const hasPriv = gs.includes('playlist-modify-private');
         if (isPublic && !hasPub) {
           showToast(
-            'Din token saknar playlist-modify-public (Spotify gav andra scopes). Välj ”Privat” eller ”Samarbete”, eller återkalla appen på spotify.com/account/apps och logga in igen.',
+            'Din token saknar behörighet att skapa publika spellistor. Välj Privat eller Samarbete, eller logga in igen med rätt behörigheter.',
             true,
           );
           return;
         }
         if (!isPublic && !hasPriv) {
           showToast(
-            'Din token saknar playlist-modify-private. Återkalla appen på spotify.com/account/apps och logga in igen, eller kontrollera att ditt konto finns under User management i Dashboard.',
+            'Din token saknar behörighet att skapa privata spellistor. Logga in igen med rätt behörigheter.',
             true,
           );
           return;
@@ -1795,7 +1795,7 @@ async function applyPlaylist() {
           : undefined;
       showStep3PlaylistApplyResult({
         ok: true,
-        title: 'Det gick bra',
+        title: 'Klart',
         message: `Spellistan ”${pl.name}” skapades med ${uris.length} låtar på Spotify.`,
         playlistId: pl.id,
         playlistName: typeof pl.name === 'string' ? pl.name : suffix,
@@ -1809,20 +1809,20 @@ async function applyPlaylist() {
       if (source === 'from-list') {
         plId = $('existing-pl-select').value.trim();
         if (!plId) {
-          showToast('Välj en spellista i listan (eller byt till ID/länk).', true);
+          showToast('Välj en spellista från listan.', true);
           return;
         }
       } else {
         const rawId = $('existing-pl-id').value;
         plId = parsePlaylistIdFromInput(rawId);
         if (!plId) {
-          showToast('Ogiltigt spelliste-ID.', true);
+          showToast('Ogiltigt spellista-ID.', true);
           return;
         }
       }
       const updateMode = document.querySelector('input[name="pl-update"]:checked')?.value;
       if (updateMode === 'replace' && uris.length > SPOTIFY_CHUNK) {
-        showToast(`Ersätt läge stödjer högst ${SPOTIFY_CHUNK} låtar åt gången.`, true);
+        showToast(`Läget Ersätt stöder högst ${SPOTIFY_CHUNK} låtar åt gången.`, true);
         return;
       }
       if (updateMode === 'replace') {
@@ -1841,10 +1841,10 @@ async function applyPlaylist() {
       if (pass.length >= 8) await saveVault(vaultData, pass);
       showStep3PlaylistApplyResult({
         ok: true,
-        title: 'Det gick bra',
+        title: 'Klart',
         message:
           updateMode === 'replace'
-            ? `Spellistan uppdaterades: tidigare låtar ersattes med ${uris.length} valda låtar.`
+            ? `Spellistan är uppdaterad. Tidigare låtar ersattes med ${uris.length} valda låtar.`
             : `${uris.length} låtar lades till i spellistan på Spotify.`,
         playlistId: plId,
         playlistName: typeof plLabel === 'string' ? plLabel : undefined,
@@ -1890,7 +1890,7 @@ async function boot() {
 
   $('btn-clear-search-cache').addEventListener('click', () => {
     clearSearchCache();
-    showToast('Sökcache rensad.');
+    showToast('Sökcachen är rensad.');
   });
 
   $('btn-abort-search').addEventListener('click', () => {
@@ -1904,7 +1904,7 @@ async function boot() {
     if (!d || typeof d.waitSec !== 'number') return;
     const line = $('search-progress-line');
     const base = line.textContent?.replace(/\s*—.*$/, '') ?? '';
-    line.textContent = `${base} — väntar ${d.waitSec}s (rate limit, försök ${d.attempt}/${d.maxAttempts})`;
+    line.textContent = `${base} — Spotify har pausat vidare anrop. Försöker igen om ${d.waitSec} sekunder (försök ${d.attempt}/${d.maxAttempts}).`;
   });
 
   /** Nedräkning under API-loggen vid lång Retry-After (429), styrs från spotify-api.js */
@@ -1929,8 +1929,6 @@ async function boot() {
     clearRetryAfterCountdown();
     const wrap = $('rate-limit-countdown-wrap');
     const text = $('rate-limit-countdown-text');
-    const retrySec = typeof d.retryAfterParsedMs === 'number' ? Math.round(d.retryAfterParsedMs / 1000) : null;
-    const raw = typeof d.retryAfterRaw === 'string' ? d.retryAfterRaw.trim() : '';
     wrap.hidden = false;
     const tick = () => {
       const leftMs = d.endAt - Date.now();
@@ -1939,11 +1937,7 @@ async function boot() {
         return;
       }
       const leftSec = Math.max(1, Math.ceil(leftMs / 1000));
-      const hdr =
-        retrySec != null
-          ? `Spotify Retry-After: ${retrySec} s (header ”${raw || '?'}”). `
-          : '';
-      text.textContent = `${hdr}Kvar av denna paus: ${leftSec} s.`;
+      text.textContent = `Spotify har pausat vidare anrop. Försöker igen om ${leftSec} sekunder.`;
     };
     tick();
     retryAfterCountdownTimer = setInterval(tick, 1000);
@@ -1954,9 +1948,9 @@ async function boot() {
     $('redirect-uri-display').textContent = text;
     try {
       await navigator.clipboard.writeText(text);
-      showToast('Omdirigerings-URI kopierad. Klistra in den under Redirect URIs i Spotify Dashboard.');
+      showToast('Omdirigerings-URI:n är kopierad. Klistra in den under Redirect URIs i Spotify Dashboard.');
     } catch {
-      showToast('Kunde inte kopiera automatiskt. Markera URI:n manuellt.', true);
+      showToast('Kunde inte kopiera automatiskt. Markera URI-adressen manuellt.', true);
     }
   });
 
@@ -1971,7 +1965,7 @@ async function boot() {
       getIsSearching: () => searchInProgress,
       getAccessToken: async () => {
         const c = spotifyClient;
-        if (!c || typeof c.getAccessToken !== 'function') throw new Error('Ej inloggad');
+        if (!c || typeof c.getAccessToken !== 'function') throw new Error('Inte inloggad');
         return c.getAccessToken();
       },
     });
@@ -2001,7 +1995,7 @@ async function boot() {
   $('btn-reset-playlist-prefix').addEventListener('click', () => {
     $('playlist-prefix').value = DEFAULT_PLAYLIST_NAME_PREFIX;
     updateNewPlaylistPreview();
-    showToast('Prefix återställt. Spara under Inställningar om det ska in i valvet.');
+    showToast('Prefixet är återställt. Spara under Inställningar om det ska sparas lokalt.');
     const mode = getPlaylistMode();
     const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
     if (mode === 'existing' && fromList && spotifyClient && currentFlowStep === '2') {
@@ -2031,7 +2025,7 @@ async function boot() {
   $('btn-spotify-login').addEventListener('click', async () => {
     const cid = getClientId();
     if (!cid) {
-      showToast('Ange Client ID först.', true);
+      showToast('Ange ett Client ID först.', true);
       return;
     }
     try {
@@ -2059,9 +2053,9 @@ async function boot() {
     const pass = getPassphrase();
     if (pass.length >= 8) {
       await saveVault(vaultData, pass);
-      showToast('Tokens borttagna från sparad data.');
+      showToast('Token borttagen från sparad data.');
     } else {
-      showToast('Tokens borttagna i minnet. Under Inställningar: ange lösenfras och Spara lokalt för att uppdatera enheten.');
+      showToast('Token borttagen i minnet. Ange lösenfras och klicka på Spara lokalt under Inställningar för att uppdatera enheten.');
     }
     setAuthStatus();
     touchPlaylistApplyPostSuccessDirty();
@@ -2125,7 +2119,7 @@ async function boot() {
   const exists = await idbGet(VAULT_KEY);
   const vaultHint =
     exists && !vaultData?.tokens?.accessToken
-      ? 'Det finns sparad krypterad data. Under Inställningar: ange lösenfras och klicka ”Läs in sparad data”.'
+      ? 'Det finns sparad krypterad data. Gå till Inställningar, ange lösenfrasen och klicka på Läs in sparad data.'
       : '';
   await syncSpotifySessionToUi(vaultHint);
 
