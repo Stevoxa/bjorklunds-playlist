@@ -119,18 +119,49 @@ function pickTrackSearchResults(data) {
   return { items: [], tracksTotal: undefined };
 }
 
-function buildSearchQueries(q, artist, title) {
+/**
+ * Bygger en ordnad lista av sök-queries anpassad efter radens klass.
+ * Minst möjligt anrop (fri text direkt) för rader utan tydlig struktur;
+ * dubbelt försök med swap för rader där parsern troligen bytt roll på artist/title.
+ *
+ * @param {string} q Rå fri text-query (fallback).
+ * @param {string} [artist] Artist enligt parsern.
+ * @param {string} [title] Titel enligt parsern.
+ * @param {'freeTextOnly' | 'normal' | 'suspectSwap'} [rowClass]
+ * @returns {{ q: string, kind: 'field-artist-title' | 'field-title-artist' | 'free-text' | 'raw' }[]}
+ */
+function buildSearchQueries(q, artist, title, rowClass = 'normal') {
+  /** @type {{ q: string, kind: 'field-artist-title' | 'field-title-artist' | 'free-text' | 'raw' }[]} */
   const queries = [];
   const a = artist?.trim();
   const ti = title?.trim();
-  if (a && ti) {
-    const aq = spotifyQuoted(a);
-    const tq = spotifyQuoted(ti);
-    queries.push(`track:${tq} artist:${aq}`);
-    queries.push(`artist:${aq} track:${tq}`);
-    queries.push(`${a} ${ti}`);
+  const rawQ = q.trim();
+
+  /** Ingen artist/title från parsern → bara fri text. Max 1 anrop per rad. */
+  if (!a || !ti) {
+    if (rawQ) queries.push({ q: rawQ, kind: 'free-text' });
+    return queries;
   }
-  if (!queries.includes(q.trim())) queries.push(q.trim());
+
+  const aq = spotifyQuoted(a);
+  const tq = spotifyQuoted(ti);
+  const freeText = `${a} ${ti}`;
+
+  if (rowClass === 'suspectSwap') {
+    /** Parsern satte troligen artist/title i omvänd ordning → prova swap först. */
+    queries.push({ q: `track:${aq} artist:${tq}`, kind: 'field-title-artist' });
+    queries.push({ q: `track:${tq} artist:${aq}`, kind: 'field-artist-title' });
+    queries.push({ q: freeText, kind: 'free-text' });
+  } else {
+    /** Normalfall: lita på parsern. Fri text räddar omvänd ordning vid miss. */
+    queries.push({ q: `track:${tq} artist:${aq}`, kind: 'field-artist-title' });
+    queries.push({ q: freeText, kind: 'free-text' });
+  }
+
+  /** Rå input som sista utväg om den skiljer sig från tidigare queries (ovanligt). */
+  if (rawQ && !queries.some((x) => x.q === rawQ)) {
+    queries.push({ q: rawQ, kind: 'raw' });
+  }
   return queries;
 }
 
@@ -583,16 +614,21 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     /**
      * @param {string} q
      * @param {number} [limit]
-     * @param {{ artist?: string, title?: string, signal?: AbortSignal }} [hints] Om satta: prova fält-sökningar först (bättre träffar). signal avbryter nätverksanrop.
+     * @param {{ artist?: string, title?: string, rowClass?: 'freeTextOnly' | 'normal' | 'suspectSwap', signal?: AbortSignal }} [hints]
+     *   rowClass styr query-kedjan (freeTextOnly → 1 anrop, normal → max 2, suspectSwap → max 3).
+     *   signal avbryter nätverksanrop.
      */
     async searchTracks(q, limit = 5, hints = {}) {
       const { signal, ...hintRest } = hints || {};
-      const queries = buildSearchQueries(q, hintRest.artist, hintRest.title);
+      const rowClass = hintRest.rowClass ?? 'normal';
+      const queries = buildSearchQueries(q, hintRest.artist, hintRest.title, rowClass);
       /** Endast from_token: halverar antal /search-anrop per rad (mindre 429-belastning); marknad följer kontot. */
       /** @type {('from_token')[]} */
       const markets = ['from_token'];
       let firstSearchGet = true;
-      for (const query of queries) {
+      let qIndex = 0;
+      for (const { q: query, kind } of queries) {
+        qIndex += 1;
         for (const market of markets) {
           if (!firstSearchGet) await sleepBetweenSearchTries(signal);
           firstSearchGet = false;
@@ -617,6 +653,10 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
               httpStatus: res.status,
               parseError: 'Svar var inte JSON',
               bodyPreview: bodyText.slice(0, 400),
+              rowClass,
+              queryKind: kind,
+              queryIndex: qIndex,
+              queryTotal: queries.length,
             });
             throw new Error('Ogiltigt JSON-svar från Spotify');
           }
@@ -630,6 +670,11 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             ok: res.ok,
             tracksTotal,
             itemsReturned: items.length,
+            rowClass,
+            queryKind: kind,
+            queryIndex: qIndex,
+            queryTotal: queries.length,
+            hit: items.length > 0,
             sample: items.slice(0, 5).map((t) => ({
               name: t?.name,
               artists: Array.isArray(t?.artists) ? t.artists.map((a) => a?.name) : [],

@@ -1845,6 +1845,7 @@ async function runSearch() {
         row.tracks = await spotifyClient.searchTracks(row.query, 5, {
           artist: row.artist,
           title: row.title,
+          rowClass: row.rowClass,
           signal,
         });
         if (!signal.aborted) setSearchCache(cacheKey, row.tracks);
