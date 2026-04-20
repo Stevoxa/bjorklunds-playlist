@@ -575,6 +575,9 @@ a:focus-visible {
 }
 
 .redirect-uri-row > .code-block {
+  /* I en column-layout blir .code-block:s flex-basis (12rem) tolkad som höjd — nollställ
+   * så elementet blir en rad högt och tar bredden från stretch. */
+  flex: 0 0 auto;
   align-self: stretch;
 }
 
