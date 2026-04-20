@@ -585,14 +585,15 @@ a:focus-visible {
 }
 
 .code-block {
+  display: block;
   flex: 1 1 12rem;
   min-width: 0;
   margin: 0;
-  padding: 0.65rem 0.85rem;
+  padding: 0.55rem 0.85rem;
   font-size: 0.85rem;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-  word-break: break-all;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow-x: auto;
   background: var(--bg);
   border: 2px solid var(--border);
   border-radius: var(--radius-sm);
