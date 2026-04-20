@@ -1,4 +1,8 @@
-import { SPOTIFY_API_BASE, SPOTIFY_TOKEN_REFRESH_LEEWAY_MS } from './config.js';
+import {
+  SPOTIFY_API_BASE,
+  SPOTIFY_TOKEN_REFRESH_LEEWAY_MS,
+  PLAYLIST_LIST_MAX_PAGES,
+} from './config.js';
 import { refreshAccessToken } from './auth.js';
 import { logSpotify } from './spotify-log.js';
 
@@ -505,7 +509,8 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
      * Spellistor som ägs av inloggad användare och vars namn börjar med prefix (GET /me/playlists, paginerat).
      * @param {string} prefix
      * @param {AbortSignal} [signal]
-     * @returns {Promise<{ id: string, name: string }[]>}
+     * @returns {Promise<{ list: { id: string, name: string }[], truncated: boolean, userId: string }>}
+     *   truncated: true om vi stoppade vid PLAYLIST_LIST_MAX_PAGES (safeguard mot worst-case-konton).
      */
     async listMyPlaylistsByPrefix(prefix, signal) {
       return scheduleSearchGetChain(async () => {
@@ -521,6 +526,8 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         const byId = new Map();
         let offset = 0;
         const page = 50;
+        let pagesFetched = 0;
+        let truncated = false;
         await sleepAbortable(PLAYLIST_FETCH_INITIAL_GAP_MS, signal);
         while (true) {
           signal?.throwIfAborted();
@@ -542,7 +549,20 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
               byId.set(item.id, { id: item.id, name: item.name });
             }
           }
+          pagesFetched += 1;
           if (items.length < page) break;
+          if (pagesFetched >= PLAYLIST_LIST_MAX_PAGES) {
+            truncated = true;
+            logSpotify({
+              t: new Date().toISOString(),
+              kind: 'ui',
+              phase: 'listMyPlaylistsByPrefix',
+              reason: 'max_pages_reached',
+              pagesFetched,
+              maxPages: PLAYLIST_LIST_MAX_PAGES,
+            });
+            break;
+          }
           offset += page;
           await sleepAbortable(
             PLAYLIST_PAGE_GAP_MS + Math.floor(Math.random() * PLAYLIST_PAGE_JITTER_MS),
@@ -551,7 +571,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         }
         const out = [...byId.values()];
         out.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
-        return out;
+        return { list: out, truncated, userId: myId };
       });
     },
 

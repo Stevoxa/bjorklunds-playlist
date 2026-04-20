@@ -28,6 +28,7 @@ const REQUIRED_IDS = [
   'new-pl-visibility',
   'existing-pl-id',
   'existing-pl-select',
+  'existing-pl-truncated-warning',
   'redirect-uri-display',
   'btn-copy-redirect',
   'sum-spotify',

@@ -37,3 +37,19 @@ export const FEATURE_ROW_FULL_PLAYBACK = true;
 
 /** PKCE verifier length (bytes) → ~43+ chars when base64url. */
 export const PKCE_VERIFIER_LENGTH = 64;
+
+/**
+ * Säkerhetsventil: avbryt paginering av GET /me/playlists efter så här många sidor (50 per sida).
+ * 20 × 50 = 1000 spellistor. Förhindrar worst-case-konton från att spamma endpointen.
+ */
+export const PLAYLIST_LIST_MAX_PAGES = 20;
+
+/** Färsk (in-memory + IndexedDB) cache-TTL för GET /me/playlists — prefixfiltrerad lista. */
+export const PLAYLIST_LIST_CACHE_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * Stale-if-error-fönster: om vi har en gammal cache men nya anrop misslyckas (429 eller annat nätverksfel),
+ * använd cachen upp till så här lång tid tillbaka. Ger användaren tillgång till "senast kända" lista
+ * även under långa Spotify-pauser (kan vara flera timmar till över 24 h).
+ */
+export const PLAYLIST_LIST_STALE_IF_ERROR_MS = 7 * 24 * 60 * 60 * 1000;

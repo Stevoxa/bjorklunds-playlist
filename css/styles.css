@@ -161,6 +161,11 @@ body {
   line-height: 1.55;
 }
 
+.help--warning {
+  color: var(--warn, #b45309);
+  margin-top: 0.5rem;
+}
+
 .existing-pl-select-help-row {
   display: flex;
   flex-wrap: wrap;
