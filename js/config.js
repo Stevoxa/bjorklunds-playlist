@@ -29,6 +29,9 @@ export const SPOTIFY_TOKEN_REFRESH_LEEWAY_MS = 10 * 60 * 1000;
 /** Standardprefix för nya spellistor (användaren skriver bara suffix i appen). */
 export const DEFAULT_PLAYLIST_NAME_PREFIX = 'Björklunds playlist - ';
 
+/** Standardbeskrivning när användaren inte fyller i något — Spotify sparar annars `null`. */
+export const DEFAULT_PLAYLIST_DESCRIPTION = 'Skapad av Björklunds playlist app';
+
 /** Rad-uppspelning i webbläsaren (Spotify Web Playback SDK, Premium + streaming-scope). */
 export const FEATURE_ROW_FULL_PLAYBACK = true;
 

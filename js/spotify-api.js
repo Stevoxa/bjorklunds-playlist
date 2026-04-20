@@ -699,17 +699,26 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       if (collaborative && isPublic) {
         throw new Error('Samarbetslista kan inte skapas som publik (Spotify Web API).');
       }
+      const description = typeof opts.description === 'string' ? opts.description.trim() : '';
       const body = {
         name: opts.name,
         public: isPublic,
         collaborative,
       };
+      /** Spotify: skicka bara description när den finns — annars blir tom sträng synlig som ”” i klienterna. */
+      if (description) body.description = description;
       const res = await mutateWith401Retry(path, {
         method: 'POST',
         body: JSON.stringify(body),
       });
       const text = await res.text();
-      logPlaylistWrite('POST', path, { name: opts.name, public: isPublic, collaborative }, res, text);
+      logPlaylistWrite(
+        'POST',
+        path,
+        { name: opts.name, public: isPublic, collaborative, hasDescription: Boolean(description) },
+        res,
+        text,
+      );
       if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
       try {
         return text ? JSON.parse(text) : {};

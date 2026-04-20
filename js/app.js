@@ -1,4 +1,8 @@
-import { DEFAULT_PLAYLIST_NAME_PREFIX, FEATURE_ROW_FULL_PLAYBACK } from './config.js';
+import {
+  DEFAULT_PLAYLIST_DESCRIPTION,
+  DEFAULT_PLAYLIST_NAME_PREFIX,
+  FEATURE_ROW_FULL_PLAYBACK,
+} from './config.js';
 import { getRedirectUri, beginLogin, consumeOAuthCallback } from './auth.js';
 import { loadVault, saveVault, VAULT_KEY } from './vault.js';
 import { idbGet } from './db.js';
@@ -1776,7 +1780,9 @@ async function applyPlaylist() {
           return;
         }
       }
-      const pl = await spotifyClient.createPlaylist({ name, isPublic, collaborative });
+      const descRaw = $('new-pl-description').value;
+      const description = (typeof descRaw === 'string' ? descRaw.trim() : '') || DEFAULT_PLAYLIST_DESCRIPTION;
+      const pl = await spotifyClient.createPlaylist({ name, isPublic, collaborative, description });
       for (let i = 0; i < uris.length; i += SPOTIFY_CHUNK) {
         await spotifyClient.appendPlaylistTracks(pl.id, uris.slice(i, i + SPOTIFY_CHUNK));
       }
@@ -1975,6 +1981,7 @@ async function boot() {
     touchPlaylistApplyPostSuccessDirty();
   });
   $('new-pl-visibility').addEventListener('change', () => touchPlaylistApplyPostSuccessDirty());
+  $('new-pl-description').addEventListener('input', () => touchPlaylistApplyPostSuccessDirty());
   $('existing-pl-id').addEventListener('input', () => touchPlaylistApplyPostSuccessDirty());
   $('existing-pl-select').addEventListener('change', () => touchPlaylistApplyPostSuccessDirty());
   $('paste-area').addEventListener('input', () => touchPlaylistApplyPostSuccessDirty());

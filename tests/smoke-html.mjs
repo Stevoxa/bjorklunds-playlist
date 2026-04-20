@@ -24,6 +24,7 @@ const REQUIRED_IDS = [
   'auth-status',
   'btn-apply-playlist',
   'new-pl-name',
+  'new-pl-description',
   'new-pl-visibility',
   'existing-pl-id',
   'existing-pl-select',
