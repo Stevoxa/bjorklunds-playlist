@@ -830,7 +830,7 @@ function updateSummaryTip(step) {
     '0':
       'Du loggar in direkt hos Spotify, så appen får aldrig tillgång till ditt lösenord. Client ID används bara för att identifiera appen och inloggningen skyddas med PKCE med tidsbegränsad åtkomst.',
     '1':
-      'Sökningar sparas i 30 minuter, vilket gör upprepade sökningar snabbare och minskar onödiga anrop till Spotify. Om du vill kan du rensa sökcachen i Inställningar.',
+      'Sökningar sparas i 60 minuter, vilket gör upprepade sökningar snabbare och minskar onödiga anrop till Spotify. Om du vill kan du rensa sökcachen i Inställningar.',
     '2': 'Du behöver vara inloggad på Spotify för att fortsätta.',
     '3': 'Kontrollera sammanfattningen och klicka på Genomför på Spotify när allt är klart.',
     settings: 'Prefixet används när du skapar nya spellistor och för att filtrera dina spellistor.',

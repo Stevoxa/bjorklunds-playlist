@@ -1,7 +1,7 @@
 import { APP_STORAGE_ID } from './config.js';
 
 const STORAGE_KEY = `${APP_STORAGE_ID}-search-cache-v1`;
-export const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000;
+export const SEARCH_CACHE_TTL_MS = 60 * 60 * 1000;
 const MAX_ENTRIES = 400;
 
 /**
