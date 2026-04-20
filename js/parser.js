@@ -20,13 +20,16 @@ const SONG_SUFFIX_RE = /\((feat\.?|live|remix|radio|acoustic|demo|cover|karaoke|
  */
 function countSwapVotes(artist, title) {
   const votes = [
-    /** Suffix i fel ruta: "(Live)" / "(Remix)" är nästan alltid del av titel. */
+    /** Låtsuffix ("(Live)", "(Remix)", "feat.") i artist-slot men inte i title-slot →
+     *  parsern har satt titel-suffix i fel slot. */
     SONG_SUFFIX_RE.test(artist) && !SONG_SUFFIX_RE.test(title),
-    /** Första delen börjar med siffra men inte andra: "800 Grader - Ebba Grön". */
+    /** Artist-slot börjar med siffra men inte title-slot: t.ex. "800 Grader - Ebba Grön"
+     *  (troligen Title-Artist-ordning där första delen är en titel-siffra). */
     /^\d/.test(artist) && !/^\d/.test(title),
-    /** Första delen är ALL CAPS, andra inte: branding-typisk för artist — alltså troligen titel i fel slot. */
-    artist.length >= 2 && artist === artist.toUpperCase() && title !== title.toUpperCase(),
-    /** Första delen är lång (≥ 4 ord) + andra kort (≤ 2): typisk YouTube-stil "Lång titel - Artist". */
+    /** TITLE-slot är ALL CAPS men inte artist-slot: t.ex. "Cake By The Ocean - DNCE".
+     *  ALL CAPS är typiskt artist-branding → title-slot är troligen artisten. */
+    title.length >= 2 && title === title.toUpperCase() && artist !== artist.toUpperCase(),
+    /** Artist-slot lång (≥ 4 ord) och title-slot kort (≤ 2 ord): YouTube-stil "Lång titel - Artist". */
     artist.split(/\s+/).filter(Boolean).length >= 4 &&
       title.split(/\s+/).filter(Boolean).length <= 2,
   ];
