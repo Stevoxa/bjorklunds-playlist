@@ -17,6 +17,7 @@ import {
   writePlaylistListCache,
   deletePlaylistListCache,
 } from './playlist-list-cache.js';
+import { readArtistBank, addArtistsToBank, deleteArtistBank } from './artist-bank.js';
 import { readSpotifySession, writeSpotifySession, clearSpotifySession } from './token-session.js';
 import {
   bindRowPlaybackControls,
@@ -1823,10 +1824,33 @@ async function runSearch() {
   renderResults();
   setSearchProgress(true);
   /** Artist-bank (in-memory, per körning): artistnamn (lowercased) från tidigare träffar i denna batch.
-   *  Används för att tvinga suspectSwap när en senare rads "title"-slot är en känd artist men dess
-   *  "artist"-slot inte är det — typiskt fall: "Levitating - Dua Lipa" efter att vi sett Dua Lipa som artist. */
+   *  Seedas också från persistent IDB-bank (per user-id) så tidigare sessioners träffar hjälper
+   *  suspectSwap-detektering. Används för att tvinga suspectSwap när en senare rads "title"-slot är
+   *  en känd artist men dess "artist"-slot inte är det — typiskt fall: "Levitating - Dua Lipa"
+   *  efter att vi sett Dua Lipa som artist. */
   /** @type {Set<string>} */
   const knownArtistsLc = new Set();
+  /** Behåll en kopia av initialstorleken så vi kan logga hur mycket banken växte under körningen. */
+  const artistBankUserId = spotifyClient?.getCachedUserId?.() ?? null;
+  let persistentBankSeedSize = 0;
+  if (artistBankUserId) {
+    try {
+      const persistent = await readArtistBank(artistBankUserId);
+      if (persistent && Array.isArray(persistent.artists)) {
+        for (const a of persistent.artists) knownArtistsLc.add(a);
+        persistentBankSeedSize = knownArtistsLc.size;
+        logSpotify({
+          t: new Date().toISOString(),
+          kind: 'ui',
+          phase: 'runSearch',
+          reason: 'artist-bank-seed',
+          bankSize: persistentBankSeedSize,
+        });
+      }
+    } catch {
+      /* best-effort — körningen fortsätter utan seed */
+    }
+  }
   /** @param {{ artists?: { name?: string }[] }[] | null | undefined} tracks */
   const absorbArtistsFromTracks = (tracks) => {
     if (!Array.isArray(tracks)) return;
@@ -1921,6 +1945,22 @@ async function runSearch() {
     setSearchProgress(false);
     renderResults();
     updateApplyEnabled();
+    /** Persistera eventuella nya artister i bankens IDB-kopia — fire-and-forget, blockerar inte UI.
+     *  Diff mot seed-storleken så vi inte skriver i onödan om inga nya namn dök upp. */
+    if (artistBankUserId && knownArtistsLc.size > persistentBankSeedSize) {
+      void addArtistsToBank(artistBankUserId, knownArtistsLc).then((added) => {
+        if (added > 0) {
+          logSpotify({
+            t: new Date().toISOString(),
+            kind: 'ui',
+            phase: 'runSearch',
+            reason: 'artist-bank-persist',
+            addedCount: added,
+            totalBatchSize: knownArtistsLc.size,
+          });
+        }
+      });
+    }
     if (signal.aborted) {
       const done = resultRows.filter((r) => r.tracks !== null).length;
       showToast(`Sökningen avbröts. ${done} av ${resultRows.length} rader hann sökas.`);
@@ -2244,6 +2284,7 @@ async function boot() {
     spotifyClient = null;
     spotifyUserDisplay = '';
     invalidateExistingPlaylistListCache({ persistent: true, userId: uidForCacheWipe });
+    if (uidForCacheWipe) void deleteArtistBank(uidForCacheWipe);
     clearSpotifySession();
     const pass = getPassphrase();
     if (pass.length >= 8) {
