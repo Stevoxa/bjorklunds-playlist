@@ -2137,6 +2137,22 @@ async function boot() {
     showToast('Sökcachen är rensad.');
   });
 
+  $('btn-clear-artist-bank').addEventListener('click', async () => {
+    const uid = spotifyClient?.getCachedUserId?.() ?? null;
+    if (!uid) {
+      showToast('Du behöver vara inloggad för att rensa artist-banken.', true);
+      return;
+    }
+    await deleteArtistBank(uid);
+    showToast('Artist-banken är rensad. Nästa sökning börjar bygga upp den igen.');
+    logSpotify({
+      t: new Date().toISOString(),
+      kind: 'ui',
+      phase: 'artistBank',
+      reason: 'manual-clear',
+    });
+  });
+
   $('btn-abort-search').addEventListener('click', () => {
     if (FEATURE_ROW_FULL_PLAYBACK) void stopRowPlayback();
     searchAbortController?.abort();
@@ -2294,7 +2310,9 @@ async function boot() {
     spotifyClient = null;
     spotifyUserDisplay = '';
     invalidateExistingPlaylistListCache({ persistent: true, userId: uidForCacheWipe });
-    if (uidForCacheWipe) void deleteArtistBank(uidForCacheWipe);
+    /** Artist-banken behålls med flit vid logout — den är samlad söklärdom per user-id
+     *  (endast publika artistnamn, ingen token/profilinfo) och ska hjälpa framtida sessioner.
+     *  Manuell rensning finns under Inställningar via knappen "Rensa artist-bank". */
     clearSpotifySession();
     const pass = getPassphrase();
     if (pass.length >= 8) {
