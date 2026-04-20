@@ -413,60 +413,9 @@ body {
   justify-content: flex-end;
 }
 
-#flow-step-settings #crypto-pass-help {
-  margin-bottom: 1.05rem;
-}
-
 #flow-step-0 .btn--with-icon .btn__icon {
   width: 1.45rem;
   height: 1.45rem;
-}
-
-.password-field {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-}
-
-.password-field__input {
-  flex: 1;
-  min-width: 0;
-  padding-right: 3rem;
-  border-radius: var(--btn-radius);
-}
-
-.password-field__toggle {
-  position: absolute;
-  right: 0.15rem;
-  top: 50%;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: color-mix(in srgb, var(--text) 48%, var(--text-muted));
-  cursor: pointer;
-}
-
-.password-field__toggle-icon {
-  display: block;
-  width: 1.5rem;
-  height: 1.5rem;
-}
-
-.password-field__toggle:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--text) 6%, transparent);
-}
-
-.password-field__toggle:focus-visible {
-  outline: var(--focus);
-  outline-offset: 2px;
 }
 
 .auth-status-host {

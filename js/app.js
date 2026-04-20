@@ -6,7 +6,7 @@ import {
   PLAYLIST_LIST_STALE_IF_ERROR_MS,
 } from './config.js';
 import { getRedirectUri, beginLogin, consumeOAuthCallback } from './auth.js';
-import { loadVault, saveVault, VAULT_KEY } from './vault.js';
+import { readLocalSettings, writeLocalSettings } from './local-settings.js';
 import { idbGet } from './db.js';
 import { parseTrackList } from './parser.js';
 import { createSpotifyClient, parsePlaylistIdFromInput } from './spotify-api.js';
@@ -126,8 +126,18 @@ function defaultVault() {
     clientId: '',
     tokens: null,
     settings: { theme: 'system', playlistNamePrefix: DEFAULT_PLAYLIST_NAME_PREFIX },
-    selectedPlaylist: null,
   };
+}
+
+/** Sparar aktuella, icke-känsliga inställningar (client-id, tema, prefix) till localStorage.
+ *  Hämtar värdena direkt från formuläret så att auto-save alltid speglar UI-tillståndet.
+ *  Tokens lagras aldrig här — de hanteras via sessionStorage i token-session.js. */
+function persistLocalSettings() {
+  writeLocalSettings({
+    clientId: $('client-id').value.trim(),
+    theme: /** @type {'system' | 'light' | 'dark'} */ ($('pref-theme').value),
+    playlistNamePrefix: $('playlist-prefix').value,
+  });
 }
 
 function $(id) {
@@ -309,10 +319,6 @@ function applyTheme(theme) {
   }
 }
 
-function getPassphrase() {
-  return $('crypto-pass').value;
-}
-
 function getClientId() {
   return $('client-id').value.trim();
 }
@@ -351,62 +357,21 @@ function persistTokensFromClient() {
   vaultData.tokens = spotifyClient.getTokens();
 }
 
-async function saveEncryptedVault() {
-  const pass = getPassphrase();
-  if (pass.length < 8) {
-    showToast('Lösenfrasen måste vara minst 8 tecken.', true);
-    return;
-  }
-  const cid = getClientId();
-  if (!cid) {
-    showToast('Ange ett Client ID.', true);
-    return;
-  }
+/** Återställer icke-känsliga inställningar från localStorage in i formuläret och tillämpar tema.
+ *  Körs vid boot så att användaren slipper ange Client ID igen mellan sessioner. */
+function hydrateLocalSettingsIntoUI() {
+  const s = readLocalSettings();
+  if (s.clientId) $('client-id').value = s.clientId;
+  $('pref-theme').value = s.theme;
+  $('playlist-prefix').value = s.playlistNamePrefix;
   vaultData = vaultData ?? defaultVault();
-  vaultData.clientId = cid;
+  vaultData.clientId = s.clientId;
   vaultData.settings = {
     ...defaultVault().settings,
-    ...vaultData.settings,
-    theme: $('pref-theme').value,
-    playlistNamePrefix: $('playlist-prefix').value,
+    theme: s.theme,
+    playlistNamePrefix: s.playlistNamePrefix,
   };
-  persistTokensFromClient();
-  await saveVault(vaultData, pass);
-  syncSpotifySessionToStorage();
-  showToast('Sparat krypterat lokalt i din webbläsare.');
-  setAuthStatus();
-  updateApplyEnabled();
-}
-
-async function loadEncryptedVault() {
-  const pass = getPassphrase();
-  if (pass.length < 8) {
-    showToast('Ange samma lösenfras som du använde när du sparade (minst 8 tecken).', true);
-    return;
-  }
-  try {
-    const data = await loadVault(pass);
-    if (!data) {
-      showToast('Det finns ingen sparad data.', true);
-      return;
-    }
-    vaultData = { ...defaultVault(), ...data };
-    vaultData.settings = { ...defaultVault().settings, ...vaultData.settings };
-    $('client-id').value = vaultData.clientId ?? '';
-    $('pref-theme').value = vaultData.settings?.theme ?? 'system';
-    $('playlist-prefix').value =
-      vaultData.settings?.playlistNamePrefix != null && String(vaultData.settings.playlistNamePrefix).length > 0
-        ? String(vaultData.settings.playlistNamePrefix)
-        : DEFAULT_PLAYLIST_NAME_PREFIX;
-    applyTheme($('pref-theme').value);
-    updateNewPlaylistPreview();
-    await syncSpotifySessionToUi();
-    showToast('Sparad data inläst.');
-    syncSpotifySessionToStorage();
-    updateApplyEnabled();
-  } catch {
-    showToast('Kunde inte läsa sparad data. Är lösenfrasen korrekt?', true);
-  }
+  applyTheme(s.theme);
 }
 
 function initSpotifyClient() {
@@ -428,10 +393,6 @@ function initSpotifyClient() {
   spotifyClient = createSpotifyClient(vaultData.tokens, cid, (t) => {
     vaultData.tokens = t;
     syncSpotifySessionToStorage();
-    const pass = getPassphrase();
-    if (pass.length >= 8) {
-      saveVault(vaultData, pass).catch(() => {});
-    }
   });
   syncSpotifySessionToStorage();
 }
@@ -2030,9 +1991,6 @@ async function applyPlaylist() {
       for (let i = 0; i < uris.length; i += SPOTIFY_CHUNK) {
         await spotifyClient.appendPlaylistTracks(pl.id, uris.slice(i, i + SPOTIFY_CHUNK));
       }
-      vaultData.selectedPlaylist = { id: pl.id, name: pl.name };
-      const pass = getPassphrase();
-      if (pass.length >= 8) await saveVault(vaultData, pass);
       const openUrl =
         typeof pl.external_urls?.spotify === 'string' && pl.external_urls.spotify.trim()
           ? pl.external_urls.spotify.trim()
@@ -2080,9 +2038,6 @@ async function applyPlaylist() {
         source === 'from-list'
           ? ($('existing-pl-select').selectedOptions[0]?.textContent ?? plId)
           : plId;
-      vaultData.selectedPlaylist = { id: plId, name: plLabel };
-      const pass = getPassphrase();
-      if (pass.length >= 8) await saveVault(vaultData, pass);
       showStep3PlaylistApplyResult({
         ok: true,
         title: 'Klart',
@@ -2118,6 +2073,10 @@ async function registerServiceWorker() {
 
 async function boot() {
   $('redirect-uri-display').textContent = getRedirectUri();
+
+  /* Återställ icke-känsliga inställningar från localStorage innan OAuth/return-flödet
+   * körs, så att t.ex. Client ID finns på plats om vi kommer tillbaka från Spotify. */
+  hydrateLocalSettingsIntoUI();
 
   const logPre = $('spotify-log-pre');
   subscribeSpotifyLog((line) => {
@@ -2255,7 +2214,7 @@ async function boot() {
   $('btn-reset-playlist-prefix').addEventListener('click', () => {
     $('playlist-prefix').value = DEFAULT_PLAYLIST_NAME_PREFIX;
     updateNewPlaylistPreview();
-    showToast('Prefixet är återställt. Spara under Inställningar om det ska sparas lokalt.');
+    showToast('Prefixet är återställt.');
     const mode = getPlaylistMode();
     const fromList = document.querySelector('input[name="pl-existing-source"]:checked')?.value === 'from-list';
     if (mode === 'existing' && fromList && spotifyClient && currentFlowStep === '2') {
@@ -2266,16 +2225,22 @@ async function boot() {
 
   $('pref-theme').addEventListener('change', () => {
     applyTheme($('pref-theme').value);
+    persistLocalSettings();
   });
 
-  $('btn-save-settings').addEventListener('click', () => saveEncryptedVault());
-  $('btn-load-vault').addEventListener('click', () => loadEncryptedVault());
+  /* Auto-save av prefix vid ändring — återanvänder samma debounce-timer som
+   * prefixfilter-uppdateringen och skriver localStorage när användaren slutar
+   * knappa. (Se även input-hanteraren ovan där timern sätts.) */
+  $('playlist-prefix').addEventListener('blur', () => persistLocalSettings());
+  $('btn-reset-playlist-prefix').addEventListener('click', () => persistLocalSettings());
 
   $('client-id').addEventListener('blur', () => {
-    if (!vaultData?.tokens?.accessToken) return;
     const cid = getClientId().trim();
-    if (!cid) return;
+    vaultData = vaultData ?? defaultVault();
     vaultData.clientId = cid;
+    persistLocalSettings();
+    if (!vaultData?.tokens?.accessToken) return;
+    if (!cid) return;
     updateApplyEnabled();
     void syncSpotifySessionToUi().then(() => {
       if (resultRows.length > 0) renderResults();
@@ -2314,13 +2279,8 @@ async function boot() {
      *  (endast publika artistnamn, ingen token/profilinfo) och ska hjälpa framtida sessioner.
      *  Manuell rensning finns under Inställningar via knappen "Rensa artist-bank". */
     clearSpotifySession();
-    const pass = getPassphrase();
-    if (pass.length >= 8) {
-      await saveVault(vaultData, pass);
-      showToast('Token borttagen från sparad data.');
-    } else {
-      showToast('Token borttagen i minnet. Ange lösenfras och klicka på Spara lokalt under Inställningar för att uppdatera enheten.');
-    }
+    persistLocalSettings();
+    showToast('Du är utloggad från Spotify. Klient-ID och inställningar är kvar.');
     setAuthStatus();
     touchPlaylistApplyPostSuccessDirty();
   });
@@ -2380,25 +2340,7 @@ async function boot() {
     restoreSpotifySessionIfAny();
   }
 
-  const exists = await idbGet(VAULT_KEY);
-  const vaultHint =
-    exists && !vaultData?.tokens?.accessToken
-      ? 'Det finns sparad krypterad data. Gå till Inställningar, ange lösenfrasen och klicka på Läs in sparad data.'
-      : '';
-  await syncSpotifySessionToUi(vaultHint);
-
-  const passInp = $('crypto-pass');
-  const passTog = $('btn-toggle-pass-visibility');
-  const passUse = passTog.querySelector('use');
-  if (passUse) {
-    passTog.addEventListener('click', () => {
-      const show = passInp.type === 'password';
-      passInp.type = show ? 'text' : 'password';
-      passTog.setAttribute('aria-pressed', show ? 'true' : 'false');
-      passTog.setAttribute('aria-label', show ? 'Dölj lösenfras' : 'Visa lösenfras');
-      passUse.setAttribute('href', show ? '#sym-eye-off' : '#sym-eye');
-    });
-  }
+  await syncSpotifySessionToUi();
 
   applyTheme($('pref-theme').value);
   updateNewPlaylistPreview();

@@ -20,7 +20,6 @@ const REQUIRED_IDS = [
   'results-body',
   'spotify-log-pre',
   'client-id',
-  'crypto-pass',
   'auth-status',
   'btn-apply-playlist',
   'new-pl-name',
