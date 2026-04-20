@@ -765,17 +765,23 @@ function updateSummaryTip(step) {
   if (!tip) return;
   const plMode = getPlaylistMode();
   if (step === '2' && plMode === 'existing') {
-    tip.textContent = 'Listan visar endast spellistor du äger och som matchar ditt prefix.';
+    const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
+    tip.textContent =
+      src === 'from-link'
+        ? 'Du kan klistra in en vanlig spellistelänk från Spotify, eller en Spotify-URI i formatet spotify:playlist:.... Båda pekar på samma spellista. Enklast hämtar du länken i Spotify via Dela och Kopiera spellistelänk.'
+        : 'Listan visar bara spellistor du själv äger och vars namn börjar med ditt prefix. Prefixet kan ändras i Inställningar och används för att göra appens spellistor lättare att hitta och skilja från andra listor i Spotify.';
     return;
   }
   if (step === '2' && plMode === 'new') {
-    tip.textContent = 'Prefixet hämtas från Inställningar och läggs till automatiskt.';
+    tip.textContent =
+      'Prefixet hämtas från Inställningar och läggs till automatiskt när du skapar en ny spellista. Det gör spellistor från appen lättare att hitta och hjälper till att skilja dem från andra spellistor i Spotify.';
     return;
   }
   const tips = {
     '0':
-      'Fyll i Client ID och klicka på Logga in med Spotify. Inloggningen sker hos Spotify och inget lösenord sparas här. Gå sedan vidare till Välj musik.',
-    '1': 'Välj vilka låtar som ska tas med och markera den version du vill använda.',
+      'Du loggar in direkt hos Spotify, så appen får aldrig tillgång till ditt lösenord. Client ID används bara för att identifiera appen och inloggningen skyddas med PKCE med tidsbegränsad åtkomst.',
+    '1':
+      'Sökningar sparas i 30 minuter, vilket gör upprepade sökningar snabbare och minskar onödiga anrop till Spotify. Om du vill kan du rensa sökcachen i Inställningar.',
     '2': 'Du behöver vara inloggad på Spotify för att fortsätta.',
     '3': 'Kontrollera sammanfattningen och klicka på Genomför på Spotify när allt är klart.',
     settings: 'Prefixet används när du skapar nya spellistor och för att filtrera dina spellistor.',
@@ -1033,24 +1039,24 @@ function syncStep3LockedTip() {
     return;
   }
   if (resultRows.length === 0) {
-    text.textContent = 'Du behöver söka och sen välja minst en låt under ”Välj musik” innan du genomför.';
+    text.textContent = 'Sök efter låtar och välj minst en under Välj musik innan du genomför.';
     return;
   }
   if (selectedUrisForPlaylist().length === 0) {
-    text.textContent = 'Du behöver välja minst en låt under ”Välj musik” innan du genomför.';
+    text.textContent = 'Välj minst en låt under Välj musik innan du genomför.';
     return;
   }
   const mode = getPlaylistMode();
   if (mode === 'new') {
-    text.textContent = 'Du behöver ange ett namn på den nya spellistan under ”Välj spellista” innan du genomför.';
+    text.textContent = 'Ange ett namn på den nya spellistan under Välj spellista innan du genomför.';
     return;
   }
   const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
   if (src === 'from-list') {
-    text.textContent = 'Du behöver välja en befintlig spellista under ”Välj spellista” innan du genomför.';
+    text.textContent = 'Välj en befintlig spellista under Välj spellista innan du genomför.';
     return;
   }
-  text.textContent = 'Du behöver ange en giltig Spotify-länk eller ett giltigt spellista-ID under ”Välj spellista” innan du genomför.';
+  text.textContent = 'Ange en giltig Spotify-länk eller ett giltigt spelliste-ID under Välj spellista innan du genomför.';
 }
 
 function wireFlow() {
@@ -1513,44 +1519,44 @@ function syncApplyHint() {
   const el = document.getElementById('apply-hint');
   if (!el) return;
   if (playlistApplyPostSuccess) {
-    el.textContent = 'Spellistan är uppdaterad. Om du vill genomföra igen behöver du först ändra låtar eller spellista under tidigare steg.';
+    el.textContent = 'Spellistan är redan uppdaterad. Ändra låtar eller spellista i tidigare steg för att genomföra igen.';
     return;
   }
   if (!spotifyClient) {
-    el.textContent = 'Du behöver logga in på Spotify för att kunna genomföra.';
+    el.textContent = 'Du behöver logga in på Spotify innan du kan genomföra.';
     return;
   }
   if (resultRows.length === 0) {
-    el.textContent = 'Du behöver välja minst en låt under ”Välj musik” först.';
+    el.textContent = 'Du behöver först välja minst en låt under Välj musik.';
     return;
   }
   if (selectedUrisForPlaylist().length === 0) {
-    el.textContent = 'Du behöver välja minst en låt under ”Välj musik” innan du genomför.';
+    el.textContent = 'Välj minst en låt under Välj musik innan du genomför.';
     return;
   }
   const mode = getPlaylistMode();
   if (mode === 'new') {
     if (!$('new-pl-name').value.trim()) {
-      el.textContent = 'Du behöver ange ett namn på den nya spellistan innan du genomför.';
+      el.textContent = 'Ange ett namn på den nya spellistan innan du genomför.';
       return;
     }
-    el.textContent = 'Skapar en ny spellista på ditt Spotify-konto med prefix och namn.';
+    el.textContent = 'En ny spellista skapas på ditt Spotify-konto med ditt prefix och valda namn.';
     return;
   }
   const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
   if (src === 'from-list' && !$('existing-pl-select').value.trim()) {
-    el.textContent = 'Du behöver välja en befintlig spellista under ”Välj spellista” innan du genomför.';
+    el.textContent = 'Välj en befintlig spellista under Välj spellista innan du genomför.';
     return;
   }
   if (src === 'from-link' && !parsePlaylistIdFromInput($('existing-pl-id').value)) {
-    el.textContent = 'Du behöver ange en giltig Spotify-länk eller ett giltigt spellista-ID under ”Välj spellista” innan du genomför.';
+    el.textContent = 'Ange en giltig Spotify-länk eller ett giltigt spelliste-ID under Välj spellista innan du genomför.';
     return;
   }
   const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
   el.textContent =
     um === 'replace'
-      ? 'Alla befintliga låtar i den valda spellistan ersätts med de valda låtarna.'
-      : 'Låtarna läggs till sist i den valda spellistan på Spotify.';
+      ? 'Alla låtar i den valda spellistan ersätts med de låtar du har valt.'
+      : 'De valda låtarna läggs till sist i den valda spellistan på Spotify.';
 }
 
 function isStep3ApplyReady() {
@@ -1586,20 +1592,20 @@ function updateStep2StickyNav() {
   const mode = getPlaylistMode();
   if (mode === 'new') {
     hint.textContent = $('new-pl-name').value.trim()
-      ? 'Du kan gå vidare för att granska och genomföra.'
+      ? 'Du kan gå vidare och granska innan du genomför.'
       : 'Ange ett namn på den nya spellistan.';
     return;
   }
   const src = document.querySelector('input[name="pl-existing-source"]:checked')?.value ?? 'from-list';
   if (src === 'from-list') {
     hint.textContent = $('existing-pl-select').value.trim()
-      ? 'Du kan gå vidare för att granska och genomföra.'
-      : 'Du behöver välja en spellista från listan.';
+      ? 'Du kan gå vidare och granska innan du genomför.'
+      : 'Välj en spellista från listan.';
     return;
   }
   hint.textContent = parsePlaylistIdFromInput($('existing-pl-id').value)
-    ? 'Du kan gå vidare för att granska och genomföra.'
-    : 'Ange en giltig Spotify-länk eller ett giltigt spellista-ID.';
+    ? 'Du kan gå vidare och granska innan du genomför.'
+    : 'Ange en giltig Spotify-länk eller ett giltigt spelliste-ID.';
 }
 
 function updateStep1StickyNav() {
@@ -1621,13 +1627,13 @@ function updateStep1StickyNav() {
   if (busy) {
     hint.textContent = 'Sökning pågår. Vänta tills alla rader är klara.';
   } else if (resultRows.length === 0) {
-    hint.textContent = 'Klistra in en låtlista och sök på Spotify. När träffarna är klara kan du gå vidare.';
+    hint.textContent = 'Klistra in en låtlista och sök på Spotify för att gå vidare.';
   } else if (pendingSearch) {
     hint.textContent = 'Vänta tills sökningen är klar.';
   } else if (selectedUrisForPlaylist().length === 0) {
-    hint.textContent = 'Du behöver välja minst en låt för att gå vidare.';
+    hint.textContent = 'Välj minst en låt för att gå vidare.';
   } else {
-    hint.textContent = 'När du är nöjd med urvalet kan du fortsätta till spellistan.';
+    hint.textContent = 'När du är nöjd med urvalet kan du gå vidare.';
   }
 }
 
