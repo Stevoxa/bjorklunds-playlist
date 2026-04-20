@@ -918,7 +918,7 @@ function refreshSummary() {
     if (src === 'from-list' && !$('existing-pl-select').value) {
       sumFoot.textContent = 'Välj en spellista för att fortsätta.';
     } else if (src === 'from-link' && !$('existing-pl-id').value.trim()) {
-      sumFoot.textContent = 'Ange en Spotify-länk eller ett spellista-ID.';
+      sumFoot.textContent = 'Ange en Spotify-länk eller ett spellist-ID.';
     } else if (trackCount === 0) {
       sumFoot.textContent = 'Välj minst en låt under steg 1.';
     } else {
@@ -1056,7 +1056,7 @@ function syncStep3LockedTip() {
     text.textContent = 'Välj en befintlig spellista under Välj spellista innan du genomför.';
     return;
   }
-  text.textContent = 'Ange en giltig Spotify-länk eller ett giltigt spelliste-ID under Välj spellista innan du genomför.';
+  text.textContent = 'Ange en giltig Spotify-länk eller ett giltigt spellist-ID under Välj spellista innan du genomför.';
 }
 
 function wireFlow() {
@@ -1549,7 +1549,7 @@ function syncApplyHint() {
     return;
   }
   if (src === 'from-link' && !parsePlaylistIdFromInput($('existing-pl-id').value)) {
-    el.textContent = 'Ange en giltig Spotify-länk eller ett giltigt spelliste-ID under Välj spellista innan du genomför.';
+    el.textContent = 'Ange en giltig Spotify-länk eller ett giltigt spellist-ID under Välj spellista innan du genomför.';
     return;
   }
   const um = document.querySelector('input[name="pl-update"]:checked')?.value ?? 'append';
@@ -1605,7 +1605,7 @@ function updateStep2StickyNav() {
   }
   hint.textContent = parsePlaylistIdFromInput($('existing-pl-id').value)
     ? 'Du kan gå vidare och granska innan du genomför.'
-    : 'Ange en giltig Spotify-länk eller ett giltigt spelliste-ID.';
+    : 'Ange en giltig Spotify-länk eller ett giltigt spellist-ID.';
 }
 
 function updateStep1StickyNav() {
@@ -1822,7 +1822,7 @@ async function applyPlaylist() {
         const rawId = $('existing-pl-id').value;
         plId = parsePlaylistIdFromInput(rawId);
         if (!plId) {
-          showToast('Ogiltigt spellista-ID.', true);
+          showToast('Ogiltigt spellist-ID.', true);
           return;
         }
       }
