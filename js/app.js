@@ -1098,6 +1098,20 @@ function updateExistingPlaylistSourceUi() {
 /** Avbryter föregående spelliste-hämtning — annars kan två parallella körningar ge dubbletter i spellistelistan. */
 let existingPlSelectRefreshAbort = /** @type {AbortController | null} */ (null);
 
+/** Köar nätverkshämtning för ”Mina listor” (ett jobb i taget) så stegbyte, prefix-debounce m.m. inte staplar anrop. */
+let existingPlSelectFetchChain = Promise.resolve();
+
+/**
+ * @template T
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+function enqueueExistingPlaylistSelectRefresh(fn) {
+  const next = existingPlSelectFetchChain.then(() => fn());
+  existingPlSelectFetchChain = next.catch(() => {});
+  return next;
+}
+
 /**
  * @param {HTMLSelectElement} sel
  * @param {{ id: string, name: string }[]} list
@@ -1135,47 +1149,68 @@ async function refreshExistingPlaylistSelect(opts = {}) {
     showToast('Logga in på Spotify under steg 0 (Logga in) först.', true);
     return;
   }
-  const prefix = getPlaylistPrefixFromInput();
-  const sel = $('existing-pl-select');
+  const prefixNow = getPlaylistPrefixFromInput();
+  const selNow = $('existing-pl-select');
   /** Id som ska återställas efter omladdning (t.ex. val innan stegbyte — syncPlaylistModeBlocks kör refresh utan id). */
-  const preserveId = sel.value.trim();
+  const preserveNow = selNow.value.trim();
 
   const cacheFresh =
     !force &&
     existingPlaylistListCache &&
-    existingPlaylistListCache.prefix === prefix &&
+    existingPlaylistListCache.prefix === prefixNow &&
     Date.now() - existingPlaylistListCache.at < PLAYLIST_LIST_CACHE_TTL_MS;
 
   if (cacheFresh) {
     existingPlSelectRefreshAbort?.abort();
     existingPlSelectRefreshAbort = null;
-    populateExistingPlaylistSelectFromList(sel, existingPlaylistListCache.list, preserveId, selectPlaylistId);
+    populateExistingPlaylistSelectFromList(selNow, existingPlaylistListCache.list, preserveNow, selectPlaylistId);
     refreshSummary();
     return;
   }
 
+  /** Avbryt pågående hämtning så nästa jobb i kön (eller samma anrop) inte väntar i onödan. */
   existingPlSelectRefreshAbort?.abort();
-  const ac = new AbortController();
-  existingPlSelectRefreshAbort = ac;
-  const { signal } = ac;
-  try {
-    const list = await spotifyClient.listMyPlaylistsByPrefix(prefix, signal);
-    existingPlaylistListCache = {
-      prefix,
-      at: Date.now(),
-      list: list.map((p) => ({ id: p.id, name: p.name })),
-    };
-    populateExistingPlaylistSelectFromList(sel, list, preserveId, selectPlaylistId);
-    refreshSummary();
-    if (!quiet) {
-      showToast(list.length ? `${list.length} spellistor med prefix.` : 'Inga spellistor matchar prefixet.');
+
+  return enqueueExistingPlaylistSelectRefresh(async () => {
+    const prefix = getPlaylistPrefixFromInput();
+    const sel = $('existing-pl-select');
+    const preserveId = sel.value.trim();
+
+    const cacheStillFresh =
+      !force &&
+      existingPlaylistListCache &&
+      existingPlaylistListCache.prefix === prefix &&
+      Date.now() - existingPlaylistListCache.at < PLAYLIST_LIST_CACHE_TTL_MS;
+
+    if (cacheStillFresh) {
+      existingPlSelectRefreshAbort = null;
+      populateExistingPlaylistSelectFromList(sel, existingPlaylistListCache.list, preserveId, selectPlaylistId);
+      refreshSummary();
+      return;
     }
-  } catch (e) {
-    if (signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return;
-    throw e;
-  } finally {
-    if (existingPlSelectRefreshAbort === ac) existingPlSelectRefreshAbort = null;
-  }
+
+    const ac = new AbortController();
+    existingPlSelectRefreshAbort = ac;
+    const { signal } = ac;
+    try {
+      const list = await spotifyClient.listMyPlaylistsByPrefix(prefix, signal);
+      existingPlaylistListCache = {
+        prefix,
+        at: Date.now(),
+        list: list.map((p) => ({ id: p.id, name: p.name })),
+      };
+      populateExistingPlaylistSelectFromList(sel, list, preserveId, selectPlaylistId);
+      refreshSummary();
+      if (!quiet) {
+        showToast(list.length ? `${list.length} spellistor med prefix.` : 'Inga spellistor matchar prefixet.');
+      }
+    } catch (e) {
+      if (signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return;
+      throw e;
+    } finally {
+      if (existingPlSelectRefreshAbort === ac) existingPlSelectRefreshAbort = null;
+    }
+  });
 }
 
 function maybeRefreshPlaylistsWhenTabVisible() {

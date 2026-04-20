@@ -195,9 +195,9 @@ const SEARCH_INTERNAL_GAP_MS = 3000;
 const SEARCH_INTERNAL_JITTER_MS = 1000;
 
 /** Paus mellan paginerade GET /me/playlists — Spotify rate-limitar hårda bursts (429). */
-const PLAYLIST_FETCH_INITIAL_GAP_MS = 280;
-const PLAYLIST_PAGE_GAP_MS = 500;
-const PLAYLIST_PAGE_JITTER_MS = 400;
+const PLAYLIST_FETCH_INITIAL_GAP_MS = 450;
+const PLAYLIST_PAGE_GAP_MS = 750;
+const PLAYLIST_PAGE_JITTER_MS = 500;
 
 /** Endast en kedja för /search + spellisteläsning (inkl. 429-retries) åt gången — undviker parallella GET-bursts */
 let searchGetChain = Promise.resolve();
@@ -395,6 +395,9 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
 export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
   let t = { ...tokens };
 
+  /** Undviker upprepad GET /me vid varje spelliste-synk (samma användare under klientens livstid). */
+  let cachedSpotifyUserId = /** @type {string | null} */ (null);
+
   /** @type {Promise<void> | null} */
   let refreshCoalesce = null;
 
@@ -479,8 +482,12 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     async listMyPlaylistsByPrefix(prefix, signal) {
       return scheduleSearchGetChain(async () => {
         signal?.throwIfAborted();
-        const me = await this.me(signal);
-        const myId = me.id;
+        let myId = cachedSpotifyUserId;
+        if (!myId) {
+          const me = await this.me(signal);
+          myId = me.id;
+          cachedSpotifyUserId = myId;
+        }
         const pref = String(prefix ?? '');
         /** @type {Map<string, { id: string, name: string }>} */
         const byId = new Map();
