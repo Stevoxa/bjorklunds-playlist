@@ -120,18 +120,38 @@ function pickTrackSearchResults(data) {
 }
 
 /**
+ * Strippar "featuring"-notation för att få huvudartisten inför `artist:`-filter.
+ * Spotifys index lagrar featuring-artister som separata poster (artists: [main, featured]),
+ * så `artist:"Main feat. Featured"` matchar ingenting. Vi matchar bara
+ * `feat.`/`ft.`/`featuring` — INTE `&` eller `,`, eftersom de ofta är legitima
+ * delar av artistnamn ("Earth, Wind & Fire", "Simon & Garfunkel", "Crosby, Stills & Nash").
+ *
+ * @param {string} artist
+ * @returns {string} Trimmad huvudartist (eller original om ingen match).
+ */
+function stripFeaturing(artist) {
+  if (!artist) return '';
+  const m = artist.match(/^(.*?)\s+(feat\.?|ft\.?|featuring)\s+/i);
+  return (m ? m[1] : artist).trim();
+}
+
+/**
  * Bygger en ordnad lista av sök-queries anpassad efter radens klass.
  * Minst möjligt anrop (fri text direkt) för rader utan tydlig struktur;
  * dubbelt försök med swap för rader där parsern troligen bytt roll på artist/title.
+ *
+ * För `normal` (och `suspectSwap` där artisten spelar artist-rollen) används
+ * huvudartist i `artist:`-filtret — free-text-fallbacken behåller dock hela
+ * strängen inklusive featuring.
  *
  * @param {string} q Rå fri text-query (fallback).
  * @param {string} [artist] Artist enligt parsern.
  * @param {string} [title] Titel enligt parsern.
  * @param {'freeTextOnly' | 'normal' | 'suspectSwap'} [rowClass]
- * @returns {{ q: string, kind: 'field-artist-title' | 'field-title-artist' | 'free-text' | 'raw' }[]}
+ * @returns {{ q: string, kind: 'field-artist-title' | 'field-title-artist' | 'free-text' | 'raw', artistStripped?: boolean }[]}
  */
 function buildSearchQueries(q, artist, title, rowClass = 'normal') {
-  /** @type {{ q: string, kind: 'field-artist-title' | 'field-title-artist' | 'free-text' | 'raw' }[]} */
+  /** @type {{ q: string, kind: 'field-artist-title' | 'field-title-artist' | 'free-text' | 'raw', artistStripped?: boolean }[]} */
   const queries = [];
   const a = artist?.trim();
   const ti = title?.trim();
@@ -145,16 +165,27 @@ function buildSearchQueries(q, artist, title, rowClass = 'normal') {
 
   const aq = spotifyQuoted(a);
   const tq = spotifyQuoted(ti);
+  const aPrimary = stripFeaturing(a);
+  const aPrimaryQ = spotifyQuoted(aPrimary);
+  const artistStripped = aPrimary !== a;
   const freeText = `${a} ${ti}`;
 
   if (rowClass === 'suspectSwap') {
     /** Parsern satte troligen artist/title i omvänd ordning → prova swap först. */
     queries.push({ q: `track:${aq} artist:${tq}`, kind: 'field-title-artist' });
-    queries.push({ q: `track:${tq} artist:${aq}`, kind: 'field-artist-title' });
+    queries.push({
+      q: `track:${tq} artist:${aPrimaryQ}`,
+      kind: 'field-artist-title',
+      artistStripped,
+    });
     queries.push({ q: freeText, kind: 'free-text' });
   } else {
-    /** Normalfall: lita på parsern. Fri text räddar omvänd ordning vid miss. */
-    queries.push({ q: `track:${tq} artist:${aq}`, kind: 'field-artist-title' });
+    /** Normalfall: huvudartist i filtret ökar träffsäkerheten när raden har feat./ft. */
+    queries.push({
+      q: `track:${tq} artist:${aPrimaryQ}`,
+      kind: 'field-artist-title',
+      artistStripped,
+    });
     queries.push({ q: freeText, kind: 'free-text' });
   }
 
@@ -627,7 +658,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       const markets = ['from_token'];
       let firstSearchGet = true;
       let qIndex = 0;
-      for (const { q: query, kind } of queries) {
+      for (const { q: query, kind, artistStripped } of queries) {
         qIndex += 1;
         for (const market of markets) {
           if (!firstSearchGet) await sleepBetweenSearchTries(signal);
@@ -653,11 +684,12 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
               httpStatus: res.status,
               parseError: 'Svar var inte JSON',
               bodyPreview: bodyText.slice(0, 400),
-              rowClass,
-              queryKind: kind,
-              queryIndex: qIndex,
-              queryTotal: queries.length,
-            });
+            rowClass,
+            queryKind: kind,
+            queryIndex: qIndex,
+            queryTotal: queries.length,
+            ...(artistStripped ? { artistStripped: true } : {}),
+          });
             throw new Error('Ogiltigt JSON-svar från Spotify');
           }
           const { items, tracksTotal } = pickTrackSearchResults(data);
@@ -675,6 +707,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             queryIndex: qIndex,
             queryTotal: queries.length,
             hit: items.length > 0,
+            ...(artistStripped ? { artistStripped: true } : {}),
             sample: items.slice(0, 5).map((t) => ({
               name: t?.name,
               artists: Array.isArray(t?.artists) ? t.artists.map((a) => a?.name) : [],
