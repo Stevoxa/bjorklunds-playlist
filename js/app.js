@@ -11,7 +11,13 @@ import { idbGet } from './db.js';
 import { parseTrackList } from './parser.js';
 import { createSpotifyClient, parsePlaylistIdFromInput } from './spotify-api.js';
 import { subscribeSpotifyLog, clearSpotifyLog, logSpotify } from './spotify-log.js';
-import { makeSearchCacheKey, getSearchCache, setSearchCache, clearSearchCache } from './search-cache.js';
+import {
+  makeSearchCacheKey,
+  getSearchCache,
+  setSearchCache,
+  clearSearchCache,
+  getSearchCacheStats,
+} from './search-cache.js';
 import {
   readPlaylistListCache,
   writePlaylistListCache,
@@ -374,6 +380,66 @@ function hydrateLocalSettingsIntoUI() {
   applyTheme(s.theme);
 }
 
+/** Formatterar bytes som en kort, läsbar storlek för statistikraderna i Inställningar. */
+function formatBytesShort(n) {
+  if (!Number.isFinite(n) || n <= 0) return '0 B';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(n < 10 * 1024 ? 1 : 0)} kB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Relativ tidsangivelse på svenska för statistikraderna (t.ex. "för 3 min sedan"). */
+function formatRelativeSv(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return 'nyss';
+  const s = Math.round(ms / 1000);
+  if (s < 45) return 'nyss';
+  const m = Math.round(s / 60);
+  if (m < 60) return `för ${m} min sedan`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `för ${h} timme${h === 1 ? '' : 'r'} sedan`;
+  const d = Math.round(h / 24);
+  return `för ${d} dag${d === 1 ? '' : 'ar'} sedan`;
+}
+
+/** Skriver/uppdaterar sökcache- och artist-bank-stats i Inställningar.
+ *  Säker att kalla när som helst — elementen ligger alltid i DOM:en. */
+async function refreshSettingsStats() {
+  const cacheEl = document.getElementById('search-cache-stats');
+  if (cacheEl) {
+    const { entries, bytes, newestAt } = getSearchCacheStats();
+    if (entries <= 0) {
+      cacheEl.textContent = 'Tom cache.';
+    } else {
+      const parts = [`${entries} sökning${entries === 1 ? '' : 'ar'}`, formatBytesShort(bytes)];
+      if (newestAt) parts.push(`senast uppdaterad ${formatRelativeSv(Date.now() - newestAt)}`);
+      cacheEl.textContent = parts.join(' · ');
+    }
+  }
+
+  const bankEl = document.getElementById('artist-bank-stats');
+  if (!bankEl) return;
+  const uid = spotifyClient?.getCachedUserId?.() ?? null;
+  if (!uid) {
+    bankEl.textContent = 'Ingen artist-bank för det aktuella kontot (kräver inloggning på Spotify).';
+    return;
+  }
+  try {
+    const bank = await readArtistBank(uid);
+    if (!bank || bank.artists.length === 0) {
+      bankEl.textContent = 'Banken är tom för det här kontot — fylls på av framtida sökningar.';
+      return;
+    }
+    const count = bank.artists.length;
+    const parts = [`${count} artist${count === 1 ? '' : 'er'} lärda`];
+    if (typeof bank.at === 'number' && bank.at > 0) {
+      parts.push(`senast uppdaterad ${formatRelativeSv(Date.now() - bank.at)}`);
+    }
+    bankEl.textContent = parts.join(' · ');
+  } catch {
+    bankEl.textContent = 'Kunde inte läsa artist-banken.';
+  }
+}
+
 function initSpotifyClient() {
   if (FEATURE_ROW_FULL_PLAYBACK) destroyRowPlayback();
   if (spotifyClient && vaultData) {
@@ -706,6 +772,11 @@ function setFlowStep(step, opts = {}) {
     updateApplyEnabled();
     updateNewPlaylistPreview();
     if (resultRows.length > 0) renderResults();
+  }
+  if (step === 'settings') {
+    /* Rendera stats varje gång användaren öppnar Inställningar — sökcache växer under tiden
+     * i fliken och artist-banken kan ha uppdaterats efter en sökning. */
+    void refreshSettingsStats();
   }
   updateSummarySubtitle(step);
   updateSummaryTip(step);
@@ -1937,6 +2008,9 @@ async function runSearch() {
       showToast(`Sökningen avbröts. ${done} av ${resultRows.length} rader hann sökas.`);
     }
     refreshSummary();
+    /* Sökcachen och artist-banken har typiskt växt under körningen — uppdatera stats
+     * i bakgrunden så raderna är rätt nästa gång användaren öppnar Inställningar. */
+    void refreshSettingsStats();
   }
 }
 
@@ -2094,6 +2168,7 @@ async function boot() {
   $('btn-clear-search-cache').addEventListener('click', () => {
     clearSearchCache();
     showToast('Sökcachen är rensad.');
+    void refreshSettingsStats();
   });
 
   $('btn-clear-artist-bank').addEventListener('click', async () => {
@@ -2110,6 +2185,7 @@ async function boot() {
       phase: 'artistBank',
       reason: 'manual-clear',
     });
+    void refreshSettingsStats();
   });
 
   $('btn-abort-search').addEventListener('click', () => {
@@ -2346,6 +2422,9 @@ async function boot() {
   updateNewPlaylistPreview();
   updateApplyEnabled();
   setFlowStep('0', { focusPanel: false, skipSpotifyWarmup: true });
+  /* Fyll stats-raderna så att de är uppdaterade även om användaren hoppar direkt till
+   * Inställningar utan att passera flödet (setFlowStep('settings') triggar en ny uppdatering). */
+  void refreshSettingsStats();
   await registerServiceWorker();
 }
 

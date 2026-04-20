@@ -104,3 +104,40 @@ export function clearSearchCache() {
     /* ok */
   }
 }
+
+/**
+ * Sammanställer statistik för visning i Inställningar → Sökcache:
+ *   - entries: antal cachade sökningar (efter TTL-prune)
+ *   - bytes:   storlek som JSON i sessionStorage (approx. — ren ASCII + UTF-16-värden)
+ *   - oldestAt/newestAt: tidsstämplar för äldsta/nyaste träff (null om tom)
+ *
+ * Kör TTL-prune i läsläge (men skriver inte tillbaka om ingenting ändrades) så att
+ * utgångna poster inte räknas som aktiva. Returnerar alltid ett komplett objekt.
+ * @returns {{ entries: number, bytes: number, oldestAt: number | null, newestAt: number | null }}
+ */
+export function getSearchCacheStats() {
+  const now = Date.now();
+  const map = readStore();
+  const n0 = Object.keys(map).length;
+  pruneExpired(map, now);
+  const pruned = Object.keys(map).length !== n0;
+  if (pruned) writeStore(map);
+  const keys = Object.keys(map);
+  const entries = keys.length;
+  let oldestAt = null;
+  let newestAt = null;
+  for (const k of keys) {
+    const t = Number(map[k]?.savedAt ?? 0);
+    if (!Number.isFinite(t) || t <= 0) continue;
+    if (oldestAt === null || t < oldestAt) oldestAt = t;
+    if (newestAt === null || t > newestAt) newestAt = t;
+  }
+  let bytes = 0;
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (typeof raw === 'string') bytes = raw.length;
+  } catch {
+    /* ignorera */
+  }
+  return { entries, bytes, oldestAt, newestAt };
+}

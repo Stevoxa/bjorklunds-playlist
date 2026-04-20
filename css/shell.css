@@ -1172,6 +1172,17 @@ body[data-flow-step='3'] #summary-aside-card {
   display: none;
 }
 
+/* Inställningar: dölj sammanfattnings-spalten helt och låt primärkolumnen ta hela bredden. */
+body[data-flow-step='settings'] .app-summary {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  body[data-flow-step='settings'] .app-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Steg 3: lika höjd mellan sammanfattning (vänster) och resultat/tips (höger) på bred skärm */
 @media (min-width: 960px) {
   body[data-flow-step='3'] .app-layout {
