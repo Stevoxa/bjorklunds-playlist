@@ -136,6 +136,75 @@ function stripFeaturing(artist) {
 }
 
 /**
+ * Precision-filter: känner igen "junk"-träffar (karaoke, tribute, covers,
+ * "in the style of"-versioner, rent instrumental-covers) som ofta rankas högt
+ * på svag free-text och förorenar både sökresultatet och artist-banken.
+ *
+ * Inte perfekt men fångar de vanliga mönstren vi sett i loggen:
+ *   "Just Dance (In the Style of Lady Gaga ...) [Karaoke Version]"
+ *   "Rather Be (Originally Performed By Clean Bandit ...) [Karaoke Version]"
+ *   "Wake Me Up - Tribute to Avicii" av artisten "Wake Me Up"
+ *   "Watermelon sugar (Originally performed by Harry Styles)"
+ *
+ * @param {{ name?: string, artists?: { name?: string }[] }} item
+ * @returns {boolean}
+ */
+function isJunkTrack(item) {
+  const trackName = String(item?.name ?? '');
+  if (/\b(karaoke|tribute to|originally performed|in the style of|instrumental only|performance track)\b/i.test(trackName)) {
+    return true;
+  }
+  const artistNames = Array.isArray(item?.artists)
+    ? item.artists.map((a) => String(a?.name ?? ''))
+    : [];
+  return artistNames.some((n) => /\b(karaoke|cover band)\b/i.test(n));
+}
+
+/**
+ * Kontrollerar att en träff rimligen matchar parsens artist/title — förhindrar
+ * att tribute/karaoke-träffar (där parserns ord råkar återfinnas i name/artists
+ * men tillsammans pekar på fel låt) accepteras som bästa träff.
+ *
+ * Kind-medveten:
+ *   - field-artist-title (q = `track:T artist:A`) → result.name ≈ T, result.artists ≈ A
+ *   - field-title-artist (q = `track:A artist:T`, swap) → result.name ≈ A, result.artists ≈ T
+ *   - free-text/raw → svagare kontroll: minst en sida måste finnas i namn eller artists
+ *
+ * Tomma artist/title → hoppa valideringen (inget att kontrollera mot).
+ *
+ * @param {{ name?: string, artists?: { name?: string }[] }} item
+ * @param {'field-artist-title' | 'field-title-artist' | 'free-text' | 'raw'} kind
+ * @param {string | undefined} parsedArtist
+ * @param {string | undefined} parsedTitle
+ * @returns {boolean}
+ */
+function matchesParsedRow(item, kind, parsedArtist, parsedTitle) {
+  const a = (parsedArtist ?? '').trim().toLowerCase();
+  const ti = (parsedTitle ?? '').trim().toLowerCase();
+  if (!a && !ti) return true;
+  const trackName = String(item?.name ?? '').toLowerCase();
+  const artistNamesLc = Array.isArray(item?.artists)
+    ? item.artists.map((x) => String(x?.name ?? '').toLowerCase())
+    : [];
+  const artistJoined = artistNamesLc.join(' | ');
+  const nameHas = (needle) => Boolean(needle) && trackName.includes(needle);
+  const artistsHas = (needle) => Boolean(needle) && artistJoined.includes(needle);
+
+  if (kind === 'field-artist-title') {
+    /** Normal-fall: titel i name, artist i artists[]. */
+    return nameHas(ti) && artistsHas(a);
+  }
+  if (kind === 'field-title-artist') {
+    /** Swap: parsens rollbyte → title i artists[], artist i name. */
+    return nameHas(a) && artistsHas(ti);
+  }
+  /** free-text / raw: acceptera om minst artist-sidan finns någonstans (vanligt legitimt fall). */
+  const anyHit = a && (artistsHas(a) || nameHas(a));
+  const titleHit = ti && nameHas(ti);
+  return Boolean(anyHit || titleHit);
+}
+
+/**
  * Bygger en ordnad lista av sök-queries anpassad efter radens klass.
  * Minst möjligt anrop (fri text direkt) för rader utan tydlig struktur;
  * dubbelt försök med swap för rader där parsern troligen bytt roll på artist/title.
@@ -693,6 +762,14 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             throw new Error('Ogiltigt JSON-svar från Spotify');
           }
           const { items, tracksTotal } = pickTrackSearchResults(data);
+          /** Precision-filter: avvisa karaoke/tribute/cover-junk och kräv att parsens artist/title
+           *  faktiskt matchar träffen enligt queryKind. Om inget item kvarstår efter filtrering
+           *  behandlar vi queryn som en miss och går vidare i kedjan. */
+          const filteredItems = items.filter(
+            (it) => !isJunkTrack(it) && matchesParsedRow(it, kind, hintRest.artist, hintRest.title),
+          );
+          const rejectedCount = items.length - filteredItems.length;
+          const qualityRejected = items.length > 0 && filteredItems.length === 0;
           logSpotify({
             t: new Date().toISOString(),
             endpoint: 'GET /v1/search',
@@ -706,9 +783,11 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             queryKind: kind,
             queryIndex: qIndex,
             queryTotal: queries.length,
-            hit: items.length > 0,
+            hit: filteredItems.length > 0,
             ...(artistStripped ? { artistStripped: true } : {}),
-            sample: items.slice(0, 5).map((t) => ({
+            ...(rejectedCount > 0 ? { rejectedCount } : {}),
+            ...(qualityRejected ? { qualityRejected: true } : {}),
+            sample: filteredItems.slice(0, 5).map((t) => ({
               name: t?.name,
               artists: Array.isArray(t?.artists) ? t.artists.map((a) => a?.name) : [],
               uri: t?.uri,
@@ -717,7 +796,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
           if (!res.ok) {
             throw new Error(formatSpotifyApiError(res.status, bodyText));
           }
-          if (items.length > 0) return items;
+          if (filteredItems.length > 0) return filteredItems;
         }
       }
       return [];

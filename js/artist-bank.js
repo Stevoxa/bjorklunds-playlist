@@ -28,6 +28,11 @@ const CACHE_VERSION = 1;
 /** Soft cap för persistent bank — tillräckligt för långa sessioner, men håller IDB-storlek låg. */
 const MAX_ARTISTS = 2000;
 
+/** Rensa kända junk-artistnamn vid läsning — tar bort karaoke/cover-band-poster som
+ *  kan ha absorberats innan precision-filtret infördes. Junk identifieras via
+ *  samma mönster som i app.js/spotify-api.js (lowercased här). */
+const JUNK_ARTIST_RE = /\b(karaoke|cover band)\b/i;
+
 /** @param {string} userId */
 function keyFor(userId) {
   return `${APP_STORAGE_ID}-artistbank-${userId}`;
@@ -54,7 +59,7 @@ export async function readArtistBank(userId) {
     if (!Array.isArray(o.artists)) return null;
     const artists = o.artists
       .map((x) => normalize(x))
-      .filter((x) => x.length >= 2);
+      .filter((x) => x.length >= 2 && !JUNK_ARTIST_RE.test(x));
     /** Deduplicera vid läsning om äldre skrivningar råkat innehålla dubletter. */
     const uniq = Array.from(new Set(artists));
     return { v: CACHE_VERSION, userId: o.userId, at: o.at, artists: uniq };

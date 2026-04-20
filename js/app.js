@@ -1851,14 +1851,24 @@ async function runSearch() {
       /* best-effort — körningen fortsätter utan seed */
     }
   }
-  /** @param {{ artists?: { name?: string }[] }[] | null | undefined} tracks */
+  /** Junk-mönster som inte ska förorena artist-banken: karaoke, tribute, cover-band,
+   *  "in the style of"-varianter. Samma tanke som precision-filtret i spotify-api.js —
+   *  men replikerad här eftersom denna absorb-sida körs även på cache-hits (som redan
+   *  passerat filtret vid första hämtningen) och det är en billig extra säkerhetslina. */
+  const JUNK_TRACK_NAME_RE = /\b(karaoke|tribute to|originally performed|in the style of|instrumental only|performance track)\b/i;
+  const JUNK_ARTIST_NAME_RE = /\b(karaoke|cover band)\b/i;
+
+  /** @param {{ name?: string, artists?: { name?: string }[] }[] | null | undefined} tracks */
   const absorbArtistsFromTracks = (tracks) => {
     if (!Array.isArray(tracks)) return;
     for (const t of tracks) {
+      if (t && typeof t.name === 'string' && JUNK_TRACK_NAME_RE.test(t.name)) continue;
       const arr = Array.isArray(t?.artists) ? t.artists : [];
       for (const a of arr) {
         const nm = (a?.name ?? '').trim().toLowerCase();
-        if (nm.length >= 2) knownArtistsLc.add(nm);
+        if (nm.length < 2) continue;
+        if (JUNK_ARTIST_NAME_RE.test(nm)) continue;
+        knownArtistsLc.add(nm);
       }
     }
   };
