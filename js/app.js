@@ -1114,19 +1114,8 @@ function updateExistingPlaylistSourceUi() {
 /** Avbryter föregående spelliste-hämtning — annars kan två parallella körningar ge dubbletter i spellistelistan. */
 let existingPlSelectRefreshAbort = /** @type {AbortController | null} */ (null);
 
-/** Köar nätverkshämtning för ”Mina listor” (ett jobb i taget) så stegbyte, prefix-debounce m.m. inte staplar anrop. */
-let existingPlSelectFetchChain = Promise.resolve();
-
-/**
- * @template T
- * @param {() => Promise<T>} fn
- * @returns {Promise<T>}
- */
-function enqueueExistingPlaylistSelectRefresh(fn) {
-  const next = existingPlSelectFetchChain.then(() => fn());
-  existingPlSelectFetchChain = next.catch(() => {});
-  return next;
-}
+/** Single-flight för ”Mina listor”-hämtning. Pågående jobb delas av alla nya auto-triggers. */
+let existingPlSelectInFlight = /** @type {Promise<void> | null} */ (null);
 
 /**
  * @param {HTMLSelectElement} sel
@@ -1177,8 +1166,6 @@ async function refreshExistingPlaylistSelect(opts = {}) {
     Date.now() - existingPlaylistListCache.at < PLAYLIST_LIST_CACHE_TTL_MS;
 
   if (cacheFresh) {
-    existingPlSelectRefreshAbort?.abort();
-    existingPlSelectRefreshAbort = null;
     populateExistingPlaylistSelectFromList(selNow, existingPlaylistListCache.list, preserveNow, selectPlaylistId);
     refreshSummary();
     return;
@@ -1196,31 +1183,19 @@ async function refreshExistingPlaylistSelect(opts = {}) {
     return;
   }
 
-  /** Avbryt pågående hämtning så nästa jobb i kön (eller samma anrop) inte väntar i onödan. */
-  existingPlSelectRefreshAbort?.abort();
+  /** Single-flight: om ett jobb redan kör (stegbyte, pl-mode, pl-existing-source, prefix-debounce) återanvänds dess Promise.
+   *  Manuell ”Hämta om lista” får också dela samma pågående jobb — annars dubbelanrop mot Spotify. */
+  if (existingPlSelectInFlight) return existingPlSelectInFlight;
 
-  return enqueueExistingPlaylistSelectRefresh(async () => {
-    const prefix = getPlaylistPrefixFromInput();
-    const sel = $('existing-pl-select');
-    const preserveId = sel.value.trim();
+  const ac = new AbortController();
+  existingPlSelectRefreshAbort = ac;
+  const { signal } = ac;
 
-    const cacheStillFresh =
-      !force &&
-      existingPlaylistListCache &&
-      existingPlaylistListCache.prefix === prefix &&
-      Date.now() - existingPlaylistListCache.at < PLAYLIST_LIST_CACHE_TTL_MS;
-
-    if (cacheStillFresh) {
-      existingPlSelectRefreshAbort = null;
-      populateExistingPlaylistSelectFromList(sel, existingPlaylistListCache.list, preserveId, selectPlaylistId);
-      refreshSummary();
-      return;
-    }
-
-    const ac = new AbortController();
-    existingPlSelectRefreshAbort = ac;
-    const { signal } = ac;
+  const job = (async () => {
     try {
+      const prefix = getPlaylistPrefixFromInput();
+      const sel = $('existing-pl-select');
+      const preserveId = sel.value.trim();
       const list = await spotifyClient.listMyPlaylistsByPrefix(prefix, signal);
       existingPlaylistListCache = {
         prefix,
@@ -1237,8 +1212,11 @@ async function refreshExistingPlaylistSelect(opts = {}) {
       throw e;
     } finally {
       if (existingPlSelectRefreshAbort === ac) existingPlSelectRefreshAbort = null;
+      existingPlSelectInFlight = null;
     }
-  });
+  })();
+  existingPlSelectInFlight = job;
+  return job;
 }
 
 function maybeRefreshPlaylistsWhenTabVisible() {

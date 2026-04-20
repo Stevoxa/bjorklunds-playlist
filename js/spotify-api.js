@@ -525,8 +525,9 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         while (true) {
           signal?.throwIfAborted();
           const path = `/me/playlists?limit=${page}&offset=${offset}`;
-          /** Få hellre upp ett snabbt fel till användaren än att bränna 5 retries mot ett långt penalty-fönster. */
-          const res = await getWith401Retry(path, 2, signal);
+          /** Inga retries här: Spotifys Retry-After på /me/playlists är ofta 30–60 s,
+           *  då är snabba återförsök kontraproduktivt. UI visar cool-down-toast och användaren trycker ”Hämta om lista” när det passar. */
+          const res = await getWith401Retry(path, 0, signal);
           const bodyText = await res.text();
           if (!res.ok) throw new Error(formatSpotifyApiError(res.status, bodyText));
           let data;
