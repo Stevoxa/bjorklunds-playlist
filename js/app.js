@@ -55,6 +55,21 @@ function invalidateExistingPlaylistListCache() {
   existingPlaylistListCache = null;
 }
 
+/**
+ * Efter ett finalt 429 på /me/playlists: pausa all **automatisk** refresh i detta fönster.
+ * Manuell ”Hämta om lista” (klick av användaren) får fortfarande försöka.
+ */
+const PLAYLIST_LIST_429_COOLDOWN_MS = 5 * 60 * 1000;
+let existingPlaylistListRateLimitUntil = 0;
+
+function isExistingPlaylistListAutoFetchInCooldown() {
+  return Date.now() < existingPlaylistListRateLimitUntil;
+}
+
+function remainingExistingPlaylistListCooldownMs() {
+  return Math.max(0, existingPlaylistListRateLimitUntil - Date.now());
+}
+
 /** @type {AbortController | null} */
 let playlistResultDialogEscapeAbort = null;
 
@@ -704,6 +719,7 @@ function setFlowStep(step, opts = {}) {
     void syncSpotifySessionToUi();
   }
   if (step === '1') {
+    /** me() cachas i spotifyClient (5 min) — denna synk blir normalt utan nytt nätverksanrop. */
     void syncSpotifySessionToUi();
     updateApplyEnabled();
     updateNewPlaylistPreview();
@@ -1144,7 +1160,7 @@ function populateExistingPlaylistSelectFromList(sel, list, preserveId, selectPla
  *   force: kringgå cache (t.ex. ”Hämta om lista”, ny skapad spellista).
  */
 async function refreshExistingPlaylistSelect(opts = {}) {
-  const { quiet = false, selectPlaylistId, force = false } = opts;
+  const { quiet = false, selectPlaylistId, force = false, manual = false } = opts;
   if (!spotifyClient) {
     showToast('Logga in på Spotify under steg 0 (Logga in) först.', true);
     return;
@@ -1165,6 +1181,18 @@ async function refreshExistingPlaylistSelect(opts = {}) {
     existingPlSelectRefreshAbort = null;
     populateExistingPlaylistSelectFromList(selNow, existingPlaylistListCache.list, preserveNow, selectPlaylistId);
     refreshSummary();
+    return;
+  }
+
+  /** Nätverkspaus efter 429: blockera automatiska refreshes; manuellt klick får ändå försöka. */
+  if (!manual && isExistingPlaylistListAutoFetchInCooldown()) {
+    const leftSec = Math.max(1, Math.ceil(remainingExistingPlaylistListCooldownMs() / 1000));
+    if (!quiet) {
+      showToast(
+        `Spotify rate-limitar just nu dina spellistor. Vänta cirka ${leftSec} s och tryck sedan Hämta om lista.`,
+        true,
+      );
+    }
     return;
   }
 
@@ -1266,7 +1294,21 @@ function wirePlaylistMode() {
     });
   });
   $('btn-refresh-pl-list').addEventListener('click', () => {
-    refreshExistingPlaylistSelect({ quiet: false, force: true }).catch((e) => showToast(String(e?.message ?? e), true));
+    refreshExistingPlaylistSelect({ quiet: false, force: true, manual: true }).catch((e) => showToast(String(e?.message ?? e), true));
+  });
+  /** Spotify rate-limitade oss på /me/playlists — pausa auto-refresh en stund, informera användaren. */
+  window.addEventListener('bjorklund-playlist-list-rate-limited', (ev) => {
+    const detail = /** @type {CustomEvent<{ retryAfterParsedMs?: number | null }>} */ (ev).detail || {};
+    const fromHeaderMs = typeof detail.retryAfterParsedMs === 'number' && detail.retryAfterParsedMs > 0
+      ? detail.retryAfterParsedMs
+      : 0;
+    const cooldown = Math.max(PLAYLIST_LIST_429_COOLDOWN_MS, fromHeaderMs);
+    existingPlaylistListRateLimitUntil = Date.now() + cooldown;
+    const min = Math.max(1, Math.round(cooldown / 60_000));
+    showToast(
+      `Spotify rate-limitar spellistelistning. Vänta ca ${min} minut(er) och tryck sedan Hämta om lista.`,
+      true,
+    );
   });
   document.addEventListener('visibilitychange', () => {
     maybeRefreshPlaylistsWhenTabVisible();

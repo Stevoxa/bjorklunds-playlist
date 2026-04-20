@@ -284,6 +284,7 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
       if (res.status !== 429) return res;
       if (attempt === maxRetries) {
         const retryAfterRawFinal = res.headers.get('Retry-After');
+        const retryAfterParsedFinal = parseRetryAfterMs(retryAfterRawFinal);
         logSpotify({
           t: new Date().toISOString(),
           kind: 'http_429',
@@ -292,15 +293,27 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
           attempt: attempt + 1,
           maxAttempts: maxRetries + 1,
           retryAfterRaw: retryAfterRawFinal,
-          retryAfterParsedMs: parseRetryAfterMs(retryAfterRawFinal),
+          retryAfterParsedMs: retryAfterParsedFinal,
         });
+        /** Signalera långvarig rate-limit på spellistesidan — UI väljer att pausa auto-refresh. */
+        if (isPlaylistListPage) {
+          window.dispatchEvent(
+            new CustomEvent('bjorklund-playlist-list-rate-limited', {
+              detail: {
+                path,
+                retryAfterRaw: retryAfterRawFinal,
+                retryAfterParsedMs: retryAfterParsedFinal,
+              },
+            }),
+          );
+        }
         return res;
       }
 
       const retryAfterRaw = res.headers.get('Retry-After');
       const fromHeader = parseRetryAfterMs(retryAfterRaw);
       /** Utan Retry-After: /search och /me/playlists straffas hårt av snabba omförsök — längre backoff */
-      const fallbackBase = isSearch ? 12_000 : isPlaylistListPage ? 8_000 : 2_500;
+      const fallbackBase = isSearch ? 12_000 : isPlaylistListPage ? 20_000 : 2_500;
       const fallbackMs = Math.min(RATE_LIMIT_WAIT_CAP_MS, fallbackBase * 2 ** attempt);
       const minNoHeader = isSearch || isPlaylistListPage ? 2_000 : RATE_LIMIT_WAIT_MIN_MS;
       let waitMs =
@@ -460,9 +473,21 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     },
 
     /**
-     * @param {AbortSignal} [signal]
+     * Svar på `/me` cachas i klienten — konto-id och display-name/email ändras sällan.
+     * Så slipper UI-synk (steg 0 + steg 1) samt spelliste-filtret skicka separata GET /me-anrop.
+     * @type {{ at: number, data: any } | null}
      */
-    async me(signal) {
+    _meCache: null,
+
+    /**
+     * @param {AbortSignal} [signal]
+     * @param {{ forceRefresh?: boolean, maxAgeMs?: number }} [opts]
+     */
+    async me(signal, opts = {}) {
+      const { forceRefresh = false, maxAgeMs = 5 * 60 * 1000 } = opts;
+      if (!forceRefresh && this._meCache && Date.now() - this._meCache.at < maxAgeMs) {
+        return this._meCache.data;
+      }
       let access = await ensureAccess();
       let res = await api(access, '/me', { signal });
       if (res.status === 401 && t.refreshToken) {
@@ -470,7 +495,10 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         res = await api(t.accessToken, '/me', { signal });
       }
       if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      const data = await res.json();
+      this._meCache = { at: Date.now(), data };
+      if (data && typeof data.id === 'string') cachedSpotifyUserId = data.id;
+      return data;
     },
 
     /**
@@ -497,7 +525,8 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         while (true) {
           signal?.throwIfAborted();
           const path = `/me/playlists?limit=${page}&offset=${offset}`;
-          const res = await getWith401Retry(path, 5, signal);
+          /** Få hellre upp ett snabbt fel till användaren än att bränna 5 retries mot ett långt penalty-fönster. */
+          const res = await getWith401Retry(path, 2, signal);
           const bodyText = await res.text();
           if (!res.ok) throw new Error(formatSpotifyApiError(res.status, bodyText));
           let data;
