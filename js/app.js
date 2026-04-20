@@ -1822,17 +1822,62 @@ async function runSearch() {
   const signal = searchAbortController.signal;
   renderResults();
   setSearchProgress(true);
+  /** Artist-bank (in-memory, per körning): artistnamn (lowercased) från tidigare träffar i denna batch.
+   *  Används för att tvinga suspectSwap när en senare rads "title"-slot är en känd artist men dess
+   *  "artist"-slot inte är det — typiskt fall: "Levitating - Dua Lipa" efter att vi sett Dua Lipa som artist. */
+  /** @type {Set<string>} */
+  const knownArtistsLc = new Set();
+  /** @param {{ artists?: { name?: string }[] }[] | null | undefined} tracks */
+  const absorbArtistsFromTracks = (tracks) => {
+    if (!Array.isArray(tracks)) return;
+    for (const t of tracks) {
+      const arr = Array.isArray(t?.artists) ? t.artists : [];
+      for (const a of arr) {
+        const nm = (a?.name ?? '').trim().toLowerCase();
+        if (nm.length >= 2) knownArtistsLc.add(nm);
+      }
+    }
+  };
   try {
     for (let i = 0; i < resultRows.length; i += 1) {
       if (signal.aborted) break;
       $('search-progress-line').textContent = `Söker rad ${i + 1} av ${resultRows.length} …`;
       const row = resultRows[i];
+
+      /** Artist-bank-override: behåll freeTextOnly/suspectSwap; uppgradera bara 'normal' om datan pekar på swap. */
+      let effectiveRowClass = row.rowClass;
+      let artistBankHit = false;
+      if (
+        row.rowClass === 'normal' &&
+        row.artist &&
+        row.title &&
+        knownArtistsLc.has(row.title.trim().toLowerCase()) &&
+        !knownArtistsLc.has(row.artist.trim().toLowerCase())
+      ) {
+        effectiveRowClass = 'suspectSwap';
+        artistBankHit = true;
+      }
+      if (artistBankHit) {
+        logSpotify({
+          t: new Date().toISOString(),
+          kind: 'ui',
+          phase: 'runSearch',
+          reason: 'artist-bank-override',
+          rowIndex: i + 1,
+          parsedArtist: row.artist,
+          parsedTitle: row.title,
+          originalRowClass: row.rowClass,
+          effectiveRowClass,
+        });
+      }
+
       const cacheKey = makeSearchCacheKey(row.query, row.artist, row.title);
       const cached = getSearchCache(cacheKey);
       /** Paus mellan rader ska bara följa efter Spotify-anrop — cache är lokalt och ska inte fördröja nästa rad */
       let rowFetchedFromSpotify = false;
       if (cached != null) {
         row.tracks = cached;
+        absorbArtistsFromTracks(cached);
         logSpotify({
           t: new Date().toISOString(),
           endpoint: 'GET /v1/search',
@@ -1845,9 +1890,10 @@ async function runSearch() {
         row.tracks = await spotifyClient.searchTracks(row.query, 5, {
           artist: row.artist,
           title: row.title,
-          rowClass: row.rowClass,
+          rowClass: effectiveRowClass,
           signal,
         });
+        absorbArtistsFromTracks(row.tracks);
         if (!signal.aborted) setSearchCache(cacheKey, row.tracks);
       }
       if (signal.aborted) break;
