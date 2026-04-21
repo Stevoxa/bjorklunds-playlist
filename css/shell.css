@@ -1632,3 +1632,98 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
   border-top: 1px solid var(--border);
 }
 
+/* ============================================================================
+ * Mobil/liten skärm (<= 720 px): kompakt vy.
+ *
+ * Strategi: på små skärmar klipper vi bort innehåll som är värdefullt på desktop
+ * men tar onödig vertikalplats på mobil. Desktop (> 720 px) ska vara 100 % orört.
+ *   - Sammanfattnings-spalten döljs (både aside på alla steg och summary-kortet
+ *     inuti den).
+ *   - Toolbaren görs kompakt: "Skapa spellistor"-lägesknappen döljs (bara en
+ *     funktion idag), och Inställningar flyttas till ett absolut positionerat
+ *     ikon-mål uppe i högra hörnet av sidhuvudet.
+ *   - Rättigheter (scope-chips) och 403-info-boxen döljs — pedagogiskt nyttigt
+ *     på desktop men brus på mobil.
+ *   - Breadcrumb-texten och primärknappen förkortas: "Logga in på Spotify" →
+ *     "Logga in", "Logga in med Spotify" → "Logga in". Texterna delas upp i
+ *     spans med klass .compact-extra som döljs här.
+ *   - Steg 0:s primärknapp görs sticky i botten (som steg 1/2 har), så att
+ *     bottom-navigering upplevs konsekvent på mobil genom hela flödet.
+ * ============================================================================ */
+@media (max-width: 720px) {
+  /* Dölj sammanfattningsspalten — flödet använder hela bredden. Step 3:s
+   * apply-result-card och locked-tip ligger också i asiden men hanteras via
+   * egna CSS-regler (skjuts upp i primärkolumnen vid behov på deras eget steg). */
+  body .app-summary {
+    display: none;
+  }
+
+  /* Toolbar-raden: göm lägesnavet (bara en knapp idag) och ta bort separatorn.
+   * Reserva utrymme i högerkanten av sidhuvudet så rubriken inte kryper in under
+   * den absolut positionerade Inställningar-ikonen. */
+  .app-page-head {
+    position: relative;
+    padding-right: 3.25rem;
+  }
+
+  .app-page-head__toolbar {
+    display: none;
+  }
+
+  /* Inställningar som flytande ikon-mål i övre högra hörnet av sidhuvudet. */
+  .flow-toolbar__settings {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    gap: 0;
+    border-radius: 999px;
+  }
+
+  .flow-toolbar__settings-label {
+    /* Tillgängligt via aria-label på knappen; texten syns inte på mobil men
+     * skärmläsare läser upp det riktiga labelvärdet. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Breadcrumb- och knapp-text: visa bara kärnorden ("Logga in" etc.). */
+  .compact-extra {
+    display: none;
+  }
+
+  /* Rättigheter (scope-chips) och 403-info — onödigt brus på liten skärm. */
+  .scope-pills,
+  .forbidden-help {
+    display: none;
+  }
+
+  /* Steg 0: gör "Nästa: Välj musik"-raden sticky i botten, så den matchar
+   * stegen 1/2 som redan har sticky-nav. Hinten med "När Client ID är ifyllt …"
+   * följer med raden och lägger sig på raden ovanför knappen (flex-column
+   * sätts på i befintlig .flow-nav--actions-end-regel vid 640 px). */
+  #flow-step-0 .flow-nav--actions-end {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    margin: var(--space) calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg));
+    padding: var(--space) var(--space-lg);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+  }
+}
+

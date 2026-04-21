@@ -166,16 +166,16 @@
                   Skapa spellistor
                 </button>
               </nav>
-              <button type="button" class="flow-toolbar__settings" data-flow-step="settings" aria-controls="flow-step-settings">
+              <button type="button" class="flow-toolbar__settings" data-flow-step="settings" aria-controls="flow-step-settings" aria-label="Inställningar">
                 <svg width="16" height="16" aria-hidden="true"><use href="#sym-gear" /></svg>
-                Inställningar
+                <span class="flow-toolbar__settings-label">Inställningar</span>
               </button>
             </div>
             <nav class="flow-breadcrumbs" id="flow-breadcrumbs-wrap" aria-label="Steg för att skapa en spellista">
               <ol class="flow-breadcrumbs__list">
                 <li>
                   <button type="button" class="flow-breadcrumbs__crumb is-active" data-flow-step="0" aria-controls="flow-step-0" aria-current="location">
-                    Logga in på Spotify
+                    Logga in<span class="compact-extra"> på Spotify</span>
                   </button>
                 </li>
                 <li>
@@ -224,7 +224,7 @@
                     <span class="btn__icon-wrap btn__icon-wrap--spotify" aria-hidden="true">
                       <svg class="btn__icon" width="22" height="22"><use href="#sym-spotify-mark" /></svg>
                     </span>
-                    <span>Logga in med Spotify</span>
+                    <span>Logga in<span class="compact-extra"> med Spotify</span></span>
                   </button>
                 </div>
                 <div id="auth-status" class="auth-status-host" role="status" aria-live="polite"></div>
