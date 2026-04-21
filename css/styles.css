@@ -674,9 +674,10 @@ a:focus-visible {
 }
 
 @media (max-width: 400px) {
+  /* .row--auth-actions undantas medvetet: "Logga ut" + "Logga in" är korta
+   * och ska få dela en rad även på mycket smala skärmar. */
   .row--paste-actions,
-  .row--selection-actions,
-  .row--auth-actions {
+  .row--selection-actions {
     grid-template-columns: 1fr;
   }
 }

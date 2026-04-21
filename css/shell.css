@@ -1649,6 +1649,12 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
  *     spans med klass .compact-extra som döljs här.
  *   - Steg 0:s primärknapp görs sticky i botten (som steg 1/2 har), så att
  *     bottom-navigering upplevs konsekvent på mobil genom hela flödet.
+ *   - Brödsmulor görs täta och tvingas till en rad (scroll vid behov), och
+ *     headerns margin krymps så Spotify-kortet kommer närmare rubriken.
+ *   - Tom auth-status tar ingen plats, och sticky-navet komprimeras för att
+ *     undvika vitt utrymme inuti kortet.
+ *   - Sidfoten (OAuth 2.0 + PKCE-raden) döljs och app-mainens bottenpadding
+ *     trimmas, så sticky-navet landar i slutet av det vita kortet.
  * ============================================================================ */
 @media (max-width: 720px) {
   /* Dölj sammanfattningsspalten — flödet använder hela bredden. Step 3:s
@@ -1658,15 +1664,35 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
     display: none;
   }
 
-  /* Toolbar-raden: göm lägesnavet (bara en knapp idag) och ta bort separatorn.
-   * Reserva utrymme i högerkanten av sidhuvudet så rubriken inte kryper in under
-   * den absolut positionerade Inställningar-ikonen. */
+  /* Kompakt sidhuvud: mindre margin under headern och reserverat utrymme till
+   * höger för den absolut positionerade Inställningar-ikonen. */
   .app-page-head {
     position: relative;
-    padding-right: 3.25rem;
+    margin-bottom: var(--space);
+    padding-right: 3rem;
   }
 
+  .app-page-head__title--brand {
+    font-size: clamp(1.35rem, 6vw, 1.6rem);
+    line-height: 1.12;
+  }
+
+  .app-page-head__static-intro {
+    margin-top: 0.2rem;
+    font-size: 0.85rem;
+  }
+
+  /* Toolbar-raden: kollapsa visuellt men behåll den som flow-container så
+   * det absolut positionerade barnet (Inställningar-ikonen) är synligt. */
   .app-page-head__toolbar {
+    margin-top: 0;
+    padding: 0;
+    border-bottom: none;
+    min-height: 0;
+  }
+
+  /* Endast en lägesknapp idag — brus på mobil, döljs. */
+  .flow-mode-nav {
     display: none;
   }
 
@@ -1678,8 +1704,8 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.25rem;
+    height: 2.25rem;
     padding: 0;
     gap: 0;
     border-radius: 999px;
@@ -1699,6 +1725,39 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
     border: 0;
   }
 
+  /* Breadcrumbs: tät, på en rad — horisontell scroll som fallback om alla
+   * steg inte får plats (döljer scrollbaren för ett rent utseende). */
+  .flow-breadcrumbs {
+    margin-top: 0.45rem;
+  }
+
+  .flow-breadcrumbs__list {
+    flex-wrap: nowrap;
+    gap: 0 0.1rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .flow-breadcrumbs__list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .flow-breadcrumbs__crumb {
+    padding: 0.15rem 0;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .flow-breadcrumbs__list > li + li::before {
+    margin-right: 0.28rem;
+    font-size: 0.78rem;
+  }
+
+  .app-page-head__lead {
+    margin-top: 0.5rem;
+    font-size: 0.88rem;
+  }
+
   /* Breadcrumb- och knapp-text: visa bara kärnorden ("Logga in" etc.). */
   .compact-extra {
     display: none;
@@ -1710,20 +1769,37 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
     display: none;
   }
 
-  /* Steg 0: gör "Nästa: Välj musik"-raden sticky i botten, så den matchar
-   * stegen 1/2 som redan har sticky-nav. Hinten med "När Client ID är ifyllt …"
-   * följer med raden och lägger sig på raden ovanför knappen (flex-column
-   * sätts på i befintlig .flow-nav--actions-end-regel vid 640 px). */
+  /* Tom auth-status: ta bort default margin-top så den inte skapar tomrum
+   * före sticky-navet i steg 0 när användaren inte är inloggad än. */
+  #auth-status:empty {
+    display: none;
+    margin: 0;
+  }
+
+  /* Steg 0: tätt sticky-nav längst ned i kortet — matchar steg 1/2 och
+   * minimerar vitt utrymme mellan hint-raden och "Nästa"-knappen. */
   #flow-step-0 .flow-nav--actions-end {
     position: sticky;
     bottom: 0;
     z-index: 4;
-    margin: var(--space) calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg));
-    padding: var(--space) var(--space-lg);
+    gap: 0.5rem;
+    margin: 0 calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg));
+    padding: 0.65rem var(--space-lg);
     background: var(--surface);
     border-top: 1px solid var(--border);
     border-bottom-left-radius: var(--radius);
     border-bottom-right-radius: var(--radius);
+  }
+
+  /* Dölj sidfoten på mobil — stegen har sin egen sticky-navigering. */
+  .site-footer {
+    display: none;
+  }
+
+  /* Trimma bottenutrymmet så sticky-navet landar vid skärmens botten när
+   * kortet scrollas hela vägen ned (behåller bara safe-area för hemknappen). */
+  .app-main {
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
 }
 
