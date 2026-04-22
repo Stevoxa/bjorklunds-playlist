@@ -792,7 +792,7 @@ function setFlowStep(step, opts = {}) {
    * reflekterar rätt avsikt. */
   document.querySelectorAll('.flow-toolbar__settings').forEach((el) => {
     const isSettings = step === 'settings';
-    const label = isSettings ? 'Tillbaka till flödet' : 'Inställningar';
+    const label = isSettings ? 'Tillbaka' : 'Inställningar';
     el.setAttribute('aria-label', label);
     el.setAttribute('title', label);
     const labelSpan = el.querySelector('.flow-toolbar__settings-label');
