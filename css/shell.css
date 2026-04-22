@@ -688,11 +688,9 @@ body:not([data-developer-mode='on']) .spotify-log-card {
   }
 }
 
-@media (max-width: 400px) {
-  .flow-nav:not(.flow-nav--actions-end):not(:has(> .flow-nav__hint)):has(> .btn:nth-child(2):last-child) {
-    grid-template-columns: 1fr;
-  }
-}
+/* Även på mycket smala skärmar vill vi behålla två knappar sida vid sida (1fr 1fr
+ * från 640px-regeln ovan). Steg 3:s "Genomför på Spotify" förkortas automatiskt
+ * till "Genomför" via .compact-extra i mobilblocket längre ner. */
 
 .choice-grid {
   display: grid;
@@ -1686,6 +1684,22 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
    * egna CSS-regler (skjuts upp i primärkolumnen vid behov på deras eget steg). */
   body .app-summary {
     display: none;
+  }
+
+  /* Steg 3 (sammanfattningsvyn): vi vill visa varningsrutan (#step3-locked-tip)
+   * och resultatkortet (#step3-apply-result-card) även på mobil, och placera
+   * dem *ovanför* själva sammanfattningen istället för i höger sidospalt.
+   * Lösning: visa .app-summary igen men bara när den innehåller något synligt
+   * (inte [hidden]). Grid-orderen gör att den ritas mellan headern och primary-
+   * kolumnen. #summary-aside-card är redan dold för step 3 via separat regel. */
+  body[data-flow-step='3'] .app-summary:has(#step3-locked-tip:not([hidden])),
+  body[data-flow-step='3'] .app-summary:has(#step3-apply-result-card:not([hidden])) {
+    display: block;
+    order: 1;
+  }
+
+  body[data-flow-step='3'] .app-layout__primary {
+    order: 2;
   }
 
   /* Tätare grid-gap mellan header-raden och primärkolumnen — default
