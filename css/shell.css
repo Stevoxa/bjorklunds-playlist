@@ -386,13 +386,13 @@ body:not([data-developer-mode='on']) .spotify-log-card {
 }
 
 @media (max-width: 520px) {
-  #flow-step-2 .flow-nav__row--step2 {
-    flex-direction: column;
-  }
-
+  /* Mobil: behåll knapparna (Tillbaka / Nästa) sida vid sida men låt dem krympa
+   * jämnt så de ryms på samma rad även på smala skärmar. flex-basis 0 ger
+   * 50/50-delning; min-width: 0 tillåter texten att krympa snarare än att
+   * sprängas ut ur kolumnen. */
   #flow-step-2 .flow-nav__row--step2 .btn {
-    width: 100%;
-    flex: 1 1 auto;
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 

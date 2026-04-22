@@ -733,17 +733,22 @@ function scrollAppToTop() {
 
 /**
  * @param {'0' | '1' | '2' | '3' | 'settings'} step
- * @param {{ focusPanel?: boolean, skipSpotifyWarmup?: boolean }} [opts] focusPanel: flytta fokus till aktivt steg (t.ex. efter klick i steglisten), inte vid sidladdning.
+ * @param {{ focusPanel?: boolean, skipSpotifyWarmup?: boolean, fromPopstate?: boolean }} [opts]
+ *   focusPanel: flytta fokus till aktivt steg (t.ex. efter klick i steglisten), inte vid sidladdning.
  *   skipSpotifyWarmup: vid steg 0 undvik dublett av init + /me när boot() redan kört syncSpotifySessionToUi.
+ *   fromPopstate: anropet kommer från popstate-listenern (Android back / bakåtknapp) —
+ *     då ska vi INTE pusha en ny history-entry (det vore en loop och skulle också göra
+ *     att back-knappen inte längre kan stega tillbaka).
  */
 function setFlowStep(step, opts = {}) {
-  const { focusPanel = false, skipSpotifyWarmup = false } = opts;
+  const { focusPanel = false, skipSpotifyWarmup = false, fromPopstate = false } = opts;
   syncClientIdFromFormIntoVault();
   /* Kom ihåg vilket flow-steg användaren var på innan inställningar öppnades, så att
    * retur-pilen i toolbaren kan ta hen tillbaka till samma vy vid stängning. */
   if (step === 'settings' && currentFlowStep !== 'settings') {
     lastFlowStepBeforeSettings = /** @type {'0' | '1' | '2' | '3'} */ (currentFlowStep);
   }
+  const prevStep = currentFlowStep;
   currentFlowStep = /** @type {'0' | '1' | '2' | '3' | 'settings'} */ (step);
   if (FEATURE_ROW_FULL_PLAYBACK && step !== '1') {
     void resetWebPlaybackSession();
@@ -823,6 +828,16 @@ function setFlowStep(step, opts = {}) {
     });
   } else {
     requestAnimationFrame(() => scrollAppToTop());
+  }
+  /* Spara varje vy-byte i historiken så att Android/back-knappen stegar bakåt i
+   * appen istället för att lämna sidan direkt. Vi rör inte URL:en (tredje arg
+   * utelämnas) så OAuth-redirecten och andra URL-antaganden påverkas inte. */
+  if (!fromPopstate && step !== prevStep) {
+    try {
+      history.pushState({ step }, '');
+    } catch {
+      /* ignorera — vissa WebView-konfigurationer kan strypa pushState */
+    }
   }
 }
 
@@ -1171,6 +1186,23 @@ function wireFlow() {
       setFlowStep(lastFlowStepBeforeSettings, { focusPanel: true });
     });
   }
+  /* Android/browser back-knappen: istället för att lämna PWA:n direkt, stegar
+   * vi tillbaka en vy i flödet. setFlowStep pushar en entry vid varje byte och
+   * popstate läser tillbaka det föregående step-värdet här. fromPopstate ser
+   * till att vi inte pushar en ny entry i svar på ett bakåt-steg. */
+  try {
+    history.replaceState({ step: currentFlowStep }, '');
+  } catch {
+    /* best-effort */
+  }
+  window.addEventListener('popstate', (ev) => {
+    const s = ev.state && typeof ev.state.step === 'string' ? ev.state.step : null;
+    if (!s) return;
+    setFlowStep(
+      /** @type {'0' | '1' | '2' | '3' | 'settings'} */ (s),
+      { focusPanel: true, fromPopstate: true },
+    );
+  });
 }
 
 function setCreateModeNavActive() {
