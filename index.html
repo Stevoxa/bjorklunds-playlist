@@ -685,11 +685,14 @@
                   <button type="button" class="btn btn--flow-nav-width" data-flow-goto="2">Tillbaka</button>
                   <button
                     type="button"
-                    class="btn btn--primary btn--flow-nav-width btn--slutfor"
+                    class="btn btn--primary btn--flow-nav-width btn--slutfor btn--with-icon"
                     id="btn-apply-playlist"
                     disabled
                   >
-                    Genomför<span class="compact-extra"> på Spotify</span>
+                    <span class="btn__icon-wrap btn__icon-wrap--spotify" aria-hidden="true">
+                      <svg class="btn__icon" width="20" height="20"><use href="#sym-spotify-mark" /></svg>
+                    </span>
+                    <span>Genomför<span class="compact-extra"> på Spotify</span></span>
                   </button>
                 </div>
               </div>
