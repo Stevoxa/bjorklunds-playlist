@@ -274,6 +274,24 @@ function showStep3PlaylistApplyResult(opts) {
   playlistApplyPostSuccess = Boolean(opts.ok);
   card.hidden = false;
   refreshSummary();
+
+  /* Scrolla responsmeddelandet in i vy och flytta focus dit — både för seende
+   * användare (som annars kan tro att inget hände, särskilt på desktop där
+   * kortet dyker upp i höger spalt) och för skärmläsare. requestAnimationFrame
+   * ger layouten en frame att räkna om position efter att vi tog bort `hidden`. */
+  requestAnimationFrame(() => {
+    if (!card.hasAttribute('tabindex')) card.setAttribute('tabindex', '-1');
+    try {
+      card.focus({ preventScroll: true });
+    } catch {
+      /* fokus kan kastas i vissa edge-cases (t.ex. element redan borttaget) */
+    }
+    try {
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch {
+      card.scrollIntoView();
+    }
+  });
 }
 
 /** Rensar lyckat resultat + lås när användaren ändrar låtar, sökning eller spellista. */
