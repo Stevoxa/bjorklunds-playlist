@@ -143,7 +143,14 @@ function persistLocalSettings() {
     clientId: $('client-id').value.trim(),
     theme: /** @type {'system' | 'light' | 'dark'} */ ($('pref-theme').value),
     playlistNamePrefix: $('playlist-prefix').value,
+    developerMode: /** @type {HTMLInputElement} */ ($('pref-developer-mode')).checked,
   });
+}
+
+/** Reflekterar utvecklarläget på <body> så CSS kan visa/dölja t.ex. Spotify API-loggen.
+ *  Hålls separat från persistLocalSettings så vi även kan anropa den direkt vid hydrering. */
+function applyDeveloperMode(on) {
+  document.body.setAttribute('data-developer-mode', on ? 'on' : 'off');
 }
 
 function $(id) {
@@ -370,6 +377,8 @@ function hydrateLocalSettingsIntoUI() {
   if (s.clientId) $('client-id').value = s.clientId;
   $('pref-theme').value = s.theme;
   $('playlist-prefix').value = s.playlistNamePrefix;
+  /** @type {HTMLInputElement} */ ($('pref-developer-mode')).checked = s.developerMode === true;
+  applyDeveloperMode(s.developerMode === true);
   vaultData = vaultData ?? defaultVault();
   vaultData.clientId = s.clientId;
   vaultData.settings = {
@@ -1153,6 +1162,15 @@ function wireFlow() {
       }
     });
   });
+  /* "Tillbaka till flödet"-knappen längst ner på inställningssidan ska återvända
+   * till den vy användaren kom ifrån — samma beteende som retur-pilen i toolbaren.
+   * (Tidigare hårdkodad till steg 0 via data-flow-goto.) */
+  const backFromSettings = document.getElementById('btn-settings-back-to-flow');
+  if (backFromSettings) {
+    backFromSettings.addEventListener('click', () => {
+      setFlowStep(lastFlowStepBeforeSettings, { focusPanel: true });
+    });
+  }
 }
 
 function setCreateModeNavActive() {
@@ -2336,6 +2354,14 @@ async function boot() {
     persistLocalSettings();
   });
 
+  /* Utvecklarläge: togglar body[data-developer-mode] så Spotify API-logg-kortet
+   * visas/döljs via CSS i alla vyer samt sparar valet direkt i localStorage. */
+  $('pref-developer-mode').addEventListener('change', (ev) => {
+    const on = /** @type {HTMLInputElement} */ (ev.currentTarget).checked;
+    applyDeveloperMode(on);
+    persistLocalSettings();
+  });
+
   /* Auto-save av prefix vid ändring — återanvänder samma debounce-timer som
    * prefixfilter-uppdateringen och skriver localStorage när användaren slutar
    * knappa. (Se även input-hanteraren ovan där timern sätts.) */
@@ -2411,27 +2437,6 @@ async function boot() {
     setSearchProgress(false);
     touchPlaylistApplyPostSuccessDirty();
     renderResults();
-  });
-
-  $('btn-select-all').addEventListener('click', () => {
-    document.querySelectorAll('.row-select').forEach((c) => {
-      if (c.disabled) return;
-      c.checked = true;
-      const idx = Number(c.dataset.rowIndex);
-      if (!Number.isNaN(idx) && resultRows[idx]) resultRows[idx].includedInPlaylist = true;
-      c.closest('.match-block')?.classList.remove('match-block--excluded');
-    });
-    touchPlaylistApplyPostSuccessDirty();
-  });
-  $('btn-clear-selection').addEventListener('click', () => {
-    document.querySelectorAll('.row-select').forEach((c) => {
-      if (c.disabled) return;
-      c.checked = false;
-      const idx = Number(c.dataset.rowIndex);
-      if (!Number.isNaN(idx) && resultRows[idx]) resultRows[idx].includedInPlaylist = false;
-      c.closest('.match-block')?.classList.add('match-block--excluded');
-    });
-    touchPlaylistApplyPostSuccessDirty();
   });
 
   $('btn-apply-playlist').addEventListener('click', () => applyPlaylist());

@@ -333,10 +333,6 @@
                     <div id="results-body" class="results-list__blocks"></div>
                   </div>
                 </div>
-                <div class="row row--wrap row--selection-actions">
-                  <button type="button" class="btn" id="btn-clear-selection">Avmarkera alla</button>
-                  <button type="button" class="btn btn--primary" id="btn-select-all">Markera alla med träff</button>
-                </div>
               </div>
                 </div>
 
@@ -797,6 +793,28 @@
                 </select>
               </div>
 
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-gear" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="heading-developer-mode">Utvecklarläge</h2>
+                    <p class="flow-card__subtitle" id="developer-mode-help">När det är på visas kortet <em>Spotify API-logg</em> under steg 1. Avstängt som standard.</p>
+                  </div>
+                </div>
+                <div class="developer-mode-toggle">
+                  <label class="row-switch" for="pref-developer-mode">
+                    <input type="checkbox" id="pref-developer-mode" class="row-select" aria-describedby="developer-mode-help" aria-label="Aktivera utvecklarläge" />
+                    <span class="row-switch__track" aria-hidden="true">
+                      <span class="row-switch__mark"></span>
+                      <span class="row-switch__thumb"></span>
+                    </span>
+                  </label>
+                  <label class="developer-mode-toggle__label" for="pref-developer-mode">Visa Spotify API-logg</label>
+                </div>
+              </div>
+
               <div class="flow-card flow-card--privacy">
                 <p class="flow-card--privacy__text help">
                   <svg width="20" height="20" aria-hidden="true" class="flow-card--privacy__icon"><use href="#sym-lock" /></svg>
@@ -809,7 +827,7 @@
               </div>
 
               <div class="flow-nav">
-                <button type="button" class="btn btn--primary" data-flow-goto="0">Tillbaka till flödet</button>
+                <button type="button" class="btn btn--primary" id="btn-settings-back-to-flow">Tillbaka till flödet</button>
               </div>
             </section>
           </div>

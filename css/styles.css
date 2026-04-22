@@ -587,6 +587,22 @@ a:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* Utvecklarläge-toggle i Inställningar — reglage + etikett i en rad.
+ * Återanvänder .row-switch (samma semantik som rad-reglagen i resultatlistan). */
+.developer-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.2rem;
+}
+
+.developer-mode-toggle__label {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  cursor: pointer;
+  user-select: none;
+}
+
 .code-block {
   display: block;
   flex: 1 1 12rem;
@@ -643,16 +659,9 @@ a:focus-visible {
   gap: var(--space-sm) var(--space);
 }
 
-.row--selection-actions {
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--space-sm) var(--space);
-}
-
 /* Små skärmar: två knappar i rad, mycket smalt → en kolumn full bredd */
 @media (max-width: 640px) {
   .row--paste-actions,
-  .row--selection-actions,
   .row--auth-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -662,7 +671,6 @@ a:focus-visible {
   }
 
   .row--paste-actions > .btn,
-  .row--selection-actions > .btn,
   .row--auth-actions > .btn {
     width: 100%;
     min-width: 0;
@@ -676,8 +684,7 @@ a:focus-visible {
 @media (max-width: 400px) {
   /* .row--auth-actions undantas medvetet: "Logga ut" + "Logga in" är korta
    * och ska få dela en rad även på mycket smala skärmar. */
-  .row--paste-actions,
-  .row--selection-actions {
+  .row--paste-actions {
     grid-template-columns: 1fr;
   }
 }
@@ -836,6 +843,32 @@ a:focus-visible {
 
 .match-block__query-row--with-audio {
   grid-template-columns: minmax(0, 1fr) minmax(9.5rem, 13rem) var(--results-pick-col);
+}
+
+/* Mobil: query-text + toggle på rad 1, preview-spelaren på en egen full-bredd
+ * rad 2. Annars trycks söktexten ihop till en kolumn som är så smal att varje
+ * bokstav hamnar på egen rad ("G / r / ö / n"). */
+@media (max-width: 720px) {
+  .match-block__query-row--with-audio {
+    grid-template-columns: minmax(0, 1fr) var(--results-pick-col);
+    grid-template-areas:
+      'query pick'
+      'preview preview';
+    gap: 0.4rem 0.5rem;
+  }
+
+  .match-block__query-row--with-audio > .match-block__query {
+    grid-area: query;
+  }
+
+  .match-block__query-row--with-audio > .match-block__preview {
+    grid-area: preview;
+    min-width: 0;
+  }
+
+  .match-block__query-row--with-audio > .match-block__pick {
+    grid-area: pick;
+  }
 }
 
 .match-block__preview {

@@ -60,6 +60,8 @@ const REQUIRED_IDS = [
   'step3-apply-result-card',
   'step3-apply-result-title',
   'step3-apply-result-message',
+  'pref-developer-mode',
+  'btn-settings-back-to-flow',
 ];
 
 function main() {

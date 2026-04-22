@@ -17,7 +17,12 @@ import { APP_STORAGE_ID, DEFAULT_PLAYLIST_NAME_PREFIX } from './config.js';
 
 const KEY = `${APP_STORAGE_ID}-settings`;
 
-/** @typedef {{ clientId: string, theme: 'system' | 'light' | 'dark', playlistNamePrefix: string }} LocalSettings */
+/** @typedef {{
+ *   clientId: string,
+ *   theme: 'system' | 'light' | 'dark',
+ *   playlistNamePrefix: string,
+ *   developerMode: boolean
+ * }} LocalSettings */
 
 /** @returns {LocalSettings} */
 function defaults() {
@@ -25,6 +30,7 @@ function defaults() {
     clientId: '',
     theme: 'system',
     playlistNamePrefix: DEFAULT_PLAYLIST_NAME_PREFIX,
+    developerMode: false,
   };
 }
 
@@ -52,6 +58,7 @@ export function readLocalSettings() {
         typeof obj.playlistNamePrefix === 'string' && obj.playlistNamePrefix.length > 0
           ? obj.playlistNamePrefix
           : d.playlistNamePrefix,
+      developerMode: obj.developerMode === true,
     };
   } catch {
     return defaults();

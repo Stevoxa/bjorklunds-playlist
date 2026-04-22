@@ -321,6 +321,12 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   margin-top: var(--space);
 }
 
+/* Spotify API-logg-kortet är endast synligt när Utvecklarläge är på.
+ * Inställningen persisteras i localStorage och sätter body[data-developer-mode]. */
+body:not([data-developer-mode='on']) .spotify-log-card {
+  display: none;
+}
+
 /* Steg 2: ett skal (som steg 1) — ett sammanhängande kort + sticky nav längst ner */
 #flow-step-2 .flow-step-2-shell {
   background: var(--surface);
@@ -1701,9 +1707,11 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
     line-height: 1.12;
   }
 
+  /* Statisk intro-rad ("Skapa och redigera dina spellistor på Spotify …")
+   * döljs helt på mobil — den tar en extra rad utan att ge värde på små
+   * skärmar där brödsmulorna redan förklarar kontexten. Gäller alla steg. */
   .app-page-head__static-intro {
-    margin-top: 0.2rem;
-    font-size: 0.85rem;
+    display: none;
   }
 
   /* Toolbar-raden: kollapsa visuellt men behåll den som flow-container så
