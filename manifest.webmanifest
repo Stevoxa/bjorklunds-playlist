@@ -2,7 +2,7 @@
   "id": "https://stevoxa.github.io/bjorklunds-playlist/",
   "name": "Björklunds Playlist",
   "short_name": "Björklunds Playlist",
-  "description": "Lokal PWA: sök Spotify-låtar från inklistrad lista och skapa eller uppdatera spellistor.",
+  "description": "Text till spellista på Spotify",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
