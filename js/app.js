@@ -2245,7 +2245,38 @@ async function registerServiceWorker() {
   }
 }
 
+/**
+ * App-splash: visas som helskärms-overlay (CSS) direkt när DOM renderas och
+ * fadas ut efter en kort stund så användaren ser en lugn startbild innan appen
+ * tar över. Minsta synliga tid är ~1,5 s; transitionen läggs till ~0,45 s så
+ * total tid är innanför användarens "1–3 sekunder". Respekterar
+ * prefers-reduced-motion (ingen fade, bara klipp bort).
+ */
+function initAppSplash() {
+  const splash = document.getElementById('app-splash');
+  if (!splash) return;
+  const MIN_VISIBLE_MS = 1500;
+  const FADE_MS = 600;
+  const remove = () => {
+    if (splash.isConnected) splash.remove();
+  };
+  setTimeout(() => {
+    splash.classList.add('is-leaving');
+    /* transitionend triggar när opacity har nått 0 — fallback om eventet
+     * aldrig kommer (t.ex. reduced-motion eller layout-glitch). */
+    let removed = false;
+    const onEnd = () => {
+      if (removed) return;
+      removed = true;
+      remove();
+    };
+    splash.addEventListener('transitionend', onEnd, { once: true });
+    setTimeout(onEnd, FADE_MS + 200);
+  }, MIN_VISIBLE_MS);
+}
+
 async function boot() {
+  initAppSplash();
   $('redirect-uri-display').textContent = getRedirectUri();
 
   /* Återställ icke-känsliga inställningar från localStorage innan OAuth/return-flödet

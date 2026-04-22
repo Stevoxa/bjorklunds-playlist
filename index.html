@@ -6,12 +6,32 @@
     <meta name="theme-color" content="#f4f7f9" />
     <meta name="description" content="En app för att skapa eller uppdatera spellistor på Spotify" />
     <link rel="manifest" href="./manifest.webmanifest" />
+
+    <!-- Favicons (browser-flikar) — SVG först (skarp i alla storlekar), PNG-fallback. -->
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="./icons/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="./icons/favicon-16.png" sizes="16x16" type="image/png" />
+
+    <!-- iOS home screen (iOS rundar hörnen själv, därför använder vi den opaka touch-ikon-varianten). -->
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" sizes="180x180" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Spellista" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Björklunds Playlist" />
+
     <title>Björklunds Playlist</title>
     <link rel="stylesheet" href="./css/styles.css" />
     <link rel="stylesheet" href="./css/shell.css" />
   </head>
   <body>
+    <!-- App-splash: visas ~1,5 s när appen öppnas och fadar sedan ut. JS (app.js)
+     * tar bort elementet helt efter animationen. Bilderna ligger i /media och
+     * väljs baserat på orientation via CSS-media-queries. -->
+    <div id="app-splash" class="app-splash" role="presentation" aria-hidden="true">
+      <div class="app-splash__image" aria-hidden="true"></div>
+    </div>
+
     <a class="skip-link" href="#main">Hoppa till innehållet</a>
 
     <!-- Ikoner: paths från Bootstrap Icons v1.11.3 (MIT). Spotify: bi-spotify + #1DB954 (Spotify Developer Design). -->

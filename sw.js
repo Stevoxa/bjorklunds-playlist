@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 /** Måste matcha APP_STORAGE_ID i js/config.js */
 const APP_STORAGE_ID = 'stevoxa-io-bjorklunds-playlist-pwa';
-const CACHE = `${APP_STORAGE_ID}-cache-v167`;
+const CACHE = `${APP_STORAGE_ID}-cache-v168`;
 const ASSETS = [
   './',
   './index.html',
@@ -22,6 +22,15 @@ const ASSETS = [
   './js/app.js',
   './manifest.webmanifest',
   './icons/icon.svg',
+  './icons/favicon-16.png',
+  './icons/favicon-32.png',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-maskable-192.png',
+  './icons/icon-maskable-512.png',
+  './icons/apple-touch-icon.png',
+  './media/bjorklunds_playlist_start.png',
+  './media/bjorklunds_playlist_start_wide.png',
 ];
 
 self.addEventListener('install', (event) => {

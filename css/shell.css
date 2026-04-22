@@ -33,6 +33,57 @@ body {
   background: var(--shell-page-bg);
 }
 
+/* ============================================================================
+ * App-splash: helskärms-overlay som visas vid kallstart. JS lägger .is-leaving
+ * för fade-out efter ~1,5 s och tar bort elementet när transitionen är klar.
+ * Portrait- och landscape-bilden ligger i /media och väljs via orientation.
+ * ============================================================================ */
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--shell-page-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Dölj allt bakom splashen och låt den ta över fulla viewporten inklusive
+   * notch/safe-area så att inga appchrome-kanter syns under start. */
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+    env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  opacity: 1;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+
+.app-splash.is-leaving {
+  opacity: 0;
+}
+
+.app-splash__image {
+  width: 100%;
+  height: 100%;
+  background-image: url('../media/bjorklunds_playlist_start.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+/* Wide/landscape-bilden på bredare eller liggande skärmar (desktop, surfplattor i
+ * landscape, telefon i landscape). Kollar både aspect ratio och viewport-bredd
+ * så att iPad i porträtt ändå får det stående motivet. */
+@media (min-aspect-ratio: 1/1), (min-width: 900px) {
+  .app-splash__image {
+    background-image: url('../media/bjorklunds_playlist_start_wide.png');
+  }
+}
+
+/* Respektera prefers-reduced-motion: ingen fade, bara klipp bort. */
+@media (prefers-reduced-motion: reduce) {
+  .app-splash {
+    transition: none;
+  }
+}
+
 .app-frame {
   min-height: 100dvh;
   display: flex;
