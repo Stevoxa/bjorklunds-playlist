@@ -9,3 +9,6 @@ playwright/.cache/
 npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Temporära commit-meddelanden som auto-commit-push-regeln använder
+.commit-msg.tmp
