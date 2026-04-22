@@ -1831,10 +1831,28 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
     box-shadow: 0 -4px 10px color-mix(in srgb, var(--shell-navy) 8%, transparent);
   }
 
-  /* Hint inne i sticky-navet ska inte ha någon egen margin som kan skapa
-   * extra luft mellan auth-status-kortet och sticky-raden. */
+  /* Hint inne i sticky-navet: desktop-regeln .flow-nav--actions-end .flow-nav__hint
+   * sätter `flex: 1 1 12rem`. I en column-flex blir flex-basis 12rem (192 px) en
+   * vertikal storlek — det är exakt det tomrum användaren ser mellan hinten och
+   * knappen. Tvinga hinten till content-baserad höjd här. */
   #flow-step-0 .flow-nav--actions-end .flow-nav__hint {
+    flex: 0 0 auto;
     margin: 0;
+    max-width: none;
+  }
+
+  /* Settings: gör "Tillbaka till flödet"-navigationen till en sticky-bar som
+   * alltid syns vid viewport-bot, på samma sätt som flödets steg. Förankras
+   * mot app-mainens sidokanter via negativa marginaler. */
+  #flow-step-settings .flow-nav:not(.flow-nav--actions-end) {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    margin: var(--space) calc(-1 * var(--space)) 0;
+    padding: 0.65rem var(--space) calc(0.65rem + env(safe-area-inset-bottom, 0));
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 10px color-mix(in srgb, var(--shell-navy) 8%, transparent);
   }
 
   /* Dölj sidfoten på mobil — stegen har sin egen sticky-navigering. */
