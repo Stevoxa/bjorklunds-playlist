@@ -12,3 +12,6 @@ pnpm-debug.log*
 
 # Temporära commit-meddelanden som auto-commit-push-regeln använder
 .commit-msg.tmp
+
+# Cursor-lokala konfigurationer och regler — ska inte till GitHub
+.cursor/
