@@ -43,13 +43,8 @@ body {
   inset: 0;
   z-index: 9999;
   background: var(--shell-page-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* Dölj allt bakom splashen och låt den ta över fulla viewporten inklusive
-   * notch/safe-area så att inga appchrome-kanter syns under start. */
-  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
-    env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  /* Bilden fyller hela viewporten (inklusive ev. notch/safe-area) — .app-splash
+   * har inga padding/margin-kanter att störa den. */
   opacity: 1;
   transition: opacity 0.45s ease;
   pointer-events: none;
@@ -64,8 +59,11 @@ body {
   height: 100%;
   background-image: url('../media/bjorklunds_playlist_start.png');
   background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
+  background-position: center center;
+  /* `cover` = bilden fyller alltid hela viewporten, behåller proportioner och
+   * klipper eventuellt lite av de tomma kanterna. Motivet (loggan) är centrerat
+   * i källbilden, så det syns tydligt oavsett skärmstorlek. */
+  background-size: cover;
 }
 
 /* Wide/landscape-bilden på bredare eller liggande skärmar (desktop, surfplattor i
