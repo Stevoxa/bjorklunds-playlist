@@ -681,13 +681,9 @@ a:focus-visible {
   }
 }
 
-@media (max-width: 400px) {
-  /* .row--auth-actions undantas medvetet: "Logga ut" + "Logga in" är korta
-   * och ska få dela en rad även på mycket smala skärmar. */
-  .row--paste-actions {
-    grid-template-columns: 1fr;
-  }
-}
+/* Not: tidigare stacktes .row--paste-actions vertikalt under 400 px. Det togs
+ * bort — "Rensa" och "Sök" ska alltid dela en rad. Om knapptexten är för lång
+ * på smala mobiler döljs " på Spotify" via .compact-extra (se shell.css). */
 
 .row--apply {
   margin-top: var(--space-lg);
