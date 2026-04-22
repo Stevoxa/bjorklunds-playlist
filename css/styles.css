@@ -93,7 +93,11 @@ html {
 
 body {
   margin: 0;
-  min-height: 100dvh;
+  /* `100svh` = den *minsta* dynamiska viewporten (med mobilt adressfält synligt).
+   * Undviker tom yta under innehållet när adressfältet växlar vid reload/scroll
+   * — det klassiska iOS/Android Chrome-beteendet där `100dvh` hinner växla till
+   * den stora viewporten innan innehållet målas, och lämnar skrollbar bakgrund. */
+  min-height: 100svh;
   font-family: var(--font);
   font-size: 1rem;
   line-height: 1.5;

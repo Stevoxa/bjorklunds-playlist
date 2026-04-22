@@ -83,7 +83,9 @@ body {
 }
 
 .app-frame {
-  min-height: 100dvh;
+  /* Se kommentar i styles.css/body — `svh` förhindrar att .app-frame tar in
+   * extra höjd när adressfältet krymper/växer på mobil efter reload. */
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
   background: var(--shell-page-bg);
