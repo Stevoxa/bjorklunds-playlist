@@ -679,6 +679,11 @@ async function handleOAuthReturn() {
 /** @type {'0' | '1' | '2' | '3' | 'settings'} */
 let currentFlowStep = '0';
 
+/** Senaste icke-settings-steg — används av toolbar__settings-knappen för att återvända till
+ * det steg man kom från när man klickar retur-pilen på inställningssidan. */
+/** @type {'0' | '1' | '2' | '3'} */
+let lastFlowStepBeforeSettings = '0';
+
 function syncPageLeadStep3() {
   const lead = document.getElementById('app-page-lead');
   if (!lead) return;
@@ -725,6 +730,11 @@ function scrollAppToTop() {
 function setFlowStep(step, opts = {}) {
   const { focusPanel = false, skipSpotifyWarmup = false } = opts;
   syncClientIdFromFormIntoVault();
+  /* Kom ihåg vilket flow-steg användaren var på innan inställningar öppnades, så att
+   * retur-pilen i toolbaren kan ta hen tillbaka till samma vy vid stängning. */
+  if (step === 'settings' && currentFlowStep !== 'settings') {
+    lastFlowStepBeforeSettings = /** @type {'0' | '1' | '2' | '3'} */ (currentFlowStep);
+  }
   currentFlowStep = /** @type {'0' | '1' | '2' | '3' | 'settings'} */ (step);
   if (FEATURE_ROW_FULL_PLAYBACK && step !== '1') {
     void resetWebPlaybackSession();
@@ -763,6 +773,17 @@ function setFlowStep(step, opts = {}) {
     }
   }
   document.body.setAttribute('data-flow-step', step);
+  /* Toolbar-knappen är dubbelfunktion: öppna Inställningar (kugghjul) eller återvända
+   * till flödet (retur-pil). Uppdatera tooltip/aria-label så skärmläsare och tooltips
+   * reflekterar rätt avsikt. */
+  document.querySelectorAll('.flow-toolbar__settings').forEach((el) => {
+    const isSettings = step === 'settings';
+    const label = isSettings ? 'Tillbaka till flödet' : 'Inställningar';
+    el.setAttribute('aria-label', label);
+    el.setAttribute('title', label);
+    const labelSpan = el.querySelector('.flow-toolbar__settings-label');
+    if (labelSpan) labelSpan.textContent = label;
+  });
   if (step === '0' && !skipSpotifyWarmup) {
     void syncSpotifySessionToUi();
   }
@@ -1119,6 +1140,17 @@ function wireFlow() {
     btn.addEventListener('click', () => {
       const s = btn.getAttribute('data-flow-goto');
       if (s) setFlowStep(/** @type {'0' | '1' | '2' | '3' | 'settings'} */ (s), { focusPanel: true });
+    });
+  });
+  /* Toolbar-knappen: toggla mellan att öppna Inställningar och att återvända till
+   * det flöde man kom från. Byter ikon via CSS (body[data-flow-step='settings']). */
+  document.querySelectorAll('.flow-toolbar__settings').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (currentFlowStep === 'settings') {
+        setFlowStep(lastFlowStepBeforeSettings, { focusPanel: true });
+      } else {
+        setFlowStep('settings', { focusPanel: true });
+      }
     });
   });
 }

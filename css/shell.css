@@ -147,6 +147,24 @@ body {
   border-color: var(--border);
 }
 
+/* Toolbar-knappen visar kugghjulet på normala steg och retur-pilen när man är
+ * på Inställningar — en dubbelfunktion som ersätter en separat "Tillbaka"-knapp. */
+.flow-toolbar__settings-icon {
+  flex-shrink: 0;
+}
+
+.flow-toolbar__settings-icon--return {
+  display: none;
+}
+
+body[data-flow-step='settings'] .flow-toolbar__settings-icon--gear {
+  display: none;
+}
+
+body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
+  display: inline-block;
+}
+
 .flow-breadcrumbs {
   margin-top: 0.65rem;
 }
@@ -1664,11 +1682,17 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
     display: none;
   }
 
-  /* Kompakt sidhuvud: mindre margin under headern och reserverat utrymme till
-   * höger för den absolut positionerade Inställningar-ikonen. */
+  /* Tätare grid-gap mellan header-raden och primärkolumnen — default
+   * var(--space-lg) blir för luftigt på mobil. */
+  .app-layout {
+    gap: var(--space);
+  }
+
+  /* Kompakt sidhuvud: ta bort margin under headern (grid-gap räcker) och
+   * reservera utrymme till höger för den absolut positionerade ikonen. */
   .app-page-head {
     position: relative;
-    margin-bottom: var(--space);
+    margin-bottom: 0;
     padding-right: 3rem;
   }
 
@@ -1772,16 +1796,31 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
   /* Tom auth-status: ta bort default margin-top så den inte skapar tomrum
    * före sticky-navet i steg 0 när användaren inte är inloggad än. */
   #auth-status:empty {
-    display: none;
-    margin: 0;
+    display: none !important;
+    margin: 0 !important;
+  }
+
+  /* Rättigheter och 403-info — döljs hårt på mobil med !important så att
+   * inga senare regler eller JS råkar visa dem igen och skapa tomrum. */
+  .scope-pills,
+  .forbidden-help {
+    display: none !important;
   }
 
   /* Steg 0: tätt sticky-nav längst ned i kortet — matchar steg 1/2 och
-   * minimerar vitt utrymme mellan hint-raden och "Nästa"-knappen. */
+   * minimerar vitt utrymme mellan hint-raden och "Nästa"-knappen.
+   * - justify-content: flex-start packar hint + knapp tätt mot toppen om
+   *   containern av någon anledning får extra höjd (t.ex. sticky-lyft).
+   * - Rundade nedre hörn syns alltid eftersom sticky-containern har egna
+   *   border-radius och är klistrad vid viewport-bot med bakgrund. */
   #flow-step-0 .flow-nav--actions-end {
     position: sticky;
     bottom: 0;
     z-index: 4;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
     gap: 0.5rem;
     margin: 0 calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg));
     padding: 0.65rem var(--space-lg);
@@ -1789,6 +1828,13 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
     border-top: 1px solid var(--border);
     border-bottom-left-radius: var(--radius);
     border-bottom-right-radius: var(--radius);
+    box-shadow: 0 -4px 10px color-mix(in srgb, var(--shell-navy) 8%, transparent);
+  }
+
+  /* Hint inne i sticky-navet ska inte ha någon egen margin som kan skapa
+   * extra luft mellan auth-status-kortet och sticky-raden. */
+  #flow-step-0 .flow-nav--actions-end .flow-nav__hint {
+    margin: 0;
   }
 
   /* Dölj sidfoten på mobil — stegen har sin egen sticky-navigering. */
