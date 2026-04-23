@@ -2274,8 +2274,40 @@ function renderEditPlaylistHeader() {
       fallback.hidden = false;
     }
   }
-  const deleteBtn = document.getElementById('btn-edit-playlist-delete');
-  if (deleteBtn) deleteBtn.hidden = false;
+  const deleteBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-edit-playlist-delete'));
+  if (deleteBtn) {
+    deleteBtn.hidden = false;
+    /** Knappen agerar olika beroende på ägarskap: för ägarens egen spellista är det en destruktiv
+     *  "radera"-åtgärd (röd), för följda spellistor är det en icke-destruktiv "sluta följa" (neutral).
+     *  Spotifys API-anrop är samma (DELETE /playlists/{id}/followers) — det är Spotifys egen semantik
+     *  som avgör om följaren unfollowar eller ägaren faktiskt tar bort listan. */
+    const isOwner = isEditPlaylistOwnedByUser();
+    const labelEl = deleteBtn.querySelector('span:not(.btn__icon-wrap)');
+    if (isOwner) {
+      deleteBtn.classList.add('btn--danger');
+      deleteBtn.title = 'Radera spellistan';
+      if (labelEl) labelEl.textContent = 'Radera spellistan';
+    } else {
+      deleteBtn.classList.remove('btn--danger');
+      deleteBtn.title = 'Sluta följa spellistan';
+      if (labelEl) labelEl.textContent = 'Sluta följa';
+    }
+  }
+}
+
+/**
+ * Returnerar true om inloggad användare är ägare till spellistan vi redigerar just nu.
+ * Vid okänt ägarskap (t.ex. innan meta har hämtats) antar vi ägare=true — vi föredrar att
+ * visa den destruktiva etiketten tills vi vet bättre så användaren inte luras klicka på
+ * "Sluta följa" på sin egen lista.
+ */
+function isEditPlaylistOwnedByUser() {
+  const ownerId = editPlaylistState?.meta?.ownerId;
+  if (!ownerId) return true;
+  const uid =
+    typeof spotifyClient?.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null;
+  if (!uid) return true;
+  return String(ownerId) === String(uid);
 }
 
 function destroyEditPlaylistSortable() {
@@ -2945,21 +2977,51 @@ async function deleteEditPlaylistFlow() {
   const sel = selectedEditPlaylist;
   if (!spotifyClient || !sel) return;
   const dlg = /** @type {HTMLDialogElement | null} */ (document.getElementById('edit-playlist-delete-dialog'));
+  const titleEl = document.getElementById('edit-playlist-delete-dialog-title');
+  const textEl = document.getElementById('edit-playlist-delete-dialog-text');
   const nameEl = document.getElementById('edit-playlist-delete-dialog-name');
   const errEl = document.getElementById('edit-playlist-delete-dialog-error');
   const confirmBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-edit-playlist-delete-confirm'));
   const cancelBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-edit-playlist-delete-cancel'));
   if (!dlg || !nameEl) return;
-  nameEl.textContent = state?.meta?.name || sel.name || '(utan namn)';
+  const playlistName = state?.meta?.name || sel.name || '(utan namn)';
+  nameEl.textContent = playlistName;
+  /** Anpassa dialog och bekräftelseknapp efter ägarskap. `isEditPlaylistOwnedByUser()` ger
+   *  true om meta saknas för att vara safe — men här kallas den alltid efter att meta laddats. */
+  const isOwner = isEditPlaylistOwnedByUser();
+  if (titleEl) {
+    titleEl.textContent = isOwner ? 'Ta bort spellistan?' : 'Sluta följa spellistan?';
+  }
+  if (textEl) {
+    /** Bygg om texten: "Du håller på att X spellistan <strong>Namn</strong>. Är du säker?" */
+    textEl.textContent = '';
+    textEl.append(
+      document.createTextNode(
+        isOwner ? 'Du håller på att ta bort spellistan ' : 'Du håller på att sluta följa spellistan ',
+      ),
+    );
+    const strong = document.createElement('strong');
+    strong.id = 'edit-playlist-delete-dialog-name';
+    strong.textContent = playlistName;
+    textEl.append(strong);
+    textEl.append(document.createTextNode('. Är du säker?'));
+  }
+  if (confirmBtn) {
+    confirmBtn.textContent = isOwner ? 'Ta bort' : 'Sluta följa';
+    confirmBtn.classList.toggle('btn--danger', isOwner);
+  }
   if (errEl) {
     errEl.hidden = true;
     errEl.textContent = '';
   }
   if (typeof dlg.showModal !== 'function') {
     /* Extremt gammal browser — fallback: confirm(). */
-    const ok = window.confirm(`Du håller på att ta bort spellistan '${sel.name}'. Är du säker?`);
+    const confirmMsg = isOwner
+      ? `Du håller på att ta bort spellistan '${sel.name}'. Är du säker?`
+      : `Du håller på att sluta följa spellistan '${sel.name}'. Är du säker?`;
+    const ok = window.confirm(confirmMsg);
     if (!ok) return;
-    await performDeletePlaylist(sel);
+    await performDeletePlaylist(sel, { isOwner });
     return;
   }
   dlg.returnValue = 'cancel';
@@ -2982,7 +3044,7 @@ async function deleteEditPlaylistFlow() {
     if (confirmBtn) confirmBtn.disabled = true;
     if (cancelBtn) cancelBtn.disabled = true;
     try {
-      await performDeletePlaylist(sel);
+      await performDeletePlaylist(sel, { isOwner });
       form.removeEventListener('submit', handler);
       dlg.close('confirm');
     } catch (e) {
@@ -3006,14 +3068,22 @@ async function deleteEditPlaylistFlow() {
   );
 }
 
-async function performDeletePlaylist(sel) {
+/**
+ * Utför den faktiska borttagningen. Spotifys endpoint (DELETE /playlists/{id}/followers)
+ * är samma oavsett ägarskap — men för ägaren "tas listan bort" medan för en följare
+ * "slutar den följa". Vi skiljer bara på toast-texten.
+ * @param {{ id: string, name?: string }} sel
+ * @param {{ isOwner?: boolean }} [opts]
+ */
+async function performDeletePlaylist(sel, opts = {}) {
+  const isOwner = opts.isOwner !== false;
   await spotifyClient.unfollowPlaylist(sel.id);
   const uid =
     typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null;
   if (uid) {
     void deletePlaylistTracksCache(uid, sel.id);
   }
-  /* Rensa både in-memory och IDB-cache för välj-listan så borttagen spellista försvinner. */
+  /* Rensa både in-memory och IDB-cache för välj-listan så borttagen/avföljd spellista försvinner. */
   invalidateSelectPlaylistCache({ persistent: true, userId: uid });
   /* Nollställ edit-state och vald spellista så användaren inte landar i trasig vy vid tillbakanavigering. */
   editPlaylistState = null;
@@ -3021,7 +3091,7 @@ async function performDeletePlaylist(sel) {
   selectedEditPlaylist = null;
   writeStoredSelectedEditPlaylist(null);
   setFlowStep('select-playlist', { focusPanel: true });
-  showToast('Spellistan togs bort.');
+  showToast(isOwner ? 'Spellistan togs bort.' : 'Du följer inte längre spellistan.');
 }
 
 /* --------------------------------------------------------------------------

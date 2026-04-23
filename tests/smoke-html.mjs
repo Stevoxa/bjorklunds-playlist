@@ -101,6 +101,7 @@ const REQUIRED_IDS = [
   'btn-edit-playlist-progress-cancel',
   'edit-playlist-dirty-hint',
   'edit-playlist-delete-dialog',
+  'edit-playlist-delete-dialog-title',
   'edit-playlist-delete-dialog-text',
   'edit-playlist-delete-dialog-name',
   'edit-playlist-delete-dialog-error',
