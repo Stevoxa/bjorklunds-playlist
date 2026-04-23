@@ -2289,8 +2289,8 @@ function renderEditPlaylistHeader() {
       if (labelEl) labelEl.textContent = 'Radera spellistan';
     } else {
       deleteBtn.classList.remove('btn--danger');
-      deleteBtn.title = 'Sluta följa spellistan';
-      if (labelEl) labelEl.textContent = 'Sluta följa';
+      deleteBtn.title = 'Ta bort från biblioteket';
+      if (labelEl) labelEl.textContent = 'Ta bort från biblioteket';
     }
   }
 }
@@ -2990,14 +2990,16 @@ async function deleteEditPlaylistFlow() {
    *  true om meta saknas för att vara safe — men här kallas den alltid efter att meta laddats. */
   const isOwner = isEditPlaylistOwnedByUser();
   if (titleEl) {
-    titleEl.textContent = isOwner ? 'Ta bort spellistan?' : 'Sluta följa spellistan?';
+    titleEl.textContent = isOwner ? 'Ta bort spellistan?' : 'Ta bort från biblioteket?';
   }
   if (textEl) {
     /** Bygg om texten: "Du håller på att X spellistan <strong>Namn</strong>. Är du säker?" */
     textEl.textContent = '';
     textEl.append(
       document.createTextNode(
-        isOwner ? 'Du håller på att ta bort spellistan ' : 'Du håller på att sluta följa spellistan ',
+        isOwner
+          ? 'Du håller på att ta bort spellistan '
+          : 'Du håller på att ta bort spellistan från ditt bibliotek: ',
       ),
     );
     const strong = document.createElement('strong');
@@ -3007,7 +3009,7 @@ async function deleteEditPlaylistFlow() {
     textEl.append(document.createTextNode('. Är du säker?'));
   }
   if (confirmBtn) {
-    confirmBtn.textContent = isOwner ? 'Ta bort' : 'Sluta följa';
+    confirmBtn.textContent = isOwner ? 'Ta bort' : 'Ta bort från bibliotek';
     confirmBtn.classList.toggle('btn--danger', isOwner);
   }
   if (errEl) {
@@ -3018,7 +3020,7 @@ async function deleteEditPlaylistFlow() {
     /* Extremt gammal browser — fallback: confirm(). */
     const confirmMsg = isOwner
       ? `Du håller på att ta bort spellistan '${sel.name}'. Är du säker?`
-      : `Du håller på att sluta följa spellistan '${sel.name}'. Är du säker?`;
+      : `Du håller på att ta bort spellistan '${sel.name}' från ditt bibliotek. Är du säker?`;
     const ok = window.confirm(confirmMsg);
     if (!ok) return;
     await performDeletePlaylist(sel, { isOwner });
@@ -3091,7 +3093,7 @@ async function performDeletePlaylist(sel, opts = {}) {
   selectedEditPlaylist = null;
   writeStoredSelectedEditPlaylist(null);
   setFlowStep('select-playlist', { focusPanel: true });
-  showToast(isOwner ? 'Spellistan togs bort.' : 'Du följer inte längre spellistan.');
+  showToast(isOwner ? 'Spellistan togs bort.' : 'Spellistan togs bort från ditt bibliotek.');
 }
 
 /* --------------------------------------------------------------------------
