@@ -86,6 +86,7 @@ const REQUIRED_IDS = [
   'edit-playlist-total-row',
   'edit-playlist-status-row',
   'edit-playlist-readonly-note',
+  'edit-playlist-dirty-block',
   'edit-playlist-updated',
   'edit-playlist-list',
   'edit-playlist-art',

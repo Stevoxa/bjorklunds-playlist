@@ -2316,7 +2316,7 @@ function setEditPlaylistReadOnly(readOnly) {
     'edit-playlist-bulk-bar',
     'edit-playlist-list',
     'edit-playlist-progress',
-    'edit-playlist-dirty-hint',
+    'edit-playlist-dirty-block',
     'btn-edit-playlist-apply',
   ];
   for (const id of toggles) {
@@ -2446,13 +2446,15 @@ function isEditPlaylistDirty() {
 
 function updateEditPlaylistDirtyUi() {
   const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-edit-playlist-apply'));
-  const hint = document.getElementById('edit-playlist-dirty-hint');
+  /** "Det finns ändringar"-rubrik + hjälptext ligger i ett gemensamt block ovanför
+   *  tracklistan. Rubriken gör det extra tydligt att det finns osparat arbete. */
+  const dirtyBlock = document.getElementById('edit-playlist-dirty-block');
   const dirty = isEditPlaylistDirty();
   if (btn) {
     btn.disabled = !dirty;
     btn.setAttribute('aria-disabled', dirty ? 'false' : 'true');
   }
-  if (hint) hint.hidden = !dirty;
+  if (dirtyBlock) dirtyBlock.hidden = !dirty;
 }
 
 function updateEditPlaylistBulkBar() {

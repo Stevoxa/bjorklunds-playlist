@@ -911,6 +911,13 @@
                 </div>
                 <p class="help" id="edit-playlist-empty" hidden>Spellistan är tom.</p>
 
+                <div class="edit-playlist-dirty-block" id="edit-playlist-dirty-block" hidden>
+                  <h3 class="edit-playlist-dirty-block__title">Det finns ändringar</h3>
+                  <p class="help" id="edit-playlist-dirty-hint">
+                    Ändringar sparas först när du trycker på <strong>Genomför på Spotify</strong>.
+                  </p>
+                </div>
+
                 <div class="edit-playlist-bulk-bar" id="edit-playlist-bulk-bar" hidden>
                   <p class="edit-playlist-bulk-bar__count" id="edit-playlist-bulk-count" aria-live="polite">0 markerade</p>
                   <div class="edit-playlist-bulk-bar__actions">
@@ -941,10 +948,6 @@
                   <button type="button" class="btn" id="btn-edit-playlist-progress-cancel">Avbryt</button>
                 </div>
 
-                <p class="help" id="edit-playlist-dirty-hint" hidden>
-                  Ändringar sparas först när du trycker på <strong>Genomför på Spotify</strong>.
-                </p>
-
                 <div class="flow-nav">
                   <button type="button" class="btn btn--flow-nav-width" data-flow-goto="select-playlist">Tillbaka</button>
                   <button
@@ -957,7 +960,7 @@
                     <span class="btn__icon-wrap btn__icon-wrap--spotify" aria-hidden="true">
                       <svg class="btn__icon" width="20" height="20"><use href="#sym-spotify-mark" /></svg>
                     </span>
-                    <span>Genomför på Spotify</span>
+                    <span>Genomför<span class="compact-extra"> på Spotify</span></span>
                   </button>
                 </div>
               </div>

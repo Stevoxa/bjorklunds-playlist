@@ -737,9 +737,12 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
 @media (max-width: 640px) {
   .edit-playlist-header {
     grid-template-columns: auto 1fr;
+    /* "Radera spellistan" ska ligga ovanför metadatablocket på mobil — agentens
+     * tidigare ordning hade knappen under, men user prefererar att se den
+     * ägarhandlingen direkt när man öppnar vyn. */
     grid-template-areas:
-      'art meta'
-      'actions actions';
+      'actions actions'
+      'art meta';
     row-gap: 0.6rem;
   }
   .edit-playlist-header__art {
@@ -755,6 +758,29 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
     width: 100%;
     justify-content: center;
   }
+}
+
+.edit-playlist-dirty-block {
+  margin: 0.75rem 0 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--accent, #1db954);
+  background: color-mix(in srgb, var(--accent, #1db954) 8%, transparent);
+  border-radius: 6px;
+}
+
+.edit-playlist-dirty-block[hidden] {
+  display: none;
+}
+
+.edit-playlist-dirty-block__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text, inherit);
+}
+
+.edit-playlist-dirty-block .help {
+  margin: 0.25rem 0 0;
 }
 
 .edit-playlist-bulk-bar {
