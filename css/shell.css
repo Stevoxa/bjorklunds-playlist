@@ -740,18 +740,27 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
 }
 
 /* Action-rad under headern: Ta bort spellistan + Hämta listan, båda till vänster.
- * Samma layout på desktop och mobil — auto-width-knappar sida vid sida med wrap
- * som sista utväg ifall texterna blir orimligt långa. */
+ * Desktop: auto-width-knappar sida vid sida, vänsterställda.
+ * Mobil: knapparna flex-grow:ar så de tillsammans spänner hela radens bredd (50/50). */
 .edit-playlist-action-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+  padding: 4px 0;
   margin-bottom: var(--space-sm);
 }
 
 .edit-playlist-action-row[hidden] {
   display: none;
+}
+
+@media (max-width: 640px) {
+  .edit-playlist-action-row .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+  }
 }
 
 .edit-playlist-dirty-block {
