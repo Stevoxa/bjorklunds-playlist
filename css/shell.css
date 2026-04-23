@@ -502,6 +502,12 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   font-size: 0.95rem;
 }
 
+/* [hidden] måste explicit åsidosätta display:flex, annars syns spinnern
+ * även när hidden-attributet är satt (user agent-regeln vinner inte). */
+.select-playlist-spinner[hidden] {
+  display: none;
+}
+
 .select-playlist-spinner__dot {
   width: 1.1rem;
   height: 1.1rem;
