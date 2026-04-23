@@ -739,10 +739,9 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   display: none;
 }
 
-/* Action-rad under headern: Hämta om listan (vänster) + Ta bort spellistan (höger).
- * Både desktop och mobil använder samma layout — flex med auto-width-knappar där
- * delete pushas åt höger via margin-left. När refresh döljs i read-only läge
- * står delete kvar längst till höger tack vare samma regel. */
+/* Action-rad under headern: Ta bort spellistan + Hämta listan, båda till vänster.
+ * Samma layout på desktop och mobil — auto-width-knappar sida vid sida med wrap
+ * som sista utväg ifall texterna blir orimligt långa. */
 .edit-playlist-action-row {
   display: flex;
   flex-wrap: wrap;
@@ -753,10 +752,6 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
 
 .edit-playlist-action-row[hidden] {
   display: none;
-}
-
-.edit-playlist-action-row__delete {
-  margin-left: auto;
 }
 
 .edit-playlist-dirty-block {

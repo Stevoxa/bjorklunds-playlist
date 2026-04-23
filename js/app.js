@@ -6,6 +6,7 @@ import {
   PLAYLIST_LIST_STALE_IF_ERROR_MS,
   PLAYLIST_TRACKS_CACHE_TTL_MS,
   PLAYLIST_TRACKS_STALE_IF_ERROR_MS,
+  EDIT_PLAYLIST_REFRESH_COOLDOWN_MS,
   EDIT_COMMIT_STEP_GAP_MS,
   EDIT_COMMIT_STEP_JITTER_MS,
   EDIT_REMOVE_BATCH_SIZE,
@@ -1632,7 +1633,7 @@ function renderPlaylistListUpdatedAtText() {
   const ageMs = Math.max(0, Date.now() - at);
   const ageMin = Math.floor(ageMs / 60_000);
   let rel;
-  if (ageMs < 60_000) rel = 'nu nyss';
+  if (ageMs < 60_000) rel = 'nu';
   else if (ageMin < 60) rel = `för ${ageMin} min sedan`;
   else if (ageMin < 60 * 24) rel = `för ${Math.floor(ageMin / 60)} tim sedan`;
   else rel = `för ${Math.floor(ageMin / (60 * 24))} dag(ar) sedan`;
@@ -1807,7 +1808,7 @@ function renderSelectPlaylistUpdatedAtText() {
   const ageMs = Math.max(0, Date.now() - at);
   const ageMin = Math.floor(ageMs / 60_000);
   let rel;
-  if (ageMs < 60_000) rel = 'nu nyss';
+  if (ageMs < 60_000) rel = 'nu';
   else if (ageMin < 60) rel = `för ${ageMin} min sedan`;
   else if (ageMin < 60 * 24) rel = `för ${Math.floor(ageMin / 60)} tim sedan`;
   else rel = `för ${Math.floor(ageMin / (60 * 24))} dag(ar) sedan`;
@@ -2257,7 +2258,7 @@ function renderEditPlaylistUpdatedAtText() {
   const ageMs = Math.max(0, Date.now() - at);
   const ageMin = Math.floor(ageMs / 60_000);
   let rel;
-  if (ageMs < 60_000) rel = 'nu nyss';
+  if (ageMs < 60_000) rel = 'nu';
   else if (ageMin < 60) rel = `för ${ageMin} min sedan`;
   else if (ageMin < 60 * 24) rel = `för ${Math.floor(ageMin / 60)} tim sedan`;
   else rel = `för ${Math.floor(ageMin / (60 * 24))} dag(ar) sedan`;
@@ -3324,6 +3325,65 @@ async function performDeletePlaylist(sel, opts = {}) {
   showToast(isOwner ? 'Spellistan togs bort.' : 'Spellistan togs bort från ditt bibliotek.');
 }
 
+/**
+ * "Hämta"-knappen agerar primärt som en ångra-knapp: ett klick återställer lokala
+ * ändringar (pending removals + sorteringsändringar) till Spotifys ursprungliga ordning.
+ *
+ * Nätverksanropet (loadEditPlaylistTracks med force=true) körs bara om cachad data är
+ * äldre än EDIT_PLAYLIST_REFRESH_COOLDOWN_MS — annars skulle upprepade klick i snabb
+ * följd spamma Spotify med identiska GET /playlists/{id}/items. Cooldownen skyddar
+ * även mot 429 och sparar batterit på mobilen.
+ *
+ * Om användaren klickar under cooldownen visar vi bara en liten toast så det blir
+ * tydligt att Hämta "gjorde något" — ångra-delen körs alltid oavsett cooldown.
+ */
+function handleEditPlaylistRefreshClick() {
+  const state = editPlaylistState;
+  /* Ingen state alls (t.ex. vid 403-blocked eller read-only utan items) — då är det inget
+   * att ångra. Kör ett normalt refresh-försök, cooldownen spelar ingen roll här. */
+  if (!state) {
+    loadEditPlaylistTracks({ force: true, manual: true, reason: 'manual-refresh' }).catch(() => {});
+    return;
+  }
+
+  const wasDirty = isEditPlaylistDirty();
+  if (wasDirty) {
+    /* Återställ workingOrder till original-URI-ordningen. pendingRemovals och selection
+     * nollställs helt — användaren "ångrar" allt hen gjort sedan senaste hämtning. */
+    state.workingOrder = state.original.map((r) => r.uri);
+    state.pendingRemovals = new Set();
+    state.selection = new Set();
+    renderEditPlaylistTracks();
+    renderEditPlaylistHeader();
+    updateEditPlaylistDirtyUi();
+    updateEditPlaylistBulkBar();
+    initEditPlaylistSortable();
+  }
+
+  const ageMs = Math.max(0, Date.now() - state.at);
+  if (ageMs < EDIT_PLAYLIST_REFRESH_COOLDOWN_MS) {
+    const ageMin = Math.floor(ageMs / 60_000);
+    const rel = ageMs < 60_000 ? 'nu' : `för ${ageMin} min sedan`;
+    const msg = wasDirty
+      ? `Ändringar ångrade. Listan hämtades ${rel}.`
+      : `Listan hämtades ${rel}.`;
+    showToast(msg);
+    logSpotify({
+      t: new Date().toISOString(),
+      kind: 'ui',
+      phase: 'refreshEditPlaylist',
+      reason: 'manual-refresh',
+      skipped: 'cooldown',
+      ageMs,
+      wasDirty,
+      manual: true,
+    });
+    return;
+  }
+
+  loadEditPlaylistTracks({ force: true, manual: true, reason: 'manual-refresh' }).catch(() => {});
+}
+
 /* --------------------------------------------------------------------------
  * Wire + step-enter/exit-hooks.
  * -------------------------------------------------------------------------- */
@@ -3332,7 +3392,7 @@ function wireEditPlaylist() {
   const refresh = document.getElementById('edit-playlist-refresh');
   if (refresh) {
     refresh.addEventListener('click', () => {
-      loadEditPlaylistTracks({ force: true, manual: true, reason: 'manual-refresh' }).catch(() => {});
+      handleEditPlaylistRefreshClick();
     });
   }
   const deleteBtn = document.getElementById('btn-edit-playlist-delete');

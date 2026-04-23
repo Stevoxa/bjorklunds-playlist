@@ -61,6 +61,14 @@ export const PLAYLIST_TRACKS_CACHE_TTL_MS = 15 * 60 * 1000;
 export const PLAYLIST_TRACKS_STALE_IF_ERROR_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
+ * Cooldown mellan manuella "Hämta"-klick i Redigera playlist. Knappen agerar primärt som
+ * ångra-knapp (återställer lokala ändringar till Spotifys ursprungliga ordning); när inga
+ * ändringar finns skulle upprepade klick annars avfyra onödiga API-anrop. Under cooldown
+ * skippar vi nätverksanropet och visar en toast om när listan senast hämtades.
+ */
+export const EDIT_PLAYLIST_REFRESH_COOLDOWN_MS = 5 * 60 * 1000;
+
+/**
  * Säkerhetsventil: avbryt track-paginering efter så här många sidor (100 per sida).
  * 40 × 100 = 4000 spår. Skyddar mot worst-case-spellistor.
  */

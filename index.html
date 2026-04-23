@@ -844,7 +844,7 @@
                   <div class="flow-card__titles">
                     <h2 class="flow-card__title flow-card__title--hero-step" id="flow-step-edit-playlist-title">Redigera playlist</h2>
                     <p class="flow-card__subtitle">
-                      Vald spellista: <span id="edit-playlist-selected-name">–</span>
+                      <span id="edit-playlist-selected-name">–</span>
                     </p>
                   </div>
                 </div>
@@ -864,12 +864,6 @@
                 </div>
 
                 <div class="edit-playlist-action-row" id="edit-playlist-status-row">
-                  <button type="button" class="btn btn--with-icon edit-playlist-action-row__refresh" id="edit-playlist-refresh">
-                    <span class="btn__icon-wrap" aria-hidden="true">
-                      <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
-                    </span>
-                    <span>Hämta om<span class="compact-extra"> listan</span></span>
-                  </button>
                   <button
                     type="button"
                     class="btn btn--with-icon btn--danger edit-playlist-action-row__delete"
@@ -880,6 +874,12 @@
                       <svg class="btn__icon" width="16" height="16"><use href="#sym-trash" /></svg>
                     </span>
                     <span>Ta bort spellistan</span>
+                  </button>
+                  <button type="button" class="btn btn--with-icon edit-playlist-action-row__refresh" id="edit-playlist-refresh">
+                    <span class="btn__icon-wrap" aria-hidden="true">
+                      <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
+                    </span>
+                    <span>Hämta<span class="compact-extra"> om listan</span></span>
                   </button>
                 </div>
                 <p class="help help--warning" id="edit-playlist-truncated-warning" hidden>
