@@ -455,11 +455,20 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
 
 .select-playlist-filter .input {
   width: 100%;
+  /* Håll ihop sökfältet med hjälptexten under — standardmarginal på .input
+   * skapade ett onödigt stort glapp till "Filtret matchar namn ..."-hjälpen. */
+  margin-bottom: 0;
+}
+
+.select-playlist-filter #select-playlist-filter-help {
+  margin-top: 0;
 }
 
 .select-playlist-filter-toggle {
   display: inline-flex;
-  align-items: center;
+  /* Toppjustera rutan mot första textraden så den inte hamnar mitt i
+   * tvåradig text vid radbrytning på smala skärmar. */
+  align-items: flex-start;
   gap: 0.45rem;
   margin: 0.25rem 0 0;
   font-size: 0.9rem;
@@ -471,6 +480,8 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
 .select-playlist-filter-toggle input[type='checkbox'] {
   margin: 0;
   flex: 0 0 auto;
+  /* Fin-justera lodrätt så bocken linjerar mot texten, inte mot dess baseline. */
+  margin-top: 0.18em;
 }
 
 .select-playlist-filter-toggle .code-inline {
@@ -491,6 +502,25 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   font-size: 0.85rem;
   text-align: right;
   min-width: 0;
+}
+
+/* På små skärmar: full-bredds-knapp som följer mönstret från övriga
+ * Spotify-åtgärdsknappar i appen. "Uppdaterad …"-texten hamnar då
+ * under knappen och är vänsterställd i stället för höger. */
+@media (max-width: 640px) {
+  .select-playlist-status-row {
+    align-items: stretch;
+  }
+
+  .select-playlist-refresh {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .select-playlist-updated {
+    text-align: left;
+    width: 100%;
+  }
 }
 
 .select-playlist-spinner {

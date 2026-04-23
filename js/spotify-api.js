@@ -637,9 +637,24 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       while (true) {
         signal?.throwIfAborted();
         const path = `/me/playlists?limit=${page}&offset=${offset}`;
+        const reqStartedAt = new Date().toISOString();
         const res = await getWith401Retry(path, 0, signal);
         const bodyText = await res.text();
-        if (!res.ok) throw new Error(formatSpotifyApiError(res.status, bodyText));
+        if (!res.ok) {
+          logSpotify({
+            t: new Date().toISOString(),
+            kind: 'http',
+            endpoint: 'GET /v1/me/playlists',
+            phase,
+            offset,
+            limit: page,
+            source: 'network',
+            httpStatus: res.status,
+            ok: false,
+            reqStartedAt,
+          });
+          throw new Error(formatSpotifyApiError(res.status, bodyText));
+        }
         let data;
         try {
           data = bodyText ? JSON.parse(bodyText) : {};
@@ -650,6 +665,21 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         for (const item of items) {
           if (item && typeof item.id === 'string') rawItems.push(item);
         }
+        logSpotify({
+          t: new Date().toISOString(),
+          kind: 'http',
+          endpoint: 'GET /v1/me/playlists',
+          phase,
+          offset,
+          limit: page,
+          source: 'network',
+          httpStatus: res.status,
+          ok: true,
+          itemsReturned: items.length,
+          total: typeof data.total === 'number' ? data.total : null,
+          hasNext: typeof data.next === 'string',
+          reqStartedAt,
+        });
         pagesFetched += 1;
         if (items.length < page) break;
         if (pagesFetched >= PLAYLIST_LIST_MAX_PAGES) {
