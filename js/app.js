@@ -2190,7 +2190,7 @@ function enterSelectPlaylistStep() {
 }
 
 /* --------------------------------------------------------------------------
- * Redigera playlist — state, render, DnD, bulk, radera och Genomför-på-Spotify.
+ * Redigera playlist — state, render, DnD, bulk, ta bort och Genomför-på-Spotify.
  * Hålls nära select-playlist-mönstret: in-memory + IDB-cache, single-flight,
  * stale-if-error. Genomför körs med egen pacing och 429-retry via api-wrappern.
  * -------------------------------------------------------------------------- */
@@ -2407,15 +2407,16 @@ function renderEditPlaylistHeader() {
   if (deleteBtn) {
     deleteBtn.hidden = false;
     /** Knappen agerar olika beroende på ägarskap: för ägarens egen spellista är det en destruktiv
-     *  "radera"-åtgärd (röd), för följda spellistor är det en icke-destruktiv "sluta följa" (neutral).
-     *  Spotifys API-anrop är samma (DELETE /playlists/{id}/followers) — det är Spotifys egen semantik
-     *  som avgör om följaren unfollowar eller ägaren faktiskt tar bort listan. */
+     *  åtgärd (röd), för följda spellistor är det en icke-destruktiv "ta bort från biblioteket"
+     *  (neutral). Spotify har ingen "delete playlist"-endpoint alls — båda fallen anropar samma
+     *  DELETE /playlists/{id}/followers (unfollow). Spotify bevarar listan internt så länge någon
+     *  annan följer den. Därför använder vi "Ta bort" i UI:t i stället för "Radera". */
     const isOwner = isEditPlaylistOwnedByUser();
     const labelEl = deleteBtn.querySelector('span:not(.btn__icon-wrap)');
     if (isOwner) {
       deleteBtn.classList.add('btn--danger');
-      deleteBtn.title = 'Radera spellistan';
-      if (labelEl) labelEl.textContent = 'Radera spellistan';
+      deleteBtn.title = 'Ta bort spellistan';
+      if (labelEl) labelEl.textContent = 'Ta bort spellistan';
     } else {
       deleteBtn.classList.remove('btn--danger');
       deleteBtn.title = 'Ta bort från biblioteket';
@@ -2429,7 +2430,7 @@ function renderEditPlaylistHeader() {
  * Vi läser i första hand ownerId från state.meta (färskast, från /playlists/{id}) och faller
  * tillbaka till selectedEditPlaylist.ownerId (satt när användaren klickade raden i Välj playlist).
  * Vid helt okänt ägarskap eller okänt uid returnerar vi false — det är säkrare att visa den
- * neutrala "Ta bort från biblioteket"-etiketten än den destruktiva "Radera" för en följd lista.
+ * neutrala "Ta bort från biblioteket"-etiketten än den destruktiva ägarvarianten.
  */
 function isEditPlaylistOwnedByUser() {
   const ownerId =
@@ -3189,7 +3190,11 @@ async function commitEditPlaylistChanges() {
 }
 
 /* --------------------------------------------------------------------------
- * Radera spellistan — bekräftelse-dialog + API-anrop + cache-invalidering.
+ * Ta bort spellistan — bekräftelse-dialog + API-anrop + cache-invalidering.
+ * Tekniskt: Spotify har ingen "delete playlist"-endpoint; DELETE /playlists/{id}/followers
+ * (unfollow) är det enda vi kan göra. Se Spotifys egen doc under "Following and Unfollowing
+ * a Playlist" — även ägare "raderar" sin spellista genom att unfollowa den, vilket är därför
+ * vi använder ordet "Ta bort" i UI:t.
  * -------------------------------------------------------------------------- */
 async function deleteEditPlaylistFlow() {
   const state = editPlaylistState;
