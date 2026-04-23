@@ -676,7 +676,7 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
  * stor tryck-yta på mobil utan att stjäla plats för text. */
 .edit-playlist-header {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   gap: 0.9rem;
   align-items: center;
   margin-bottom: var(--space-sm);
@@ -725,7 +725,8 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
 }
 
 .edit-playlist-header__owner,
-.edit-playlist-header__total {
+.edit-playlist-header__total,
+.edit-playlist-header__updated {
   margin: 0;
   font-size: 0.9rem;
   color: var(--text-muted);
@@ -734,36 +735,28 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   text-overflow: ellipsis;
 }
 
-.edit-playlist-header__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.edit-playlist-header__updated[hidden] {
+  display: none;
 }
 
-@media (max-width: 640px) {
-  .edit-playlist-header {
-    grid-template-columns: auto 1fr;
-    /* "Radera spellistan" ska ligga ovanför metadatablocket på mobil — agentens
-     * tidigare ordning hade knappen under, men user prefererar att se den
-     * ägarhandlingen direkt när man öppnar vyn. */
-    grid-template-areas:
-      'actions actions'
-      'art meta';
-    row-gap: 0.6rem;
-  }
-  .edit-playlist-header__art {
-    grid-area: art;
-  }
-  .edit-playlist-header__meta {
-    grid-area: meta;
-  }
-  .edit-playlist-header__actions {
-    grid-area: actions;
-  }
-  .edit-playlist-header__actions .btn {
-    width: 100%;
-    justify-content: center;
-  }
+/* Action-rad under headern: Hämta om listan (vänster) + Ta bort spellistan (höger).
+ * Både desktop och mobil använder samma layout — flex med auto-width-knappar där
+ * delete pushas åt höger via margin-left. När refresh döljs i read-only läge
+ * står delete kvar längst till höger tack vare samma regel. */
+.edit-playlist-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.edit-playlist-action-row[hidden] {
+  display: none;
+}
+
+.edit-playlist-action-row__delete {
+  margin-left: auto;
 }
 
 .edit-playlist-dirty-block {

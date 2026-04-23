@@ -2303,9 +2303,13 @@ function setEditPlaylistBlocked(blocked) {
  * @param {boolean} readOnly
  */
 function setEditPlaylistReadOnly(readOnly) {
+  /* Obs: hela action-raden (#edit-playlist-status-row) får INTE döljas — den rymmer
+   * delete-knappen som ska vara synlig även i read-only läget. Vi döljer bara
+   * Hämta om-knappen och "Uppdaterad för X sedan"-texten. */
   const hideInReadOnly = [
     'edit-playlist-total-row',
-    'edit-playlist-status-row',
+    'edit-playlist-refresh',
+    'edit-playlist-updated',
     'edit-playlist-truncated-warning',
     'edit-playlist-spinner',
     'edit-playlist-empty',
@@ -2317,7 +2321,7 @@ function setEditPlaylistReadOnly(readOnly) {
   ];
   const restoreWhenEditable = [
     'edit-playlist-total-row',
-    'edit-playlist-status-row',
+    'edit-playlist-refresh',
     'edit-playlist-list',
     'btn-edit-playlist-apply',
   ];

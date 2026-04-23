@@ -859,30 +859,28 @@
                   <div class="edit-playlist-header__meta">
                     <p class="edit-playlist-header__owner">Ägare: <span id="edit-playlist-owner">–</span></p>
                     <p class="edit-playlist-header__total" id="edit-playlist-total-row"><span id="edit-playlist-total">–</span> spår</p>
-                  </div>
-                  <div class="edit-playlist-header__actions">
-                    <button
-                      type="button"
-                      class="btn btn--with-icon btn--danger"
-                      id="btn-edit-playlist-delete"
-                      title="Ta bort spellistan"
-                    >
-                      <span class="btn__icon-wrap" aria-hidden="true">
-                        <svg class="btn__icon" width="16" height="16"><use href="#sym-trash" /></svg>
-                      </span>
-                      <span>Ta bort spellistan</span>
-                    </button>
+                    <p class="edit-playlist-header__updated" id="edit-playlist-updated" aria-live="polite" hidden></p>
                   </div>
                 </div>
 
-                <div class="select-playlist-status-row" id="edit-playlist-status-row">
-                  <button type="button" class="btn btn--with-icon select-playlist-refresh" id="edit-playlist-refresh">
+                <div class="edit-playlist-action-row" id="edit-playlist-status-row">
+                  <button type="button" class="btn btn--with-icon edit-playlist-action-row__refresh" id="edit-playlist-refresh">
                     <span class="btn__icon-wrap" aria-hidden="true">
                       <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
                     </span>
-                    <span>Hämta om listan</span>
+                    <span>Hämta om<span class="compact-extra"> listan</span></span>
                   </button>
-                  <p class="help select-playlist-updated" id="edit-playlist-updated" aria-live="polite" hidden></p>
+                  <button
+                    type="button"
+                    class="btn btn--with-icon btn--danger edit-playlist-action-row__delete"
+                    id="btn-edit-playlist-delete"
+                    title="Ta bort spellistan"
+                  >
+                    <span class="btn__icon-wrap" aria-hidden="true">
+                      <svg class="btn__icon" width="16" height="16"><use href="#sym-trash" /></svg>
+                    </span>
+                    <span>Ta bort spellistan</span>
+                  </button>
                 </div>
                 <p class="help help--warning" id="edit-playlist-truncated-warning" hidden>
                   Spellistan är ovanligt stor. Appen visar de första 4000 spåren.
