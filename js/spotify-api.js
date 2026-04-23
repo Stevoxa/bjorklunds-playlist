@@ -883,7 +883,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       const { rawItems, truncated, userId } = await fetchAllMePlaylistPages(signal, {
         phase: 'listMyPlaylistsAll',
       });
-      /** @type {Map<string, { id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null }>} */
+      /** @type {Map<string, { id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null, collaborative: boolean }>} */
       const byId = new Map();
       for (const item of rawItems) {
         if (!item || typeof item.id !== 'string') continue;
@@ -902,6 +902,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
           ownerId,
           ownerName: ownerDisplay,
           imageUrl,
+          collaborative: Boolean(item.collaborative),
         });
       }
       const out = [...byId.values()];

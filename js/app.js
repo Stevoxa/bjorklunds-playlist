@@ -1742,7 +1742,7 @@ let selectPlaylistShowPrefixedOnly = false;
 let selectPlaylistFilterDebounce = null;
 
 /** Persisterat val av spellista för redigering (överlever reload i samma session). */
-/** @type {{ id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null } | null} */
+/** @type {{ id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null, collaborative: boolean } | null} */
 let selectedEditPlaylist = null;
 
 const SELECT_PLAYLIST_EDIT_STORAGE_KEY = 'bjorklund-edit-playlist';
@@ -1759,6 +1759,7 @@ function readStoredSelectedEditPlaylist() {
       ownerId: typeof o.ownerId === 'string' ? o.ownerId : '',
       ownerName: typeof o.ownerName === 'string' ? o.ownerName : '',
       imageUrl: typeof o.imageUrl === 'string' ? o.imageUrl : null,
+      collaborative: Boolean(o.collaborative),
     };
   } catch {
     return null;
@@ -1966,6 +1967,7 @@ function handleSelectPlaylistRowClick(row) {
     ownerId: row.ownerId,
     ownerName: row.ownerName,
     imageUrl: row.imageUrl,
+    collaborative: Boolean(row.collaborative),
   };
   writeStoredSelectedEditPlaylist(selectedEditPlaylist);
   setFlowStep('edit-playlist', { focusPanel: true });
@@ -2342,12 +2344,15 @@ function setEditPlaylistReadOnly(readOnly) {
 }
 
 /**
- * Returnerar true om vi vet upfront att användaren inte äger spellistan, dvs vi kan
- * hoppa över både getPlaylistMeta och getPlaylistTracksAll. Ownership bestäms från
- * selectedEditPlaylist.ownerId (satt när raden klickades i Välj playlist) jämfört med
- * inloggad users id. Om någon del är okänd returnerar vi false (då kör vi normalt flöde).
+ * Returnerar true om vi vet upfront att användaren INTE kan redigera spellistan — dvs vi kan
+ * hoppa över både getPlaylistMeta och getPlaylistTracksAll. Editerbar = ägare ELLER
+ * collaborative (då får även icke-ägare ändra spåren). Allt annat är read-only.
+ * Båda fälten sätts när raden klickades i Välj playlist (via handleSelectPlaylistRowClick).
+ * Om någon del är okänd returnerar vi false — då kör vi normalt flöde och gör en post-check
+ * efter getPlaylistMeta.
  */
 function isEditPlaylistReadOnlyUpfront() {
+  if (selectedEditPlaylist?.collaborative) return false;
   const ownerId = selectedEditPlaylist?.ownerId;
   if (!ownerId) return false;
   const uid =
@@ -2840,11 +2845,14 @@ async function loadEditPlaylistTracks(opts = {}) {
         (typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null) ??
         '';
 
-      /* Post-check ägarskap: om upfront-checken inte kunde avgöra (ownerId saknades i
-       * selectedEditPlaylist eller uid var inte cachad) men meta avslöjar att vi inte äger
-       * listan, växla till read-only här. Spara ownerId i selectedEditPlaylist så nästa
+      /* Post-check editerbarhet: editerbar = ägare ELLER collaborative. Om upfront-checken
+       * inte kunde avgöra (ownerId/collaborative saknades i selectedEditPlaylist eller uid var
+       * inte cachad) men meta avslöjar att vi varken äger listan eller är collaborator, växla
+       * till read-only här. Spara ownerId + collaborative i selectedEditPlaylist så nästa
        * besök hoppar över nätverksanropen helt via isEditPlaylistReadOnlyUpfront(). */
-      if (meta.ownerId && uid && String(meta.ownerId) !== String(uid)) {
+      const isOwner = Boolean(meta.ownerId) && Boolean(uid) && String(meta.ownerId) === String(uid);
+      const isCollaborative = Boolean(meta.collaborative);
+      if (meta.ownerId && uid && !isOwner && !isCollaborative) {
         if (selectedEditPlaylist && selectedEditPlaylist.id === playlistId) {
           selectedEditPlaylist = {
             id: playlistId,
@@ -2852,6 +2860,7 @@ async function loadEditPlaylistTracks(opts = {}) {
             ownerId: meta.ownerId,
             ownerName: meta.ownerName || selectedEditPlaylist.ownerName,
             imageUrl: meta.imageUrl ?? selectedEditPlaylist.imageUrl,
+            collaborative: false,
           };
           writeStoredSelectedEditPlaylist(selectedEditPlaylist);
         }
@@ -2899,7 +2908,8 @@ async function loadEditPlaylistTracks(opts = {}) {
           total: meta.total,
         });
       }
-      /* Håll selectedEditPlaylist uppdaterad med senaste imageUrl/ownerName från meta. */
+      /* Håll selectedEditPlaylist uppdaterad med senaste imageUrl/ownerName/collaborative
+       * från meta så upfront-checken vid nästa besök blir korrekt. */
       if (selectedEditPlaylist && selectedEditPlaylist.id === playlistId) {
         selectedEditPlaylist = {
           id: playlistId,
@@ -2907,6 +2917,7 @@ async function loadEditPlaylistTracks(opts = {}) {
           ownerId: meta.ownerId || selectedEditPlaylist.ownerId || '',
           ownerName: meta.ownerName || selectedEditPlaylist.ownerName,
           imageUrl: meta.imageUrl ?? selectedEditPlaylist.imageUrl,
+          collaborative: Boolean(meta.collaborative),
         };
         writeStoredSelectedEditPlaylist(selectedEditPlaylist);
       }

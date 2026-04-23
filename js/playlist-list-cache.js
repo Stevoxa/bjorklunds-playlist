@@ -11,14 +11,16 @@
  * Innehåller endast id + name (+ ägar/bild-metadata i "all"-varianten) — ingen access token,
  * inget personligt innehåll utöver vad användaren själv ser i sin egen Spotify.
  *
- * Format (v: 2):
- *   { v: 2, userId, kind: 'by-prefix' | 'all', prefix, at, truncated, list }
- * Äldre v:1-poster returneras som null (implicit invalidering — användaren laddar om).
+ * Format (v: 3):
+ *   { v: 3, userId, kind: 'by-prefix' | 'all', prefix, at, truncated, list }
+ * "all"-listan innehåller även `collaborative` per post i v:3 så att editerbarhet kan
+ * avgöras upfront utan ytterligare API-anrop. Äldre poster (v:1, v:2) returneras som
+ * null (implicit invalidering — användaren laddar om).
  */
 import { APP_STORAGE_ID } from './config.js';
 import { idbGet, idbPut, idbDelete } from './db.js';
 
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 /** @param {string} userId */
 function keyForByPrefix(userId) {
@@ -32,7 +34,7 @@ function keyForAll(userId) {
 
 /**
  * @param {string} userId
- * @returns {Promise<{ v: 2, userId: string, kind: 'by-prefix', prefix: string, at: number, truncated: boolean, list: { id: string, name: string }[] } | null>}
+ * @returns {Promise<{ v: 3, userId: string, kind: 'by-prefix', prefix: string, at: number, truncated: boolean, list: { id: string, name: string }[] } | null>}
  */
 export async function readPlaylistListCache(userId) {
   if (!userId) return null;
@@ -97,7 +99,7 @@ export async function deletePlaylistListCache(userId) {
 
 /**
  * @param {string} userId
- * @returns {Promise<{ v: 2, userId: string, kind: 'all', at: number, truncated: boolean, list: { id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null }[] } | null>}
+ * @returns {Promise<{ v: 3, userId: string, kind: 'all', at: number, truncated: boolean, list: { id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null, collaborative: boolean }[] } | null>}
  */
 export async function readAllPlaylistsCache(userId) {
   if (!userId) return null;
@@ -118,6 +120,7 @@ export async function readAllPlaylistsCache(userId) {
         ownerId: typeof x.ownerId === 'string' ? x.ownerId : '',
         ownerName: typeof x.ownerName === 'string' ? x.ownerName : '',
         imageUrl: typeof x.imageUrl === 'string' ? x.imageUrl : null,
+        collaborative: Boolean(x.collaborative),
       }));
     return {
       v: CACHE_VERSION,
@@ -134,7 +137,7 @@ export async function readAllPlaylistsCache(userId) {
 
 /**
  * @param {string} userId
- * @param {{ id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null }[]} list
+ * @param {{ id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null, collaborative?: boolean }[]} list
  * @param {boolean} truncated
  */
 export async function writeAllPlaylistsCache(userId, list, truncated) {
@@ -152,6 +155,7 @@ export async function writeAllPlaylistsCache(userId, list, truncated) {
         ownerId: x.ownerId ?? '',
         ownerName: x.ownerName ?? '',
         imageUrl: x.imageUrl ?? null,
+        collaborative: Boolean(x.collaborative),
       })),
     });
   } catch {
