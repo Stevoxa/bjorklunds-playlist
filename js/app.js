@@ -2253,8 +2253,19 @@ function renderEditPlaylistHeader() {
   const totalEl = document.getElementById('edit-playlist-total');
   if (totalEl) {
     if (state) {
-      const kept = state.workingOrder.filter((u) => !state.pendingRemovals.has(u)).length;
-      totalEl.textContent = `${kept}${state.pendingRemovals.size ? ` (av ${state.workingOrder.length})` : ''}`;
+      /** `totalOnSpotify` ska vara stabilt = det antal som faktiskt finns i Spotifys spellista
+       *  just nu (= state.original.length). Det ändras först när Genomför har körts och vi
+       *  skrivit om state.original. `kept` är vad som kommer att finnas kvar när användaren
+       *  trycker Genomför — alltså workingOrder.length, vilken alltid är filtrerad för
+       *  pendingRemovals (redan hanterat av bulk-remove-handlern).
+       *
+       *  Visningsmönster (matchar Spotifys "X av Y"):
+       *    Inga lokala ändringar: "14"
+       *    Pending borttagningar: "13 av 14"
+       */
+      const totalOnSpotify = state.original.length;
+      const kept = state.workingOrder.length;
+      totalEl.textContent = kept === totalOnSpotify ? String(totalOnSpotify) : `${kept} av ${totalOnSpotify}`;
     } else {
       totalEl.textContent = meta?.total != null ? String(meta.total) : '–';
     }
