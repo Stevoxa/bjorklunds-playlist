@@ -1408,13 +1408,17 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
 
     /**
      * Tar bort spår från en spellista — `DELETE /playlists/{id}/items` (migrerad från deprecerade
-     * `/tracks`) med batch av upp till `EDIT_REMOVE_BATCH_SIZE` poster. Vi skickar per-positions-
-     * formatet (`{ uri, positions: [...] }`) så att dubbletter kan riktas exakt (Spotify kräver
-     * detta när samma uri ligger flera gånger). Body-nyckeln heter fortfarande `tracks` i den nya
-     * endpointen (Spotify höll kvar body-schemat för bakåtkompatibilitet).
+     * `/tracks`). Nya endpointen kräver body-nyckeln `items` (inte `tracks`) och accepterar bara
+     * `{ uri }` per post — `positions` ignoreras numera av Spotify (känd issue) så vi skickar inte
+     * det. Konsekvens: om samma URI ligger flera gånger i listan tas alla instanser bort, vilket
+     * i praktiken är det vi vill (vår pendingRemovals är URI-indexerad och kan inte särskilja
+     * dubbletter ändå).
+     *
+     * Vi deduplicerar URIs inom batchen för säkerhets skull.
      * Returnerar nytt `snapshot_id` som används för nästa mutation.
      * @param {string} playlistId
-     * @param {{ uri: string, positions: number[] }[]} uriPositions Max 100 poster per anrop (Spotify).
+     * @param {{ uri: string, positions?: number[] }[]} uriPositions Max 100 poster per anrop.
+     *   `positions`-fältet bevaras i signaturen för bakåtkompat men skickas inte till Spotify.
      * @param {string} [snapshotId]
      * @param {{ signal?: AbortSignal }} [opts]
      * @returns {Promise<{ snapshotId: string }>}
@@ -1425,17 +1429,25 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         throw new Error('removePlaylistTracksBatch: tom batch');
       }
       const path = `/playlists/${encodeURIComponent(playlistId)}/items`;
-      const tracks = uriPositions.map((x) => ({
-        uri: String(x.uri),
-        positions: Array.isArray(x.positions) ? x.positions.map((n) => Number(n)) : [],
-      }));
+      /** Dedup: samma URI ska bara skickas en gång i samma batch (positions ignoreras ändå). */
+      const seen = new Set();
+      const items = [];
+      for (const x of uriPositions) {
+        const uri = String(x?.uri ?? '');
+        if (!uri || seen.has(uri)) continue;
+        seen.add(uri);
+        items.push({ uri });
+      }
+      if (items.length === 0) {
+        throw new Error('removePlaylistTracksBatch: inga giltiga URIs efter dedup');
+      }
       /** @type {Record<string, unknown>} */
-      const body = { tracks };
+      const body = { items };
       if (snapshotId) body.snapshot_id = snapshotId;
       const requestMeta = {
         playlistId,
-        uriCount: tracks.length,
-        uriSample: tracks.slice(0, 8).map((x) => x.uri),
+        uriCount: items.length,
+        uriSample: items.slice(0, 8).map((x) => x.uri),
         hasSnapshot: Boolean(snapshotId),
       };
       const res = await mutateWith401AndRetryOn429(
