@@ -2245,6 +2245,30 @@ function updateEditPlaylistTruncatedWarning(truncated) {
   if (el) el.hidden = !truncated;
 }
 
+/**
+ * Visa/dölj "den här listan kan inte läsas av tredjepartsappar"-banner.
+ * När blocked=true döljer vi också spinner/bulk-bar/spår så UI inte luras inte ser
+ * ut som en tom lista utan förklaring.
+ */
+function setEditPlaylistBlocked(blocked) {
+  const banner = document.getElementById('edit-playlist-blocked');
+  if (banner) banner.hidden = !blocked;
+  if (blocked) {
+    setEditPlaylistSpinnerVisible(false);
+    const empty = document.getElementById('edit-playlist-empty');
+    if (empty) empty.hidden = true;
+    const list = document.getElementById('edit-playlist-list');
+    if (list) list.hidden = true;
+    const bulk = document.getElementById('edit-playlist-bulk-bar');
+    if (bulk) bulk.hidden = true;
+    const deleteBtn = document.getElementById('btn-edit-playlist-delete');
+    if (deleteBtn) deleteBtn.hidden = true;
+  } else {
+    const list = document.getElementById('edit-playlist-list');
+    if (list) list.hidden = false;
+  }
+}
+
 function renderEditPlaylistHeader() {
   const state = editPlaylistState;
   const meta = state?.meta;
@@ -2741,6 +2765,15 @@ async function loadEditPlaylistTracks(opts = {}) {
       }
     } catch (e) {
       if (signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return;
+      /** Spotifys 403 på /playlists/{id}/items = algoritmisk/editorial spellista som tredjepartsappar
+       *  inte längre får läsa (Nov 2024-policyn). Vi visar en dedikerad banner i stället för bara
+       *  en röd toast så användaren förstår att felet är permanent för listan. */
+      const msg = String(e?.message ?? e);
+      const isForbidden = /\b403\b/.test(msg) || /Forbidden/i.test(msg);
+      if (isForbidden) {
+        setEditPlaylistBlocked(true);
+        return;
+      }
       const fellBack = Boolean(editPlaylistState?.playlistId === playlistId);
       if (fellBack) {
         const ageMs = Date.now() - editPlaylistState.at;
@@ -2750,7 +2783,7 @@ async function loadEditPlaylistTracks(opts = {}) {
         showToast(
           fellBack
             ? 'Kunde inte uppdatera spåren just nu — visar senast kända lista.'
-            : String(e?.message ?? e),
+            : msg,
           true,
         );
       }
@@ -3165,6 +3198,12 @@ function wireEditPlaylist() {
       }
     });
   }
+  const blockedBackBtn = document.getElementById('btn-edit-playlist-blocked-back');
+  if (blockedBackBtn) {
+    blockedBackBtn.addEventListener('click', () => {
+      setFlowStep('select-playlist', { focusPanel: false });
+    });
+  }
 }
 
 function exitEditPlaylistStep() {
@@ -3205,6 +3244,8 @@ function enterEditPlaylistStep() {
     updateEditPlaylistBulkBar();
     setEditPlaylistSpinnerVisible(true);
   }
+  /* Nollställ ev. "blocked"-banner från en tidigare spellista. */
+  setEditPlaylistBlocked(false);
   loadEditPlaylistTracks({ reason: 'step-enter', quiet: true }).catch(() => {
     /* Toast hanteras internt. */
   });

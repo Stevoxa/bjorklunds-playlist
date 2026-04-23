@@ -887,6 +887,19 @@
                 <p class="help help--warning" id="edit-playlist-truncated-warning" hidden>
                   Spellistan är ovanligt stor. Appen visar de första 4000 spåren.
                 </p>
+                <div class="help help--warning edit-playlist-blocked" id="edit-playlist-blocked" hidden>
+                  <p><strong>Spotify tillåter inte att den här spellistan läses av tredjepartsappar.</strong></p>
+                  <p>
+                    Det gäller bland annat Spotifys egna algoritmiska listor (Daily Mix, Discover Weekly,
+                    Release Radar, Din mix m.fl.) och vissa redaktionella spellistor. Innehållet kan inte
+                    hämtas eller redigeras härifrån — du får öppna dem direkt i Spotify-appen.
+                  </p>
+                  <p>
+                    <button type="button" class="btn btn--secondary" id="btn-edit-playlist-blocked-back">
+                      <span>Välj en annan spellista</span>
+                    </button>
+                  </p>
+                </div>
 
                 <div class="select-playlist-spinner" id="edit-playlist-spinner" role="status" aria-live="polite" hidden>
                   <span class="select-playlist-spinner__dot" aria-hidden="true"></span>

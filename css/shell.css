@@ -810,6 +810,20 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   gap: 0.35rem;
 }
 
+.edit-playlist-blocked {
+  display: block;
+  margin-top: 0.75rem;
+}
+
+.edit-playlist-blocked p {
+  margin: 0 0 0.5rem;
+}
+
+.edit-playlist-blocked p:last-child {
+  margin-bottom: 0;
+  margin-top: 0.75rem;
+}
+
 .edit-playlist-list:empty {
   display: none;
 }
