@@ -1742,7 +1742,7 @@ let selectPlaylistShowPrefixedOnly = false;
 let selectPlaylistFilterDebounce = null;
 
 /** Persisterat val av spellista för redigering (överlever reload i samma session). */
-/** @type {{ id: string, name: string, ownerName: string, imageUrl: string | null } | null} */
+/** @type {{ id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null } | null} */
 let selectedEditPlaylist = null;
 
 const SELECT_PLAYLIST_EDIT_STORAGE_KEY = 'bjorklund-edit-playlist';
@@ -1756,6 +1756,7 @@ function readStoredSelectedEditPlaylist() {
     return {
       id: o.id,
       name: o.name,
+      ownerId: typeof o.ownerId === 'string' ? o.ownerId : '',
       ownerName: typeof o.ownerName === 'string' ? o.ownerName : '',
       imageUrl: typeof o.imageUrl === 'string' ? o.imageUrl : null,
     };
@@ -1931,6 +1932,7 @@ function handleSelectPlaylistRowClick(row) {
   selectedEditPlaylist = {
     id: row.id,
     name: row.name,
+    ownerId: row.ownerId,
     ownerName: row.ownerName,
     imageUrl: row.imageUrl,
   };
@@ -2308,16 +2310,20 @@ function renderEditPlaylistHeader() {
 
 /**
  * Returnerar true om inloggad användare är ägare till spellistan vi redigerar just nu.
- * Vid okänt ägarskap (t.ex. innan meta har hämtats) antar vi ägare=true — vi föredrar att
- * visa den destruktiva etiketten tills vi vet bättre så användaren inte luras klicka på
- * "Sluta följa" på sin egen lista.
+ * Vi läser i första hand ownerId från state.meta (färskast, från /playlists/{id}) och faller
+ * tillbaka till selectedEditPlaylist.ownerId (satt när användaren klickade raden i Välj playlist).
+ * Vid helt okänt ägarskap eller okänt uid returnerar vi false — det är säkrare att visa den
+ * neutrala "Ta bort från biblioteket"-etiketten än den destruktiva "Radera" för en följd lista.
  */
 function isEditPlaylistOwnedByUser() {
-  const ownerId = editPlaylistState?.meta?.ownerId;
-  if (!ownerId) return true;
+  const ownerId =
+    editPlaylistState?.meta?.ownerId ||
+    selectedEditPlaylist?.ownerId ||
+    '';
+  if (!ownerId) return false;
   const uid =
     typeof spotifyClient?.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null;
-  if (!uid) return true;
+  if (!uid) return false;
   return String(ownerId) === String(uid);
 }
 
@@ -2630,7 +2636,7 @@ async function loadEditPlaylistTracks(opts = {}) {
             id: playlistId,
             name: selectedEditPlaylist.name,
             description: '',
-            ownerId: '',
+            ownerId: selectedEditPlaylist.ownerId ?? '',
             ownerName: selectedEditPlaylist.ownerName ?? '',
             imageUrl: selectedEditPlaylist.imageUrl ?? null,
             snapshotId: persisted.snapshotId ?? '',
@@ -2717,6 +2723,7 @@ async function loadEditPlaylistTracks(opts = {}) {
         selectedEditPlaylist = {
           id: playlistId,
           name: meta.name || selectedEditPlaylist.name,
+          ownerId: meta.ownerId || selectedEditPlaylist.ownerId || '',
           ownerName: meta.ownerName || selectedEditPlaylist.ownerName,
           imageUrl: meta.imageUrl ?? selectedEditPlaylist.imageUrl,
         };
