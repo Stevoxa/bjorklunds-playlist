@@ -2722,8 +2722,20 @@ async function loadEditPlaylistTracks(opts = {}) {
   }
   const playlistId = selectedEditPlaylist.id;
 
-  const userIdKnown =
+  let userIdKnown =
     typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null;
+
+  /* Pre-flight: om vi vet ownerId men saknar uid (t.ex. sessionen har inte kallat /me än
+   * för att användaren hoppade in direkt i edit-vyn) — hämta /me så vi kan avgöra ägarskap
+   * upfront och slippa trasig UI-flicker. me-svaret cachas i klienten och återanvänds. */
+  if (!userIdKnown && selectedEditPlaylist.ownerId && typeof spotifyClient.me === 'function') {
+    try {
+      const me = await spotifyClient.me();
+      userIdKnown = me?.id ?? null;
+    } catch {
+      /* Om /me misslyckas fortsätter vi — post-check efter Promise.all fångar ägarskap. */
+    }
+  }
 
   /* Read-only-läge: äger användaren inte listan så slipper vi både getPlaylistMeta och
    * getPlaylistTracksAll (det senare ger ändå 403 för Spotifys algoritmiska listor).
@@ -2827,6 +2839,39 @@ async function loadEditPlaylistTracks(opts = {}) {
         userIdKnown ??
         (typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null) ??
         '';
+
+      /* Post-check ägarskap: om upfront-checken inte kunde avgöra (ownerId saknades i
+       * selectedEditPlaylist eller uid var inte cachad) men meta avslöjar att vi inte äger
+       * listan, växla till read-only här. Spara ownerId i selectedEditPlaylist så nästa
+       * besök hoppar över nätverksanropen helt via isEditPlaylistReadOnlyUpfront(). */
+      if (meta.ownerId && uid && String(meta.ownerId) !== String(uid)) {
+        if (selectedEditPlaylist && selectedEditPlaylist.id === playlistId) {
+          selectedEditPlaylist = {
+            id: playlistId,
+            name: meta.name || selectedEditPlaylist.name,
+            ownerId: meta.ownerId,
+            ownerName: meta.ownerName || selectedEditPlaylist.ownerName,
+            imageUrl: meta.imageUrl ?? selectedEditPlaylist.imageUrl,
+          };
+          writeStoredSelectedEditPlaylist(selectedEditPlaylist);
+        }
+        setEditPlaylistReadOnly(true);
+        setEditPlaylistBlocked(false);
+        renderEditPlaylistHeader();
+        logSpotify({
+          t: new Date().toISOString(),
+          kind: 'ui',
+          phase: 'refreshEditPlaylist',
+          reason: `edit-playlist/${reason}`,
+          playlistId,
+          readOnly: true,
+          detectedVia: 'post-meta',
+          manual,
+          force,
+        });
+        return;
+      }
+
       const nowAt = Date.now();
       /* Om användaren hunnit ändra lokalt (dirty) sparar vi workingOrder/pendingRemovals.
        * Annars skapar vi en helt ny state från färskt svar. */
