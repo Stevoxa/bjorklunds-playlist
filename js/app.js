@@ -2279,22 +2279,15 @@ function updateEditPlaylistTruncatedWarning(truncated) {
 }
 
 /**
- * Visa/dölj "den här listan kan inte läsas av tredjepartsappar"-banner.
- * När blocked=true applicerar vi även read-only-reglerna så alla redigerings-element
- * döljs konsekvent. Delete-knappen döljs också eftersom användaren inte kan göra
- * något meningsfullt här — hen får ta sig tillbaka via "Tillbaka"-navet.
+ * Visa/dölj "Spotify tillåter inte att den här spellistan läses av tredjepartsappar"-bannern.
+ * Den visas både för algoritmiska/editorial-listor (där /items ger 403) och för vanliga
+ * icke-ägda listor (där vi ändå inte kan hämta spåren i praktiken). Den hanterar ENDAST
+ * bannern — readonly-noten, delete-knappen och övriga element styrs av setEditPlaylistReadOnly.
+ * @param {boolean} blocked
  */
 function setEditPlaylistBlocked(blocked) {
   const banner = document.getElementById('edit-playlist-blocked');
   if (banner) banner.hidden = !blocked;
-  if (blocked) {
-    setEditPlaylistReadOnly(true);
-    const deleteBtn = document.getElementById('btn-edit-playlist-delete');
-    if (deleteBtn) deleteBtn.hidden = true;
-    /* readonly-noten handlar om "du äger inte listan" — felmeddelandet här är annorlunda. */
-    const note = document.getElementById('edit-playlist-readonly-note');
-    if (note) note.hidden = true;
-  }
 }
 
 /**
@@ -2749,7 +2742,10 @@ async function loadEditPlaylistTracks(opts = {}) {
    * som redan har namn, ägare och omslag. */
   if (isEditPlaylistReadOnlyUpfront()) {
     setEditPlaylistReadOnly(true);
-    setEditPlaylistBlocked(false);
+    /* Visa även bannern: för icke-ägda listor kan vi i praktiken inte läsa /items, så vi
+     * berättar det för användaren direkt. Delete-knappen ("Ta bort från biblioteket") ligger
+     * kvar synlig eftersom det är den enda meningsfulla åtgärden här. */
+    setEditPlaylistBlocked(true);
     renderEditPlaylistHeader();
     logSpotify({
       t: new Date().toISOString(),
@@ -2866,7 +2862,7 @@ async function loadEditPlaylistTracks(opts = {}) {
           writeStoredSelectedEditPlaylist(selectedEditPlaylist);
         }
         setEditPlaylistReadOnly(true);
-        setEditPlaylistBlocked(false);
+        setEditPlaylistBlocked(true);
         renderEditPlaylistHeader();
         logSpotify({
           t: new Date().toISOString(),
@@ -2940,6 +2936,7 @@ async function loadEditPlaylistTracks(opts = {}) {
       const msg = String(e?.message ?? e);
       const isForbidden = /\b403\b/.test(msg) || /Forbidden/i.test(msg);
       if (isForbidden) {
+        setEditPlaylistReadOnly(true);
         setEditPlaylistBlocked(true);
         return;
       }
