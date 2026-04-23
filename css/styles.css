@@ -333,6 +333,13 @@ body {
   text-align: center;
 }
 
+/* .btn sätter display:inline-flex, vilket slår ut default-regeln
+ * [hidden] { display:none }. Behövs bl.a. för att dölja "Genomför"-knappen
+ * i read-only-läget för Redigera playlist. */
+.btn[hidden] {
+  display: none;
+}
+
 .btn--with-icon {
   padding-inline: 1.1rem;
 }

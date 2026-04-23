@@ -497,6 +497,12 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   margin-bottom: var(--space-sm);
 }
 
+/* [hidden] måste explicit åsidosätta display:flex — används i read-only-läget
+ * i Redigera playlist för att dölja "Hämta om listan"-raden. */
+.select-playlist-status-row[hidden] {
+  display: none;
+}
+
 .select-playlist-updated {
   margin: 0;
   font-size: 0.85rem;
@@ -839,6 +845,13 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
 .edit-playlist-blocked {
   display: block;
   margin-top: 0.75rem;
+}
+
+/* [hidden] måste explicit åsidosätta display:block — annars syns bannern
+ * även innan setEditPlaylistBlocked(true) någonsin körts (HTML-attributet
+ * hidden vinner inte mot klassregeln ovan). */
+.edit-playlist-blocked[hidden] {
+  display: none;
 }
 
 .edit-playlist-blocked p {
