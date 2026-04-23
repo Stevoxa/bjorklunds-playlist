@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 /** Måste matcha APP_STORAGE_ID i js/config.js */
 const APP_STORAGE_ID = 'stevoxa-io-bjorklunds-playlist-pwa';
-const CACHE = `${APP_STORAGE_ID}-cache-v180`;
+const CACHE = `${APP_STORAGE_ID}-cache-v181`;
 const ASSETS = [
   './',
   './index.html',

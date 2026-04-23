@@ -335,7 +335,7 @@ const PLAYLIST_FETCH_INITIAL_GAP_MS = 450;
 const PLAYLIST_PAGE_GAP_MS = 750;
 const PLAYLIST_PAGE_JITTER_MS = 500;
 
-/** Paus mellan paginerade GET /playlists/{id}/tracks — samma policy som /me/playlists. */
+/** Paus mellan paginerade GET /playlists/{id}/items — samma policy som /me/playlists. */
 const PLAYLIST_TRACKS_FETCH_INITIAL_GAP_MS = 300;
 const PLAYLIST_TRACKS_PAGE_GAP_MS = 650;
 const PLAYLIST_TRACKS_PAGE_JITTER_MS = 400;
@@ -415,8 +415,8 @@ function parseRetryAfterMs(raw) {
 async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
   const isSearch = path.startsWith('/search?');
   const isPlaylistListPage = path.startsWith('/me/playlists?');
-  /** /playlists/{id} och /playlists/{id}/tracks: stora svar, ofta rate-limitade → samma backoff-policy som /me/playlists. */
-  const isPlaylistReadPage = /^\/playlists\/[^/?]+(?:\/tracks)?(?:\?|$)/.test(path);
+  /** /playlists/{id}, /playlists/{id}/items och deprecerade /tracks: stora svar, ofta rate-limitade → samma backoff-policy som /me/playlists. */
+  const isPlaylistReadPage = /^\/playlists\/[^/?]+(?:\/(?:items|tracks))?(?:\?|$)/.test(path);
   const run = async () => {
     let lastRes = /** @type {Response | null} */ (null);
     let totalWaited = 0;
@@ -455,7 +455,7 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
 
       const retryAfterRaw = res.headers.get('Retry-After');
       const fromHeader = parseRetryAfterMs(retryAfterRaw);
-      /** Utan Retry-After: /search, /me/playlists och /playlists/{id}/tracks straffas hårt av snabba omförsök — längre backoff */
+      /** Utan Retry-After: /search, /me/playlists och /playlists/{id}/items straffas hårt av snabba omförsök — längre backoff */
       const fallbackBase = isSearch
         ? 12_000
         : isPlaylistListPage || isPlaylistReadPage
@@ -986,10 +986,15 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     },
 
     /**
-     * Hämta alla spår i en spellista, paginerat via `GET /playlists/{id}/tracks?limit=100`.
-     * Returnerar normaliserade rader som är tillräckligt rika för Redigera-listvyn (namn, artister,
-     * album, omslagsbild, längd, added_at, is_local/is_episode) — utan tunga extra-fält. Stöttas
-     * av samma sök-kö som övriga GET för att undvika parallella Spotify-anrop.
+     * Hämta alla spår/avsnitt i en spellista, paginerat via `GET /playlists/{id}/items?limit=100`.
+     *
+     * Migrerad från deprecerade `/tracks` (som även returnerade 403 för icke-ägare/icke-samarbets-
+     * medlemmar). Nya `/items` fungerar för alla playlists användaren har läsrätt till.
+     *
+     * Responsen innehåller nu `items[].item` (ny) som primärfält, och `items[].track` som deprecerad
+     * alias. Vi läser `item` primärt med fallback till `track` för bakåtkompatibilitet.
+     *
+     * `additional_types=track,episode` säkerställer att podcast-avsnitt också returneras.
      *
      * Avbryts via `PLAYLIST_TRACKS_MAX_PAGES` → 100 × 40 = 4000 spår. Sätt `truncated=true` i svaret.
      * @param {string} playlistId
@@ -1005,11 +1010,11 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       if (!playlistId || typeof playlistId !== 'string') {
         throw new Error('getPlaylistTracksAll: saknar playlistId');
       }
-      /** Obs: `episode` är inte ett sub-fält på `track` — Spotify kan svara 403/400 på okända
-       *  sub-fält. Vi håller oss till dokumenterade fält. Podcast-avsnitt identifieras via
-       *  `track.type === 'episode'` eller `is_local` separat. */
+      /** Nya endpointen exponerar `items[].item` (track eller episode). Vi listar sub-fält
+       *  under `item(...)` och låter Spotify filtrera bort tunga fält (available_markets,
+       *  external_ids, popularity, preview_url m.fl.). */
       const baseFields = encodeURIComponent(
-        'items(added_at,is_local,track(uri,id,name,type,is_local,duration_ms,artists(name),album(name,images(url)))),next,limit,offset,total',
+        'items(added_at,is_local,item(uri,id,name,type,is_local,duration_ms,artists(name),album(name,images(url)))),next,limit,offset,total',
       );
       return scheduleSearchGetChain(async () => {
         signal?.throwIfAborted();
@@ -1024,7 +1029,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         await sleepAbortable(PLAYLIST_TRACKS_FETCH_INITIAL_GAP_MS, signal);
         while (true) {
           signal?.throwIfAborted();
-          const path = `/playlists/${encodeURIComponent(playlistId)}/tracks?limit=${pageSize}&offset=${offset}&market=from_token&fields=${baseFields}`;
+          const path = `/playlists/${encodeURIComponent(playlistId)}/items?limit=${pageSize}&offset=${offset}&market=from_token&additional_types=track,episode&fields=${baseFields}`;
           const reqStartedAt = new Date().toISOString();
           const res = await getWith401Retry(path, 0, signal);
           const bodyText = await res.text();
@@ -1034,7 +1039,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
             logSpotify({
               t: new Date().toISOString(),
               kind: 'http',
-              endpoint: 'GET /v1/playlists/{id}/tracks',
+              endpoint: 'GET /v1/playlists/{id}/items',
               phase: 'getPlaylistTracksAll',
               playlistId,
               offset,
@@ -1051,23 +1056,24 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
           try {
             data = bodyText ? JSON.parse(bodyText) : {};
           } catch {
-            throw new Error('Ogiltigt JSON-svar från Spotify (playlist tracks)');
+            throw new Error('Ogiltigt JSON-svar från Spotify (playlist items)');
           }
           const items = Array.isArray(data.items) ? data.items : [];
           if (Number.isFinite(data.total)) total = Number(data.total);
-          for (const item of items) {
-            const track = item?.track;
-            if (!track || typeof track !== 'object') continue;
-            const uri = typeof track.uri === 'string' ? track.uri : '';
+          for (const row of items) {
+            /** Nya endpointen: `row.item`. Fallback till deprecerad `row.track` under övergångsfasen. */
+            const entry = row?.item ?? row?.track;
+            if (!entry || typeof entry !== 'object') continue;
+            const uri = typeof entry.uri === 'string' ? entry.uri : '';
             if (!uri) continue;
-            const isLocal = Boolean(track.is_local ?? item?.is_local);
-            const isEpisode = track.type === 'episode';
-            const artists = Array.isArray(track.artists)
-              ? track.artists
+            const isLocal = Boolean(entry.is_local ?? row?.is_local);
+            const isEpisode = entry.type === 'episode';
+            const artists = Array.isArray(entry.artists)
+              ? entry.artists
                   .map((a) => (typeof a?.name === 'string' ? a.name : ''))
                   .filter((x) => x.length > 0)
               : [];
-            const album = track.album && typeof track.album === 'object' ? track.album : null;
+            const album = entry.album && typeof entry.album === 'object' ? entry.album : null;
             const imgs = album && Array.isArray(album.images) ? album.images : [];
             const albumImageUrl =
               imgs.length > 0 && typeof imgs[imgs.length - 1]?.url === 'string'
@@ -1077,13 +1083,13 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
                   : null;
             out.push({
               uri,
-              id: typeof track.id === 'string' ? track.id : '',
-              name: typeof track.name === 'string' ? track.name : '',
+              id: typeof entry.id === 'string' ? entry.id : '',
+              name: typeof entry.name === 'string' ? entry.name : '',
               artists,
               albumName: album && typeof album.name === 'string' ? album.name : '',
               albumImageUrl,
-              durationMs: Number.isFinite(track.duration_ms) ? Number(track.duration_ms) : 0,
-              addedAt: typeof item?.added_at === 'string' ? item.added_at : '',
+              durationMs: Number.isFinite(entry.duration_ms) ? Number(entry.duration_ms) : 0,
+              addedAt: typeof row?.added_at === 'string' ? row.added_at : '',
               isLocal,
               isEpisode,
             });
@@ -1091,7 +1097,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
           logSpotify({
             t: new Date().toISOString(),
             kind: 'http',
-            endpoint: 'GET /v1/playlists/{id}/tracks',
+            endpoint: 'GET /v1/playlists/{id}/items',
             phase: 'getPlaylistTracksAll',
             playlistId,
             offset,
@@ -1401,9 +1407,11 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     },
 
     /**
-     * Tar bort spår från en spellista — `DELETE /playlists/{id}/tracks` med batch av upp till
-     * `EDIT_REMOVE_BATCH_SIZE` poster. Vi skickar per-positionsformatet (`{ uri, positions: [...] }`)
-     * så att dubbletter kan riktas exakt (Spotify kräver detta när samma uri ligger flera gånger).
+     * Tar bort spår från en spellista — `DELETE /playlists/{id}/items` (migrerad från deprecerade
+     * `/tracks`) med batch av upp till `EDIT_REMOVE_BATCH_SIZE` poster. Vi skickar per-positions-
+     * formatet (`{ uri, positions: [...] }`) så att dubbletter kan riktas exakt (Spotify kräver
+     * detta när samma uri ligger flera gånger). Body-nyckeln heter fortfarande `tracks` i den nya
+     * endpointen (Spotify höll kvar body-schemat för bakåtkompatibilitet).
      * Returnerar nytt `snapshot_id` som används för nästa mutation.
      * @param {string} playlistId
      * @param {{ uri: string, positions: number[] }[]} uriPositions Max 100 poster per anrop (Spotify).
@@ -1416,7 +1424,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       if (!Array.isArray(uriPositions) || uriPositions.length === 0) {
         throw new Error('removePlaylistTracksBatch: tom batch');
       }
-      const path = `/playlists/${encodeURIComponent(playlistId)}/tracks`;
+      const path = `/playlists/${encodeURIComponent(playlistId)}/items`;
       const tracks = uriPositions.map((x) => ({
         uri: String(x.uri),
         positions: Array.isArray(x.positions) ? x.positions.map((n) => Number(n)) : [],
@@ -1450,9 +1458,10 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     },
 
     /**
-     * Omordna spår i en spellista — `PUT /playlists/{id}/tracks`. Flyttar spåren i intervallet
-     * `[range_start, range_start + range_length)` till positionen `insert_before`.
-     * Spotify returnerar ett nytt `snapshot_id` som måste användas för nästa mutation.
+     * Omordna spår i en spellista — `PUT /playlists/{id}/items` (migrerad från deprecerade
+     * `/tracks`). Flyttar spåren i intervallet `[range_start, range_start + range_length)` till
+     * positionen `insert_before`. Spotify returnerar ett nytt `snapshot_id` som måste användas
+     * för nästa mutation.
      * @param {string} playlistId
      * @param {{ rangeStart: number, insertBefore: number, rangeLength?: number, snapshotId?: string }} opts
      * @param {{ signal?: AbortSignal }} [netOpts]
@@ -1468,7 +1477,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         range_length: rangeLength,
       };
       if (opts.snapshotId) body.snapshot_id = opts.snapshotId;
-      const path = `/playlists/${encodeURIComponent(playlistId)}/tracks`;
+      const path = `/playlists/${encodeURIComponent(playlistId)}/items`;
       const requestMeta = {
         playlistId,
         rangeStart: body.range_start,
