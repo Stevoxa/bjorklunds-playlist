@@ -703,13 +703,105 @@ async function handleOAuthReturn() {
   mergeOAuthTokens(result.tokens, result.clientId);
 }
 
-/** @type {'0' | '1' | '2' | '3' | 'settings'} */
-let currentFlowStep = '0';
+/** Alla vyer i flödet. 'landing' är startsidan där användaren väljer flöde.
+ * '0'–'3' används av Skapa-flödet; 'select-playlist'/'edit-playlist' av Redigera-flödet.
+ * @typedef {'landing' | '0' | '1' | '2' | '3' | 'select-playlist' | 'edit-playlist' | 'settings'} FlowStep
+ */
+
+/** @type {FlowStep} */
+let currentFlowStep = 'landing';
 
 /** Senaste icke-settings-steg — används av toolbar__settings-knappen för att återvända till
  * det steg man kom från när man klickar retur-pilen på inställningssidan. */
-/** @type {'0' | '1' | '2' | '3'} */
-let lastFlowStepBeforeSettings = '0';
+/** @type {Exclude<FlowStep, 'settings'>} */
+let lastFlowStepBeforeSettings = 'landing';
+
+/** Vilket flöde användaren valt på landningssidan. null = landning aktiv / inget val. */
+/** @type {'create' | 'edit' | null} */
+let currentFlowMode = null;
+
+const FLOW_MODE_STORAGE_KEY = 'bjorklunds-playlist-flow-mode';
+
+/** Läs sparat flöde från sessionStorage (överlever sidomladdning men inte flik-stängning). */
+function readStoredFlowMode() {
+  try {
+    const v = sessionStorage.getItem(FLOW_MODE_STORAGE_KEY);
+    return v === 'create' || v === 'edit' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** @param {'create' | 'edit' | null} mode */
+function setFlowMode(mode) {
+  currentFlowMode = mode;
+  try {
+    if (mode) sessionStorage.setItem(FLOW_MODE_STORAGE_KEY, mode);
+    else sessionStorage.removeItem(FLOW_MODE_STORAGE_KEY);
+  } catch {
+    /* sessionStorage kan vara blockerat (inkognito i vissa webbläsare) — best-effort. */
+  }
+}
+
+/** Breadcrumb-spec: steg-ID → synlig text. Två uppsättningar, en per flöde.
+ *  Alla flöden har alltid "Start" som första crumb (landningssidan). */
+const BREADCRUMB_SPECS = {
+  create: /** @type {{ step: FlowStep, label: string, compactExtra?: string }[]} */ ([
+    { step: 'landing', label: 'Start' },
+    { step: '0', label: 'Logga in', compactExtra: ' på Spotify' },
+    { step: '1', label: 'Välj musik' },
+    { step: '2', label: 'Välj spellista' },
+    { step: '3', label: 'Genomför' },
+  ]),
+  edit: /** @type {{ step: FlowStep, label: string, compactExtra?: string }[]} */ ([
+    { step: 'landing', label: 'Start' },
+    { step: '0', label: 'Logga in', compactExtra: ' på Spotify' },
+    { step: 'select-playlist', label: 'Välj playlist' },
+    { step: 'edit-playlist', label: 'Redigera playlist' },
+  ]),
+  /** När användaren står på landningssidan (inget flöde valt än) — bara Start. */
+  none: /** @type {{ step: FlowStep, label: string, compactExtra?: string }[]} */ ([
+    { step: 'landing', label: 'Start' },
+  ]),
+};
+
+/**
+ * Bygg om breadcrumb-listan utifrån aktivt flöde. Kallas från setFlowStep så varje
+ * stegbyte återspeglas i knapparna. Vi återanvänder befintlig CSS (.flow-breadcrumbs__crumb).
+ * @param {FlowStep} activeStep
+ */
+function renderBreadcrumbs(activeStep) {
+  const list = document.getElementById('flow-breadcrumbs-list');
+  if (!list) return;
+  /* Inställningar har ingen egen plats i brödsmulorna — döljs via #flow-breadcrumbs-wrap. */
+  const spec = currentFlowMode ? BREADCRUMB_SPECS[currentFlowMode] : BREADCRUMB_SPECS.none;
+  list.innerHTML = '';
+  for (const entry of spec) {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'flow-breadcrumbs__crumb';
+    btn.setAttribute('data-flow-step', entry.step);
+    btn.setAttribute('aria-controls', `flow-step-${entry.step}`);
+    if (entry.step === activeStep) {
+      btn.classList.add('is-active');
+      btn.setAttribute('aria-current', 'location');
+    }
+    /* Kompaktläge (mobil) kortar t.ex. "Logga in på Spotify" → "Logga in" via .compact-extra. */
+    btn.appendChild(document.createTextNode(entry.label));
+    if (entry.compactExtra) {
+      const span = document.createElement('span');
+      span.className = 'compact-extra';
+      span.textContent = entry.compactExtra;
+      btn.appendChild(span);
+    }
+    btn.addEventListener('click', () => {
+      setFlowStep(entry.step, { focusPanel: true });
+    });
+    li.appendChild(btn);
+    list.appendChild(li);
+  }
+}
 
 function syncPageLeadStep3() {
   const lead = document.getElementById('app-page-lead');
@@ -750,7 +842,7 @@ function scrollAppToTop() {
 }
 
 /**
- * @param {'0' | '1' | '2' | '3' | 'settings'} step
+ * @param {FlowStep} step
  * @param {{ focusPanel?: boolean, skipSpotifyWarmup?: boolean, fromPopstate?: boolean }} [opts]
  *   focusPanel: flytta fokus till aktivt steg (t.ex. efter klick i steglisten), inte vid sidladdning.
  *   skipSpotifyWarmup: vid steg 0 undvik dublett av init + /me när boot() redan kört syncSpotifySessionToUi.
@@ -764,13 +856,19 @@ function setFlowStep(step, opts = {}) {
   /* Kom ihåg vilket flow-steg användaren var på innan inställningar öppnades, så att
    * retur-pilen i toolbaren kan ta hen tillbaka till samma vy vid stängning. */
   if (step === 'settings' && currentFlowStep !== 'settings') {
-    lastFlowStepBeforeSettings = /** @type {'0' | '1' | '2' | '3'} */ (currentFlowStep);
+    lastFlowStepBeforeSettings = /** @type {Exclude<FlowStep, 'settings'>} */ (currentFlowStep);
+  }
+  /* När användaren går tillbaka till landningssidan nollställs flödesvalet så
+   * nästa val kan bli antingen Skapa eller Redigera utan att gammal state hänger kvar. */
+  if (step === 'landing') {
+    setFlowMode(null);
   }
   const prevStep = currentFlowStep;
-  currentFlowStep = /** @type {'0' | '1' | '2' | '3' | 'settings'} */ (step);
+  currentFlowStep = step;
   if (FEATURE_ROW_FULL_PLAYBACK && step !== '1') {
     void resetWebPlaybackSession();
   }
+  /* Spotify-accent på Logga in-vyn och Inställningar; navy på övriga. */
   const accent = step === '0' || step === 'settings' ? 'spotify' : 'navy';
   document.documentElement.setAttribute('data-flow-accent', accent);
   document.querySelectorAll('.flow-step').forEach((el) => {
@@ -781,18 +879,16 @@ function setFlowStep(step, opts = {}) {
   if (head) head.setAttribute('data-flow-head', step);
   const bcWrap = document.getElementById('flow-breadcrumbs-wrap');
   if (bcWrap) bcWrap.hidden = step === 'settings';
-  document.querySelectorAll('.flow-breadcrumbs__crumb[data-flow-step]').forEach((btn) => {
-    const s = btn.getAttribute('data-flow-step');
-    const on = s === step;
-    btn.classList.toggle('is-active', on);
-    if (on) btn.setAttribute('aria-current', 'location');
-    else btn.removeAttribute('aria-current');
-  });
+  renderBreadcrumbs(step);
+  /** @type {Record<FlowStep, string>} */
   const leads = {
+    landing: 'Välj vad du vill göra med dina spellistor på Spotify.',
     '0': 'För att använda appen behöver du först ange ditt Client ID och logga in på Spotify.',
     '1': 'Klistra in låtar, hitta rätt spår på Spotify och välj vilka som ska läggas till i spellistan.',
     '2': '',
     '3': '',
+    'select-playlist': 'Välj en av dina spellistor för att redigera den.',
+    'edit-playlist': 'Sortera, ta bort eller kopiera låtar. Ändringar skickas när du klickar Genomför.',
     settings: 'Anpassa hur appen fungerar lokalt på din enhet.',
   };
   const lead = document.getElementById('app-page-lead');
@@ -863,10 +959,13 @@ function updateSummarySubtitle(step) {
   const el = document.getElementById('summary-card-subtitle');
   if (!el) return;
   const lines = {
+    landing: 'Välj ett flöde för att komma igång.',
     '0': 'Status för inloggning och nästa steg.',
     '1': 'Kontrollera dina val innan du går vidare till spellistan.',
     '2': 'Kontrollera dina val innan du fortsätter.',
     '3': 'Kontrollera dina val innan du genomför.',
+    'select-playlist': 'Välj en spellista att redigera.',
+    'edit-playlist': 'Sortera, ta bort eller kopiera låtar i listan.',
     settings: 'Kontrollera dina val innan du fortsätter.',
   };
   el.textContent = lines[step] ?? '';
@@ -890,15 +989,21 @@ function updateSummaryTip(step) {
     return;
   }
   const tips = {
+    landing:
+      'Välj ”Skapa spellista” för att bygga en ny lista från en låtlista, eller ”Redigera spellista” för att justera en befintlig lista på Spotify.',
     '0':
       'Du loggar in direkt hos Spotify, så appen får aldrig tillgång till ditt lösenord. Client ID används bara för att identifiera appen och inloggningen skyddas med PKCE med tidsbegränsad åtkomst.',
     '1':
       'Sökningar sparas i 60 minuter, vilket gör upprepade sökningar snabbare och minskar onödiga anrop till Spotify. Om du vill kan du rensa sökcachen i Inställningar.',
     '2': 'Du behöver vara inloggad på Spotify för att fortsätta.',
     '3': 'Kontrollera sammanfattningen och klicka på Genomför på Spotify när allt är klart.',
+    'select-playlist':
+      'Dina spellistor hämtas från Spotify med skydd mot snabba upprepade anrop. Du kan söka/filtrera listan ovanför träffarna när funktionen är klar.',
+    'edit-playlist':
+      'Ändringar (sortering, bortval, bortagning) buffras lokalt och skickas först när du klickar på Genomför på Spotify.',
     settings: 'Prefixet används när du skapar nya spellistor och för att filtrera dina spellistor.',
   };
-  tip.textContent = tips[step] ?? tips['0'];
+  tip.textContent = tips[step] ?? tips.landing;
 }
 
 function refreshSummary() {
@@ -1175,15 +1280,43 @@ function wireFlow() {
   document.querySelectorAll('[data-flow-step]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const s = btn.getAttribute('data-flow-step');
-      if (s) setFlowStep(/** @type {'0' | '1' | '2' | '3' | 'settings'} */ (s), { focusPanel: true });
+      if (s) setFlowStep(/** @type {FlowStep} */ (s), { focusPanel: true });
     });
   });
   document.querySelectorAll('[data-flow-goto]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const s = btn.getAttribute('data-flow-goto');
-      if (s) setFlowStep(/** @type {'0' | '1' | '2' | '3' | 'settings'} */ (s), { focusPanel: true });
+      if (s) setFlowStep(/** @type {FlowStep} */ (s), { focusPanel: true });
     });
   });
+  /* Landningssidans val-kort: sätter flöde och går vidare till login (eller hoppar
+   * över login om en aktiv Spotify-token redan finns — fast den går alltid att nå
+   * via breadcrumben "Logga in" om man vill logga ut). */
+  document.querySelectorAll('[data-flow-goto-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const m = btn.getAttribute('data-flow-goto-mode');
+      if (m !== 'create' && m !== 'edit') return;
+      setFlowMode(m);
+      const hasToken = Boolean(vaultData?.tokens?.accessToken) && spotifyClient;
+      if (hasToken) {
+        /* Giltig token — hoppa direkt till flödets första inre steg. */
+        setFlowStep(m === 'create' ? '1' : 'select-playlist', { focusPanel: true });
+      } else {
+        setFlowStep('0', { focusPanel: true });
+      }
+    });
+  });
+  /* Dynamisk "Nästa" på inloggningsvyn: destination beror på valt flöde. Om inget
+   * flöde är valt (användaren har landat på '0' via breadcrumb/direktlänk) defaultar
+   * vi till Skapa-flödet som tidigare beteende. */
+  const step0Next = document.getElementById('btn-step-0-next');
+  if (step0Next) {
+    step0Next.addEventListener('click', () => {
+      const target = currentFlowMode === 'edit' ? 'select-playlist' : '1';
+      if (!currentFlowMode) setFlowMode('create');
+      setFlowStep(target, { focusPanel: true });
+    });
+  }
   /* Toolbar-knappen: toggla mellan att öppna Inställningar och att återvända till
    * det flöde man kom från. Byter ikon via CSS (body[data-flow-step='settings']). */
   document.querySelectorAll('.flow-toolbar__settings').forEach((btn) => {
@@ -1216,29 +1349,7 @@ function wireFlow() {
   window.addEventListener('popstate', (ev) => {
     const s = ev.state && typeof ev.state.step === 'string' ? ev.state.step : null;
     if (!s) return;
-    setFlowStep(
-      /** @type {'0' | '1' | '2' | '3' | 'settings'} */ (s),
-      { focusPanel: true, fromPopstate: true },
-    );
-  });
-}
-
-function setCreateModeNavActive() {
-  document.querySelectorAll('.flow-mode-nav__btn[data-flow-mode]').forEach((b) => {
-    const m = b.getAttribute('data-flow-mode');
-    const on = m === 'create';
-    b.classList.toggle('is-active', on);
-    b.setAttribute('aria-pressed', on ? 'true' : 'false');
-  });
-}
-
-/** Skapa playlists: markera läge och gå till flödets första steg (t.ex. från Inställningar). */
-function wireFlowModeNav() {
-  document.querySelectorAll('[data-flow-mode="create"]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      setCreateModeNavActive();
-      setFlowStep('0', { focusPanel: true });
-    });
+    setFlowStep(/** @type {FlowStep} */ (s), { focusPanel: true, fromPopstate: true });
   });
 }
 
@@ -2381,7 +2492,6 @@ async function boot() {
   });
 
   wireFlow();
-  wireFlowModeNav();
   wirePlaylistMode();
   if (FEATURE_ROW_FULL_PLAYBACK) {
     bindRowPlaybackControls($('results-body'), {
@@ -2539,7 +2649,26 @@ async function boot() {
   applyTheme($('pref-theme').value);
   updateNewPlaylistPreview();
   updateApplyEnabled();
-  setFlowStep('0', { focusPanel: false, skipSpotifyWarmup: true });
+  /* Starta alltid på landningssidan. Om användaren hade valt ett flöde tidigare i
+   * samma session (sessionStorage) och har en giltig Spotify-token, hoppa direkt
+   * till flödets första inre steg så upplevelsen blir snabb vid reload. Logga in-
+   * vyn når man alltid via breadcrumben "Logga in" (t.ex. för att logga ut). */
+  const storedMode = readStoredFlowMode();
+  const hasToken = Boolean(vaultData?.tokens?.accessToken) && spotifyClient;
+  if (storedMode && hasToken) {
+    setFlowMode(storedMode);
+    setFlowStep(storedMode === 'create' ? '1' : 'select-playlist', {
+      focusPanel: false,
+      skipSpotifyWarmup: true,
+    });
+  } else if (storedMode) {
+    /* Flöde valt i tidigare session men token har gått ut — visa login-vyn som
+     * startpunkt så användaren kan logga in igen utan att klicka landningssidan. */
+    setFlowMode(storedMode);
+    setFlowStep('0', { focusPanel: false, skipSpotifyWarmup: true });
+  } else {
+    setFlowStep('landing', { focusPanel: false, skipSpotifyWarmup: true });
+  }
   /* Fyll stats-raderna så att de är uppdaterade även om användaren hoppar direkt till
    * Inställningar utan att passera flödet (setFlowStep('settings') triggar en ny uppdatering). */
   void refreshSettingsStats();

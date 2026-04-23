@@ -132,50 +132,11 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--space-sm) var(--space);
   margin-top: var(--space-lg);
   padding-bottom: 0.55rem;
   border-bottom: 1px solid var(--border);
-}
-
-.flow-mode-nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem 0.5rem;
-}
-
-.flow-mode-nav__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 0.95rem;
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  cursor: pointer;
-  text-align: center;
-}
-
-.flow-mode-nav__btn:hover:not(:disabled) {
-  color: var(--text);
-  border-color: var(--border);
-}
-
-.flow-mode-nav__btn.is-active {
-  color: var(--spotify);
-  border-color: color-mix(in srgb, var(--spotify) 45%, var(--border));
-  background: color-mix(in srgb, var(--shell-mint) 55%, var(--surface));
-}
-
-.flow-mode-nav__btn:disabled {
-  opacity: 0.48;
-  cursor: not-allowed;
 }
 
 .flow-toolbar__settings {
@@ -328,6 +289,138 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
 
 .flow-step.is-active {
   display: block;
+}
+
+/* ============================================================================
+ * Landningssida: användaren väljer flöde (Skapa / Redigera). Två stora
+ * val-kort i en grid — sida vid sida på desktop, staplade på mobil.
+ * ========================================================================= */
+.landing-choices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space);
+}
+
+@media (min-width: 640px) {
+  .landing-choices {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.landing-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.85rem 1rem;
+  width: 100%;
+  padding: 1.15rem 1.15rem 1.2rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  color: inherit;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.12s ease;
+}
+
+.landing-choice:hover {
+  border-color: color-mix(in srgb, var(--spotify) 45%, var(--border));
+  background: color-mix(in srgb, var(--shell-mint) 35%, var(--surface));
+  box-shadow: 0 4px 16px rgba(15, 20, 25, 0.06);
+}
+
+.landing-choice:focus-visible {
+  outline: var(--focus);
+  outline-offset: 3px;
+}
+
+.landing-choice:active {
+  transform: translateY(1px);
+}
+
+.landing-choice__icon-ring {
+  flex-shrink: 0;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--shell-mint);
+  color: var(--shell-navy-muted);
+}
+
+.landing-choice:hover .landing-choice__icon-ring {
+  color: var(--spotify);
+}
+
+.landing-choice__icon {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.landing-choice__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.landing-choice__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--shell-navy);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+[data-theme='dark'] .landing-choice__title {
+  color: var(--text);
+}
+
+.landing-choice__desc {
+  font-size: 0.88rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.landing-choice__chevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.landing-choice__chevron svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.landing-choice:hover .landing-choice__chevron {
+  color: var(--spotify);
+}
+
+[data-theme='dark'] .landing-choice {
+  background: var(--surface);
+}
+
+[data-theme='dark'] .landing-choice:hover {
+  background: color-mix(in srgb, var(--spotify) 10%, var(--surface));
+}
+
+[data-theme='dark'] .landing-choice__icon-ring {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
 }
 
 /* Steg 1: ett sammanhängande kort (lista + matchningar) + sticky nav längst ner i kortet */
@@ -1245,13 +1338,21 @@ body[data-flow-step='3'] #summary-aside-card {
   display: none;
 }
 
-/* Inställningar: dölj sammanfattnings-spalten helt och låt primärkolumnen ta hela bredden. */
-body[data-flow-step='settings'] .app-summary {
+/* Inställningar och Redigera-flödets nya vyer: dölj sammanfattningsspalten
+ * helt. Landningssidan och Redigera-flödet har inget relevant sammanfattnings-
+ * innehåll i iteration A. Gäller alla skärmstorlekar. */
+body[data-flow-step='settings'] .app-summary,
+body[data-flow-step='landing'] .app-summary,
+body[data-flow-step='select-playlist'] .app-summary,
+body[data-flow-step='edit-playlist'] .app-summary {
   display: none;
 }
 
 @media (min-width: 960px) {
-  body[data-flow-step='settings'] .app-layout {
+  body[data-flow-step='settings'] .app-layout,
+  body[data-flow-step='landing'] .app-layout,
+  body[data-flow-step='select-playlist'] .app-layout,
+  body[data-flow-step='edit-playlist'] .app-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -1786,11 +1887,6 @@ body:not([data-flow-step='3']) #step3-apply-result-card {
     padding: 0;
     border-bottom: none;
     min-height: 0;
-  }
-
-  /* Endast en lägesknapp idag — brus på mobil, döljs. */
-  .flow-mode-nav {
-    display: none;
   }
 
   /* Inställningar som flytande ikon-mål i övre högra hörnet av sidhuvudet. */
