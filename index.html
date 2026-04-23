@@ -858,7 +858,7 @@
                   </div>
                   <div class="edit-playlist-header__meta">
                     <p class="edit-playlist-header__owner">Ägare: <span id="edit-playlist-owner">–</span></p>
-                    <p class="edit-playlist-header__total"><span id="edit-playlist-total">–</span> spår</p>
+                    <p class="edit-playlist-header__total" id="edit-playlist-total-row"><span id="edit-playlist-total">–</span> spår</p>
                   </div>
                   <div class="edit-playlist-header__actions">
                     <button
@@ -875,7 +875,7 @@
                   </div>
                 </div>
 
-                <div class="select-playlist-status-row">
+                <div class="select-playlist-status-row" id="edit-playlist-status-row">
                   <button type="button" class="btn btn--with-icon select-playlist-refresh" id="edit-playlist-refresh">
                     <span class="btn__icon-wrap" aria-hidden="true">
                       <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
@@ -886,6 +886,10 @@
                 </div>
                 <p class="help help--warning" id="edit-playlist-truncated-warning" hidden>
                   Spellistan är ovanligt stor. Appen visar de första 4000 spåren.
+                </p>
+                <p class="help edit-playlist-readonly-note" id="edit-playlist-readonly-note" hidden>
+                  Du äger inte den här spellistan, så innehållet kan inte redigeras härifrån.
+                  Du kan däremot ta bort den från ditt bibliotek.
                 </p>
                 <div class="help help--warning edit-playlist-blocked" id="edit-playlist-blocked" hidden>
                   <p><strong>Spotify tillåter inte att den här spellistan läses av tredjepartsappar.</strong></p>

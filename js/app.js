@@ -1839,6 +1839,37 @@ function invalidateSelectPlaylistCache(opts = {}) {
   }
 }
 
+/**
+ * Ta bort en enskild rad ur Välj playlist-cachen utan att invalidera hela cachen.
+ * Används efter lyckad DELETE /playlists/{id}/followers så vi slipper ett extra
+ * GET /me/playlists direkt efteråt — vi vet ju redan exakt vad som ändrats.
+ * Cache-timestampen sätts till nu så TTL-fönstret förlängs (listan är fortfarande
+ * korrekt eftersom vi kontrollerar ändringen själva).
+ * @param {string} playlistId
+ * @param {string | null} userId  Inloggad users id för att skriva IDB-cachen.
+ */
+function removeFromSelectPlaylistCache(playlistId, userId) {
+  const c = selectPlaylistListCache;
+  if (!c) {
+    /* Ingen in-memory cache — då finns inget att plocka ur. Lämna IDB orörd så nästa
+     * enterSelectPlaylistStep antingen läser IDB (om den har raden) eller fetchar fresh. */
+    return;
+  }
+  const nextList = c.list.filter((p) => p.id !== playlistId);
+  if (nextList.length === c.list.length) return;
+  const now = Date.now();
+  selectPlaylistListCache = {
+    at: now,
+    list: nextList,
+    truncated: c.truncated,
+    userId: c.userId,
+  };
+  const uid = userId ?? c.userId ?? null;
+  if (uid) void writeAllPlaylistsCache(uid, nextList, c.truncated);
+  updateSelectPlaylistUpdatedAt(now, /* stale */ false);
+  renderSelectPlaylistList();
+}
+
 function computeFilteredSelectPlaylistRows() {
   const cache = selectPlaylistListCache;
   if (!cache) return [];
@@ -2269,6 +2300,48 @@ function setEditPlaylistBlocked(blocked) {
   }
 }
 
+/**
+ * Read-only-läge för spellistor användaren inte äger: /items kommer ge 403 (eller så kan
+ * vi ändå inte spara ändringar), så vi hoppar över items-anropet och döljer allt som rör
+ * trackredigering. Kvar blir headern (art/namn/ägare) och "Ta bort från biblioteket"-knappen.
+ * @param {boolean} readOnly
+ */
+function setEditPlaylistReadOnly(readOnly) {
+  const toggles = [
+    'edit-playlist-total-row',
+    'edit-playlist-status-row',
+    'edit-playlist-truncated-warning',
+    'edit-playlist-spinner',
+    'edit-playlist-empty',
+    'edit-playlist-bulk-bar',
+    'edit-playlist-list',
+    'edit-playlist-progress',
+    'edit-playlist-dirty-hint',
+    'btn-edit-playlist-apply',
+  ];
+  for (const id of toggles) {
+    const el = document.getElementById(id);
+    if (el) el.hidden = readOnly;
+  }
+  const note = document.getElementById('edit-playlist-readonly-note');
+  if (note) note.hidden = !readOnly;
+}
+
+/**
+ * Returnerar true om vi vet upfront att användaren inte äger spellistan, dvs vi kan
+ * hoppa över både getPlaylistMeta och getPlaylistTracksAll. Ownership bestäms från
+ * selectedEditPlaylist.ownerId (satt när raden klickades i Välj playlist) jämfört med
+ * inloggad users id. Om någon del är okänd returnerar vi false (då kör vi normalt flöde).
+ */
+function isEditPlaylistReadOnlyUpfront() {
+  const ownerId = selectedEditPlaylist?.ownerId;
+  if (!ownerId) return false;
+  const uid =
+    typeof spotifyClient?.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null;
+  if (!uid) return false;
+  return String(ownerId) !== String(uid);
+}
+
 function renderEditPlaylistHeader() {
   const state = editPlaylistState;
   const meta = state?.meta;
@@ -2635,6 +2708,29 @@ async function loadEditPlaylistTracks(opts = {}) {
 
   const userIdKnown =
     typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null;
+
+  /* Read-only-läge: äger användaren inte listan så slipper vi både getPlaylistMeta och
+   * getPlaylistTracksAll (det senare ger ändå 403 för Spotifys algoritmiska listor).
+   * Kvar blir bara "Ta bort från biblioteket". Headern renderas från selectedEditPlaylist
+   * som redan har namn, ägare och omslag. */
+  if (isEditPlaylistReadOnlyUpfront()) {
+    setEditPlaylistReadOnly(true);
+    setEditPlaylistBlocked(false);
+    renderEditPlaylistHeader();
+    logSpotify({
+      t: new Date().toISOString(),
+      kind: 'ui',
+      phase: 'refreshEditPlaylist',
+      reason: `edit-playlist/${reason}`,
+      playlistId,
+      readOnly: true,
+      skipped: ['getPlaylistMeta', 'getPlaylistTracksAll'],
+      manual,
+      force,
+    });
+    return;
+  }
+  setEditPlaylistReadOnly(false);
 
   /* In-memory → annars IDB. Rendera direkt om vi hittar något så användaren ser listan
    * medan nätverket hämtar färsk data. */
@@ -3136,8 +3232,11 @@ async function performDeletePlaylist(sel, opts = {}) {
   if (uid) {
     void deletePlaylistTracksCache(uid, sel.id);
   }
-  /* Rensa både in-memory och IDB-cache för välj-listan så borttagen/avföljd spellista försvinner. */
-  invalidateSelectPlaylistCache({ persistent: true, userId: uid });
+  /* Plocka bort raden från Välj playlist-cachen istället för att invalidera hela cachen.
+   * Resultat: inget extra GET /me/playlists-anrop när användaren navigeras tillbaka till
+   * Välj playlist — cache-TTL:n (60 min) förlängs från nu. Vi vet ju exakt vad som
+   * ändrats, så listan är korrekt utan omfetch. */
+  removeFromSelectPlaylistCache(sel.id, uid);
   /* Nollställ edit-state och vald spellista så användaren inte landar i trasig vy vid tillbakanavigering. */
   editPlaylistState = null;
   destroyEditPlaylistSortable();
@@ -3246,6 +3345,9 @@ function enterEditPlaylistStep() {
   }
   /* Nollställ ev. "blocked"-banner från en tidigare spellista. */
   setEditPlaylistBlocked(false);
+  /* Applicera read-only-läget omedelbart om vi redan vet att användaren inte äger listan,
+   * så vi slipper blinka fram redigerings-UI som genast döljs av loadEditPlaylistTracks. */
+  setEditPlaylistReadOnly(isEditPlaylistReadOnlyUpfront());
   loadEditPlaylistTracks({ reason: 'step-enter', quiet: true }).catch(() => {
     /* Toast hanteras internt. */
   });
