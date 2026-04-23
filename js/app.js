@@ -882,7 +882,9 @@ function setFlowStep(step, opts = {}) {
   renderBreadcrumbs(step);
   /** @type {Record<FlowStep, string>} */
   const leads = {
-    landing: 'Välj vad du vill göra med dina spellistor på Spotify.',
+    /* Landningssidan: låt kortets egen rubrik + subtitle bära introduktionen,
+     * annars blir texten dubblerad. */
+    landing: '',
     '0': 'För att använda appen behöver du först ange ditt Client ID och logga in på Spotify.',
     '1': 'Klistra in låtar, hitta rätt spår på Spotify och välj vilka som ska läggas till i spellistan.',
     '2': '',
@@ -896,8 +898,9 @@ function setFlowStep(step, opts = {}) {
     if (step === '2' || step === '3') {
       syncPageLeadStep3();
       syncStep3CardHeadings();
-    } else if (leads[step]) {
-      lead.textContent = leads[step];
+    } else {
+      /* Tom lead-text betyder att steget inte behöver en ingress ovanför kortet. */
+      lead.textContent = leads[step] ?? '';
     }
   }
   document.body.setAttribute('data-flow-step', step);

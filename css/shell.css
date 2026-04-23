@@ -93,10 +93,14 @@ body {
 
 /* Rubrik + steg: direkt barn till .app-layout — på bred skärm spänner hela raden ovanför primary | sammanfattning. */
 .app-page-head {
+  position: relative;
   width: 100%;
   max-width: none;
   margin: 0 0 var(--space-lg);
-  padding: 0;
+  /* Reservera plats i övre högra hörnet åt den absolut positionerade
+   * Inställningar-länken så titeln/introt inte hamnar under den. Mobil-media
+   * nedan krymper den till 3rem när label ersätts av en rund ikon. */
+  padding: 0 10rem 0 0;
   text-align: start;
 }
 
@@ -128,35 +132,46 @@ body {
   line-height: 1.5;
 }
 
+/* Toolbar: helt visuellt transparent container — endast en plats för
+ * Inställningar-länken, som absolut-positioneras i övre högra hörnet på både
+ * desktop och mobil (separat mobilvariant längre ner kodar om till ikon-mål). */
 .app-page-head__toolbar {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-sm) var(--space);
-  margin-top: var(--space-lg);
-  padding-bottom: 0.55rem;
-  border-bottom: 1px solid var(--border);
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  border-bottom: none;
 }
 
+/* På desktop: inte som en knapp — bara en lätt textlänk med ikon.
+ * (Mobilvarianten längre ner gör om detta till en rund ikon-knapp i hörnet.) */
 .flow-toolbar__settings {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.5rem 0.85rem;
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  padding: 0.25rem 0.2rem;
+  border: none;
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: transparent;
   font: inherit;
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 0.92rem;
+  font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
 }
 
 .flow-toolbar__settings:hover {
   color: var(--text);
-  border-color: var(--border);
+}
+
+.flow-toolbar__settings:focus-visible {
+  outline: var(--focus);
+  outline-offset: 3px;
 }
 
 /* Toolbar-knappen visar kugghjulet på normala steg och retur-pilen när man är
@@ -254,6 +269,12 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   line-height: 1.5;
 }
 
+/* När ett steg saknar ingress (t.ex. landningssidan) ska raden inte lämna
+ * tomt mellanrum i layouten — tomt textinnehåll döljs helt. */
+.app-page-head__lead:empty {
+  display: none;
+}
+
 .app-main {
   flex: 1;
   padding: max(0.35rem, env(safe-area-inset-top, 0)) var(--space) calc(var(--space-lg) + env(safe-area-inset-bottom, 0));
@@ -300,14 +321,10 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   margin: 0;
   padding: 0;
   display: grid;
+  /* Alltid en kolumn, även på bred skärm — val-korten visas som en vertikal
+   * lista så användaren får en lugn, sekventiell läsning av alternativen. */
   grid-template-columns: 1fr;
   gap: var(--space);
-}
-
-@media (min-width: 640px) {
-  .landing-choices {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 .landing-choice {
