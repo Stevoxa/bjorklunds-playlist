@@ -82,7 +82,6 @@ const REQUIRED_IDS = [
   'edit-playlist-empty',
   'edit-playlist-truncated-warning',
   'edit-playlist-blocked',
-  'btn-edit-playlist-blocked-back',
   'edit-playlist-total-row',
   'edit-playlist-status-row',
   'edit-playlist-readonly-note',

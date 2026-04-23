@@ -2278,25 +2278,20 @@ function updateEditPlaylistTruncatedWarning(truncated) {
 
 /**
  * Visa/dölj "den här listan kan inte läsas av tredjepartsappar"-banner.
- * När blocked=true döljer vi också spinner/bulk-bar/spår så UI inte luras inte ser
- * ut som en tom lista utan förklaring.
+ * När blocked=true applicerar vi även read-only-reglerna så alla redigerings-element
+ * döljs konsekvent. Delete-knappen döljs också eftersom användaren inte kan göra
+ * något meningsfullt här — hen får ta sig tillbaka via "Tillbaka"-navet.
  */
 function setEditPlaylistBlocked(blocked) {
   const banner = document.getElementById('edit-playlist-blocked');
   if (banner) banner.hidden = !blocked;
   if (blocked) {
-    setEditPlaylistSpinnerVisible(false);
-    const empty = document.getElementById('edit-playlist-empty');
-    if (empty) empty.hidden = true;
-    const list = document.getElementById('edit-playlist-list');
-    if (list) list.hidden = true;
-    const bulk = document.getElementById('edit-playlist-bulk-bar');
-    if (bulk) bulk.hidden = true;
+    setEditPlaylistReadOnly(true);
     const deleteBtn = document.getElementById('btn-edit-playlist-delete');
     if (deleteBtn) deleteBtn.hidden = true;
-  } else {
-    const list = document.getElementById('edit-playlist-list');
-    if (list) list.hidden = false;
+    /* readonly-noten handlar om "du äger inte listan" — felmeddelandet här är annorlunda. */
+    const note = document.getElementById('edit-playlist-readonly-note');
+    if (note) note.hidden = true;
   }
 }
 
@@ -2304,10 +2299,16 @@ function setEditPlaylistBlocked(blocked) {
  * Read-only-läge för spellistor användaren inte äger: /items kommer ge 403 (eller så kan
  * vi ändå inte spara ändringar), så vi hoppar över items-anropet och döljer allt som rör
  * trackredigering. Kvar blir headern (art/namn/ägare) och "Ta bort från biblioteket"-knappen.
+ *
+ * Viktigt: när readOnly=false får vi INTE tvinga hidden=false på element som normalt styrs
+ * villkorligt (progress, spinner, bulk-bar, dirty-block, empty-state, truncated-warning).
+ * Dessa kontrolleras av andra funktioner och ska få behålla sin state när vi lämnar read-only.
+ * Vi återställer bara de element som alltid ska vara synliga i editerbar vy (total, status-row,
+ * apply-knappen och själva <ol>-listan).
  * @param {boolean} readOnly
  */
 function setEditPlaylistReadOnly(readOnly) {
-  const toggles = [
+  const hideInReadOnly = [
     'edit-playlist-total-row',
     'edit-playlist-status-row',
     'edit-playlist-truncated-warning',
@@ -2319,9 +2320,22 @@ function setEditPlaylistReadOnly(readOnly) {
     'edit-playlist-dirty-block',
     'btn-edit-playlist-apply',
   ];
-  for (const id of toggles) {
-    const el = document.getElementById(id);
-    if (el) el.hidden = readOnly;
+  const restoreWhenEditable = [
+    'edit-playlist-total-row',
+    'edit-playlist-status-row',
+    'edit-playlist-list',
+    'btn-edit-playlist-apply',
+  ];
+  if (readOnly) {
+    for (const id of hideInReadOnly) {
+      const el = document.getElementById(id);
+      if (el) el.hidden = true;
+    }
+  } else {
+    for (const id of restoreWhenEditable) {
+      const el = document.getElementById(id);
+      if (el) el.hidden = false;
+    }
   }
   const note = document.getElementById('edit-playlist-readonly-note');
   if (note) note.hidden = !readOnly;
@@ -3299,12 +3313,6 @@ function wireEditPlaylist() {
       }
     });
   }
-  const blockedBackBtn = document.getElementById('btn-edit-playlist-blocked-back');
-  if (blockedBackBtn) {
-    blockedBackBtn.addEventListener('click', () => {
-      setFlowStep('select-playlist', { focusPanel: false });
-    });
-  }
 }
 
 function exitEditPlaylistStep() {
@@ -3347,6 +3355,9 @@ function enterEditPlaylistStep() {
   }
   /* Nollställ ev. "blocked"-banner från en tidigare spellista. */
   setEditPlaylistBlocked(false);
+  /* Nollställ progressbaren — den kan hänga kvar om föregående commit avbröts på ett
+   * sätt som inte körde finally-blocket (t.ex. navigering via brödsmulor). */
+  setEditPlaylistProgress(false, '', 0);
   /* Applicera read-only-läget omedelbart om vi redan vet att användaren inte äger listan,
    * så vi slipper blinka fram redigerings-UI som genast döljs av loadEditPlaylistTracks. */
   setEditPlaylistReadOnly(isEditPlaylistReadOnlyUpfront());
