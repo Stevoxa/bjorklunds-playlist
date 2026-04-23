@@ -2,6 +2,7 @@ import {
   SPOTIFY_API_BASE,
   SPOTIFY_TOKEN_REFRESH_LEEWAY_MS,
   PLAYLIST_LIST_MAX_PAGES,
+  PLAYLIST_TRACKS_MAX_PAGES,
 } from './config.js';
 import { refreshAccessToken } from './auth.js';
 import { logSpotify } from './spotify-log.js';
@@ -334,6 +335,11 @@ const PLAYLIST_FETCH_INITIAL_GAP_MS = 450;
 const PLAYLIST_PAGE_GAP_MS = 750;
 const PLAYLIST_PAGE_JITTER_MS = 500;
 
+/** Paus mellan paginerade GET /playlists/{id}/tracks — samma policy som /me/playlists. */
+const PLAYLIST_TRACKS_FETCH_INITIAL_GAP_MS = 300;
+const PLAYLIST_TRACKS_PAGE_GAP_MS = 650;
+const PLAYLIST_TRACKS_PAGE_JITTER_MS = 400;
+
 /** Endast en kedja för /search + spellisteläsning (inkl. 429-retries) åt gången — undviker parallella GET-bursts */
 let searchGetChain = Promise.resolve();
 
@@ -409,6 +415,8 @@ function parseRetryAfterMs(raw) {
 async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
   const isSearch = path.startsWith('/search?');
   const isPlaylistListPage = path.startsWith('/me/playlists?');
+  /** /playlists/{id} och /playlists/{id}/tracks: stora svar, ofta rate-limitade → samma backoff-policy som /me/playlists. */
+  const isPlaylistReadPage = /^\/playlists\/[^/?]+(?:\/tracks)?(?:\?|$)/.test(path);
   const run = async () => {
     let lastRes = /** @type {Response | null} */ (null);
     let totalWaited = 0;
@@ -447,10 +455,14 @@ async function apiGetWith429Retry(accessToken, path, maxRetries = 5, signal) {
 
       const retryAfterRaw = res.headers.get('Retry-After');
       const fromHeader = parseRetryAfterMs(retryAfterRaw);
-      /** Utan Retry-After: /search och /me/playlists straffas hårt av snabba omförsök — längre backoff */
-      const fallbackBase = isSearch ? 12_000 : isPlaylistListPage ? 20_000 : 2_500;
+      /** Utan Retry-After: /search, /me/playlists och /playlists/{id}/tracks straffas hårt av snabba omförsök — längre backoff */
+      const fallbackBase = isSearch
+        ? 12_000
+        : isPlaylistListPage || isPlaylistReadPage
+          ? 20_000
+          : 2_500;
       const fallbackMs = Math.min(RATE_LIMIT_WAIT_CAP_MS, fallbackBase * 2 ** attempt);
-      const minNoHeader = isSearch || isPlaylistListPage ? 2_000 : RATE_LIMIT_WAIT_MIN_MS;
+      const minNoHeader = isSearch || isPlaylistListPage || isPlaylistReadPage ? 2_000 : RATE_LIMIT_WAIT_MIN_MS;
       let waitMs =
         fromHeader != null
           ? Math.min(RATE_LIMIT_WAIT_CAP_MS, Math.max(RATE_LIMIT_WAIT_MIN_MS, fromHeader))
@@ -597,6 +609,91 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       res = await api(t.accessToken, path, init);
     }
     return res;
+  }
+
+  /**
+   * Mutation (POST/PUT/DELETE) med både 401- och 429-retry. Samma Retry-After-policy som
+   * `apiGetWith429Retry` (cappad, med jitter, total wait-budget). Används av edit-flödet
+   * där vi vill vara robusta mot tillfälliga 429 — men förlita oss i första hand på vår
+   * egen pacing mellan steg, så max 2 retries.
+   * @param {string} path
+   * @param {RequestInit} init
+   * @param {{ maxRetries?: number, signal?: AbortSignal }} [opts]
+   */
+  async function mutateWith401AndRetryOn429(path, init, opts = {}) {
+    const maxRetries = Math.max(0, opts.maxRetries ?? 2);
+    const signal = opts.signal;
+    let totalWaited = 0;
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      signal?.throwIfAborted();
+      const res = await mutateWith401Retry(path, { ...init, signal });
+      if (res.status !== 429) return res;
+      if (attempt === maxRetries) {
+        const retryAfterRawFinal = res.headers.get('Retry-After');
+        const retryAfterParsedFinal = parseRetryAfterMs(retryAfterRawFinal);
+        logSpotify({
+          t: new Date().toISOString(),
+          kind: 'http_429',
+          path,
+          phase: 'mutate_max_retries_reached',
+          method: init?.method ?? 'POST',
+          attempt: attempt + 1,
+          maxAttempts: maxRetries + 1,
+          retryAfterRaw: retryAfterRawFinal,
+          retryAfterParsedMs: retryAfterParsedFinal,
+        });
+        return res;
+      }
+      const retryAfterRaw = res.headers.get('Retry-After');
+      const fromHeader = parseRetryAfterMs(retryAfterRaw);
+      const fallbackBase = 8_000;
+      const fallbackMs = Math.min(RATE_LIMIT_WAIT_CAP_MS, fallbackBase * 2 ** attempt);
+      let waitMs =
+        fromHeader != null
+          ? Math.min(RATE_LIMIT_WAIT_CAP_MS, Math.max(RATE_LIMIT_WAIT_MIN_MS, fromHeader))
+          : Math.max(2_000, fallbackMs);
+      const remaining = RATE_LIMIT_TOTAL_WAIT_CAP_MS - totalWaited;
+      if (remaining <= 0) {
+        await res.text().catch(() => {});
+        return res;
+      }
+      const waitMsCappedToBudget = Math.min(waitMs, remaining);
+      const jitterMs = Math.floor(Math.random() * 400);
+      const waitMsApplied = waitMsCappedToBudget + jitterMs;
+      totalWaited += waitMsApplied;
+      logSpotify({
+        t: new Date().toISOString(),
+        kind: 'http_429',
+        path,
+        phase: 'mutate_backoff',
+        method: init?.method ?? 'POST',
+        attempt: attempt + 1,
+        maxAttempts: maxRetries + 1,
+        retryAfterRaw,
+        retryAfterParsedMs: fromHeader,
+        backoffSource: fromHeader != null ? 'retry-after' : 'fallback',
+        waitMsFromPolicy: waitMs,
+        remainingBudgetMs: remaining,
+        waitMsAfterCap: waitMsCappedToBudget,
+        jitterMs,
+        waitMsApplied,
+        totalWaitedAfter: totalWaited,
+      });
+      window.dispatchEvent(
+        new CustomEvent('bjorklund-spotify-wait', {
+          detail: {
+            waitSec: Math.max(1, Math.ceil(waitMsApplied / 1000)),
+            attempt: attempt + 1,
+            maxAttempts: maxRetries + 1,
+            kind: 'mutate',
+          },
+        }),
+      );
+      await res.text().catch(() => {});
+      await sleepAbortable(waitMsApplied, signal);
+    }
+    signal?.throwIfAborted();
+    return mutateWith401Retry(path, { ...init, signal });
   }
 
   /**
@@ -810,6 +907,222 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       const out = [...byId.values()];
       out.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
       return { list: out, truncated, userId };
+    },
+
+    /**
+     * Meta för en specifik spellista — `GET /playlists/{id}` med fält-filter för att hålla svaret litet.
+     * Anropas från Redigera-flödet tillsammans med `getPlaylistTracksAll`.
+     * @param {string} playlistId
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<{ id: string, name: string, description: string, ownerId: string, ownerName: string, imageUrl: string | null, snapshotId: string, total: number, isPublic: boolean, collaborative: boolean }>}
+     */
+    async getPlaylistMeta(playlistId, signal) {
+      if (!playlistId || typeof playlistId !== 'string') {
+        throw new Error('getPlaylistMeta: saknar playlistId');
+      }
+      const fields = encodeURIComponent(
+        'id,name,description,owner(id,display_name),images,snapshot_id,tracks(total),public,collaborative',
+      );
+      const path = `/playlists/${encodeURIComponent(playlistId)}?fields=${fields}`;
+      return scheduleSearchGetChain(async () => {
+        signal?.throwIfAborted();
+        const reqStartedAt = new Date().toISOString();
+        const res = await getWith401Retry(path, 3, signal);
+        const bodyText = await res.text();
+        if (!res.ok) {
+          logSpotify({
+            t: new Date().toISOString(),
+            kind: 'http',
+            endpoint: 'GET /v1/playlists/{id}',
+            phase: 'getPlaylistMeta',
+            playlistId,
+            source: 'network',
+            httpStatus: res.status,
+            ok: false,
+            reqStartedAt,
+          });
+          throw new Error(formatSpotifyApiError(res.status, bodyText));
+        }
+        let data;
+        try {
+          data = bodyText ? JSON.parse(bodyText) : {};
+        } catch {
+          throw new Error('Ogiltigt JSON-svar från Spotify (playlist meta)');
+        }
+        const ownerId = typeof data?.owner?.id === 'string' ? data.owner.id : '';
+        const ownerDisplay =
+          typeof data?.owner?.display_name === 'string' && data.owner.display_name.length > 0
+            ? data.owner.display_name
+            : ownerId;
+        const imgArr = Array.isArray(data.images) ? data.images : [];
+        const imageUrl =
+          imgArr.length > 0 && typeof imgArr[0]?.url === 'string' ? imgArr[0].url : null;
+        const total = Number.isFinite(data?.tracks?.total) ? Number(data.tracks.total) : 0;
+        logSpotify({
+          t: new Date().toISOString(),
+          kind: 'http',
+          endpoint: 'GET /v1/playlists/{id}',
+          phase: 'getPlaylistMeta',
+          playlistId,
+          source: 'network',
+          httpStatus: res.status,
+          ok: true,
+          total,
+          reqStartedAt,
+        });
+        return {
+          id: typeof data.id === 'string' ? data.id : playlistId,
+          name: typeof data.name === 'string' ? data.name : '',
+          description: typeof data.description === 'string' ? data.description : '',
+          ownerId,
+          ownerName: ownerDisplay,
+          imageUrl,
+          snapshotId: typeof data.snapshot_id === 'string' ? data.snapshot_id : '',
+          total,
+          isPublic: Boolean(data.public),
+          collaborative: Boolean(data.collaborative),
+        };
+      });
+    },
+
+    /**
+     * Hämta alla spår i en spellista, paginerat via `GET /playlists/{id}/tracks?limit=100`.
+     * Returnerar normaliserade rader som är tillräckligt rika för Redigera-listvyn (namn, artister,
+     * album, omslagsbild, längd, added_at, is_local/is_episode) — utan tunga extra-fält. Stöttas
+     * av samma sök-kö som övriga GET för att undvika parallella Spotify-anrop.
+     *
+     * Avbryts via `PLAYLIST_TRACKS_MAX_PAGES` → 100 × 40 = 4000 spår. Sätt `truncated=true` i svaret.
+     * @param {string} playlistId
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<{
+     *   tracks: import('./playlist-tracks-cache.js').CachedTrackRow[],
+     *   truncated: boolean,
+     *   snapshotId: string,
+     *   total: number
+     * }>}
+     */
+    async getPlaylistTracksAll(playlistId, signal) {
+      if (!playlistId || typeof playlistId !== 'string') {
+        throw new Error('getPlaylistTracksAll: saknar playlistId');
+      }
+      const baseFields = encodeURIComponent(
+        'items(added_at,is_local,track(uri,id,name,type,is_local,duration_ms,artists(name),album(name,images(url)),episode)),next,limit,offset,total',
+      );
+      return scheduleSearchGetChain(async () => {
+        signal?.throwIfAborted();
+        /** @type {import('./playlist-tracks-cache.js').CachedTrackRow[]} */
+        const out = [];
+        let offset = 0;
+        const pageSize = 100;
+        let pagesFetched = 0;
+        let truncated = false;
+        let total = 0;
+        let snapshotId = '';
+        await sleepAbortable(PLAYLIST_TRACKS_FETCH_INITIAL_GAP_MS, signal);
+        while (true) {
+          signal?.throwIfAborted();
+          const path = `/playlists/${encodeURIComponent(playlistId)}/tracks?limit=${pageSize}&offset=${offset}&fields=${baseFields}`;
+          const reqStartedAt = new Date().toISOString();
+          const res = await getWith401Retry(path, 0, signal);
+          const bodyText = await res.text();
+          if (!res.ok) {
+            logSpotify({
+              t: new Date().toISOString(),
+              kind: 'http',
+              endpoint: 'GET /v1/playlists/{id}/tracks',
+              phase: 'getPlaylistTracksAll',
+              playlistId,
+              offset,
+              limit: pageSize,
+              source: 'network',
+              httpStatus: res.status,
+              ok: false,
+              reqStartedAt,
+            });
+            throw new Error(formatSpotifyApiError(res.status, bodyText));
+          }
+          let data;
+          try {
+            data = bodyText ? JSON.parse(bodyText) : {};
+          } catch {
+            throw new Error('Ogiltigt JSON-svar från Spotify (playlist tracks)');
+          }
+          const items = Array.isArray(data.items) ? data.items : [];
+          if (Number.isFinite(data.total)) total = Number(data.total);
+          for (const item of items) {
+            const track = item?.track;
+            if (!track || typeof track !== 'object') continue;
+            const uri = typeof track.uri === 'string' ? track.uri : '';
+            if (!uri) continue;
+            const isLocal = Boolean(track.is_local ?? item?.is_local);
+            const isEpisode = track.type === 'episode';
+            const artists = Array.isArray(track.artists)
+              ? track.artists
+                  .map((a) => (typeof a?.name === 'string' ? a.name : ''))
+                  .filter((x) => x.length > 0)
+              : [];
+            const album = track.album && typeof track.album === 'object' ? track.album : null;
+            const imgs = album && Array.isArray(album.images) ? album.images : [];
+            const albumImageUrl =
+              imgs.length > 0 && typeof imgs[imgs.length - 1]?.url === 'string'
+                ? imgs[imgs.length - 1].url
+                : imgs.length > 0 && typeof imgs[0]?.url === 'string'
+                  ? imgs[0].url
+                  : null;
+            out.push({
+              uri,
+              id: typeof track.id === 'string' ? track.id : '',
+              name: typeof track.name === 'string' ? track.name : '',
+              artists,
+              albumName: album && typeof album.name === 'string' ? album.name : '',
+              albumImageUrl,
+              durationMs: Number.isFinite(track.duration_ms) ? Number(track.duration_ms) : 0,
+              addedAt: typeof item?.added_at === 'string' ? item.added_at : '',
+              isLocal,
+              isEpisode,
+            });
+          }
+          logSpotify({
+            t: new Date().toISOString(),
+            kind: 'http',
+            endpoint: 'GET /v1/playlists/{id}/tracks',
+            phase: 'getPlaylistTracksAll',
+            playlistId,
+            offset,
+            limit: pageSize,
+            source: 'network',
+            httpStatus: res.status,
+            ok: true,
+            itemsReturned: items.length,
+            total: Number.isFinite(data.total) ? data.total : null,
+            hasNext: typeof data.next === 'string',
+            reqStartedAt,
+          });
+          pagesFetched += 1;
+          if (items.length < pageSize) break;
+          if (pagesFetched >= PLAYLIST_TRACKS_MAX_PAGES) {
+            truncated = true;
+            logSpotify({
+              t: new Date().toISOString(),
+              kind: 'ui',
+              phase: 'getPlaylistTracksAll',
+              reason: 'max_pages_reached',
+              playlistId,
+              pagesFetched,
+              maxPages: PLAYLIST_TRACKS_MAX_PAGES,
+            });
+            break;
+          }
+          offset += pageSize;
+          await sleepAbortable(
+            PLAYLIST_TRACKS_PAGE_GAP_MS + Math.floor(Math.random() * PLAYLIST_TRACKS_PAGE_JITTER_MS),
+            signal,
+          );
+        }
+        /** Vi hämtar inte snapshot-id härifrån — `getPlaylistMeta` har redan skickat det separat.
+         *  Komplettera vid behov via `getPlaylistMeta` när skriv-flödet startar. */
+        return { tracks: out, truncated, snapshotId, total };
+      });
     },
 
     /**
@@ -1058,6 +1371,122 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       } catch {
         return {};
       }
+    },
+
+    /**
+     * Tar bort (avföljer) spellistan för inloggad användare. Spotify har ingen hård DELETE —
+     * endpoint:en är `DELETE /playlists/{id}/followers`, vilket både ägar-radar och vanliga följare
+     * använder. 429 hanteras via gemensam mutate-wrapper.
+     * @param {string} playlistId
+     * @param {{ signal?: AbortSignal }} [opts]
+     */
+    async unfollowPlaylist(playlistId, opts = {}) {
+      if (!playlistId) throw new Error('unfollowPlaylist: saknar playlistId');
+      const path = `/playlists/${encodeURIComponent(playlistId)}/followers`;
+      const res = await mutateWith401AndRetryOn429(
+        path,
+        { method: 'DELETE' },
+        { signal: opts.signal, maxRetries: 2 },
+      );
+      const text = await res.text();
+      logPlaylistWrite('DELETE', path, { playlistId }, res, text);
+      if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
+      return { ok: true };
+    },
+
+    /**
+     * Tar bort spår från en spellista — `DELETE /playlists/{id}/tracks` med batch av upp till
+     * `EDIT_REMOVE_BATCH_SIZE` poster. Vi skickar per-positionsformatet (`{ uri, positions: [...] }`)
+     * så att dubbletter kan riktas exakt (Spotify kräver detta när samma uri ligger flera gånger).
+     * Returnerar nytt `snapshot_id` som används för nästa mutation.
+     * @param {string} playlistId
+     * @param {{ uri: string, positions: number[] }[]} uriPositions Max 100 poster per anrop (Spotify).
+     * @param {string} [snapshotId]
+     * @param {{ signal?: AbortSignal }} [opts]
+     * @returns {Promise<{ snapshotId: string }>}
+     */
+    async removePlaylistTracksBatch(playlistId, uriPositions, snapshotId, opts = {}) {
+      if (!playlistId) throw new Error('removePlaylistTracksBatch: saknar playlistId');
+      if (!Array.isArray(uriPositions) || uriPositions.length === 0) {
+        throw new Error('removePlaylistTracksBatch: tom batch');
+      }
+      const path = `/playlists/${encodeURIComponent(playlistId)}/tracks`;
+      const tracks = uriPositions.map((x) => ({
+        uri: String(x.uri),
+        positions: Array.isArray(x.positions) ? x.positions.map((n) => Number(n)) : [],
+      }));
+      /** @type {Record<string, unknown>} */
+      const body = { tracks };
+      if (snapshotId) body.snapshot_id = snapshotId;
+      const requestMeta = {
+        playlistId,
+        uriCount: tracks.length,
+        uriSample: tracks.slice(0, 8).map((x) => x.uri),
+        hasSnapshot: Boolean(snapshotId),
+      };
+      const res = await mutateWith401AndRetryOn429(
+        path,
+        { method: 'DELETE', body: JSON.stringify(body) },
+        { signal: opts.signal, maxRetries: 2 },
+      );
+      const text = await res.text();
+      logPlaylistWrite('DELETE', path, requestMeta, res, text);
+      if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
+      let parsed = {};
+      try {
+        parsed = text ? JSON.parse(text) : {};
+      } catch {
+        /* okej — vissa svar är tomma */
+      }
+      const nextSnapshot =
+        typeof parsed?.snapshot_id === 'string' ? parsed.snapshot_id : snapshotId ?? '';
+      return { snapshotId: nextSnapshot };
+    },
+
+    /**
+     * Omordna spår i en spellista — `PUT /playlists/{id}/tracks`. Flyttar spåren i intervallet
+     * `[range_start, range_start + range_length)` till positionen `insert_before`.
+     * Spotify returnerar ett nytt `snapshot_id` som måste användas för nästa mutation.
+     * @param {string} playlistId
+     * @param {{ rangeStart: number, insertBefore: number, rangeLength?: number, snapshotId?: string }} opts
+     * @param {{ signal?: AbortSignal }} [netOpts]
+     * @returns {Promise<{ snapshotId: string }>}
+     */
+    async reorderPlaylistItem(playlistId, opts, netOpts = {}) {
+      if (!playlistId) throw new Error('reorderPlaylistItem: saknar playlistId');
+      const rangeLength = Number.isFinite(opts.rangeLength) ? Number(opts.rangeLength) : 1;
+      /** @type {Record<string, unknown>} */
+      const body = {
+        range_start: Number(opts.rangeStart),
+        insert_before: Number(opts.insertBefore),
+        range_length: rangeLength,
+      };
+      if (opts.snapshotId) body.snapshot_id = opts.snapshotId;
+      const path = `/playlists/${encodeURIComponent(playlistId)}/tracks`;
+      const requestMeta = {
+        playlistId,
+        rangeStart: body.range_start,
+        insertBefore: body.insert_before,
+        rangeLength,
+        hasSnapshot: Boolean(opts.snapshotId),
+      };
+      const res = await mutateWith401AndRetryOn429(
+        path,
+        { method: 'PUT', body: JSON.stringify(body) },
+        { signal: netOpts.signal, maxRetries: 2 },
+      );
+      const text = await res.text();
+      logPlaylistWrite('PUT', path, requestMeta, res, text);
+      if (!res.ok) throw new Error(formatSpotifyApiError(res.status, text));
+      let parsed = {};
+      try {
+        parsed = text ? JSON.parse(text) : {};
+      } catch {
+        /* okej — enstaka svar kan vara tomma */
+      }
+      const nextSnapshot =
+        typeof parsed?.snapshot_id === 'string' ? parsed.snapshot_id : opts.snapshotId ?? '';
+      return { snapshotId: nextSnapshot };
     },
   };
 }

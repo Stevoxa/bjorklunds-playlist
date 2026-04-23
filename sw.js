@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 /** Måste matcha APP_STORAGE_ID i js/config.js */
 const APP_STORAGE_ID = 'stevoxa-io-bjorklunds-playlist-pwa';
-const CACHE = `${APP_STORAGE_ID}-cache-v178`;
+const CACHE = `${APP_STORAGE_ID}-cache-v179`;
 const ASSETS = [
   './',
   './index.html',
@@ -14,12 +14,14 @@ const ASSETS = [
   './js/spotify-log.js',
   './js/search-cache.js',
   './js/playlist-list-cache.js',
+  './js/playlist-tracks-cache.js',
   './js/artist-bank.js',
   './js/spotify-api.js',
   './js/parser.js',
   './js/token-session.js',
   './js/row-spotify-playback.js',
   './js/app.js',
+  './vendor/sortable.min.js',
   './manifest.webmanifest',
   './icons/favicon-16.png',
   './icons/favicon-32.png',

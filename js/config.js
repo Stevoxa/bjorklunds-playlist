@@ -53,3 +53,25 @@ export const PLAYLIST_LIST_CACHE_TTL_MS = 60 * 60 * 1000;
  * även under långa Spotify-pauser (kan vara flera timmar till över 24 h).
  */
 export const PLAYLIST_LIST_STALE_IF_ERROR_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Färsk TTL för cachad playlist-innehållslista (spår). Kortare än listan — innehåll ändras oftare. */
+export const PLAYLIST_TRACKS_CACHE_TTL_MS = 15 * 60 * 1000;
+
+/** Stale-if-error-fönster för playlist-tracks-cachen (7 dagar). */
+export const PLAYLIST_TRACKS_STALE_IF_ERROR_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Säkerhetsventil: avbryt track-paginering efter så här många sidor (100 per sida).
+ * 40 × 100 = 4000 spår. Skyddar mot worst-case-spellistor.
+ */
+export const PLAYLIST_TRACKS_MAX_PAGES = 40;
+
+/** Paus (+ jitter) mellan varje skriv-steg i Genomför-på-Spotify (429-skydd). */
+export const EDIT_COMMIT_STEP_GAP_MS = 1500;
+export const EDIT_COMMIT_STEP_JITTER_MS = 500;
+
+/** Max antal uri:er per DELETE /playlists/{id}/tracks (Spotify-gräns = 100). */
+export const EDIT_REMOVE_BATCH_SIZE = 100;
+
+/** Antal planerade skrivningar som triggar "det här kommer ta lång tid"-varning. */
+export const EDIT_COMMIT_HEAVY_WARN_THRESHOLD = 200;

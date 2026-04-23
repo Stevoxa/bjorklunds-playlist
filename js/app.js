@@ -4,6 +4,12 @@ import {
   FEATURE_ROW_FULL_PLAYBACK,
   PLAYLIST_LIST_CACHE_TTL_MS,
   PLAYLIST_LIST_STALE_IF_ERROR_MS,
+  PLAYLIST_TRACKS_CACHE_TTL_MS,
+  PLAYLIST_TRACKS_STALE_IF_ERROR_MS,
+  EDIT_COMMIT_STEP_GAP_MS,
+  EDIT_COMMIT_STEP_JITTER_MS,
+  EDIT_REMOVE_BATCH_SIZE,
+  EDIT_COMMIT_HEAVY_WARN_THRESHOLD,
 } from './config.js';
 import { getRedirectUri, beginLogin, consumeOAuthCallback } from './auth.js';
 import { readLocalSettings, writeLocalSettings } from './local-settings.js';
@@ -26,6 +32,11 @@ import {
   writeAllPlaylistsCache,
   deleteAllPlaylistsCache,
 } from './playlist-list-cache.js';
+import {
+  readPlaylistTracksCache,
+  writePlaylistTracksCache,
+  deletePlaylistTracksCache,
+} from './playlist-tracks-cache.js';
 import { readArtistBank, addArtistsToBank, deleteArtistBank } from './artist-bank.js';
 import { readSpotifySession, writeSpotifySession, clearSpotifySession } from './token-session.js';
 import {
@@ -938,6 +949,10 @@ function setFlowStep(step, opts = {}) {
   }
   if (step === 'edit-playlist') {
     enterEditPlaylistStep();
+  } else if (prevStep === 'edit-playlist') {
+    /* Lämnar Redigera-vyn: städa Sortable-instansen + ev. pågående tracks-fetch.
+     * Vi behåller editPlaylistState så att snabb tillbakanavigering visar listan direkt. */
+    exitEditPlaylistStep();
   }
   updateSummarySubtitle(step);
   updateSummaryTip(step);
@@ -2139,18 +2154,970 @@ function enterSelectPlaylistStep() {
   });
 }
 
+/* --------------------------------------------------------------------------
+ * Redigera playlist — state, render, DnD, bulk, radera och Genomför-på-Spotify.
+ * Hålls nära select-playlist-mönstret: in-memory + IDB-cache, single-flight,
+ * stale-if-error. Genomför körs med egen pacing och 429-retry via api-wrappern.
+ * -------------------------------------------------------------------------- */
+
+/** @typedef {import('./playlist-tracks-cache.js').CachedTrackRow} EditTrackRow */
+
+/**
+ * @type {{
+ *   playlistId: string,
+ *   meta: { id: string, name: string, description: string, ownerId: string, ownerName: string, imageUrl: string | null, snapshotId: string, total: number, isPublic: boolean, collaborative: boolean },
+ *   original: EditTrackRow[],
+ *   workingOrder: string[],
+ *   pendingRemovals: Set<string>,
+ *   selection: Set<string>,
+ *   snapshotId: string,
+ *   at: number,
+ *   truncated: boolean,
+ *   userId: string,
+ * } | null}
+ */
+let editPlaylistState = null;
+
+/** @type {Promise<void> | null} */
+let editPlaylistTracksInFlight = null;
+
+/** @type {AbortController | null} */
+let editPlaylistTracksAbort = null;
+
+/** @type {{ destroy: () => void } | null} */
+let editPlaylistSortable = null;
+
+/** @type {AbortController | null} */
+let editPlaylistCommitAbort = null;
+
+/** @type {{ at: number, stale: boolean } | null} */
+let editPlaylistUpdatedAtState = null;
+/** @type {ReturnType<typeof setInterval> | null} */
+let editPlaylistUpdatedAtTicker = null;
+
+function updateEditPlaylistUpdatedAt(at, stale) {
+  const el = document.getElementById('edit-playlist-updated');
+  if (!el) return;
+  if (at == null) {
+    editPlaylistUpdatedAtState = null;
+    el.hidden = true;
+    el.textContent = '';
+    if (editPlaylistUpdatedAtTicker) {
+      clearInterval(editPlaylistUpdatedAtTicker);
+      editPlaylistUpdatedAtTicker = null;
+    }
+    return;
+  }
+  editPlaylistUpdatedAtState = { at, stale };
+  renderEditPlaylistUpdatedAtText();
+  if (!editPlaylistUpdatedAtTicker) {
+    editPlaylistUpdatedAtTicker = setInterval(renderEditPlaylistUpdatedAtText, 30_000);
+  }
+}
+
+function renderEditPlaylistUpdatedAtText() {
+  const el = document.getElementById('edit-playlist-updated');
+  if (!el || !editPlaylistUpdatedAtState) return;
+  const { at, stale } = editPlaylistUpdatedAtState;
+  const ageMs = Math.max(0, Date.now() - at);
+  const ageMin = Math.floor(ageMs / 60_000);
+  let rel;
+  if (ageMs < 60_000) rel = 'nu nyss';
+  else if (ageMin < 60) rel = `för ${ageMin} min sedan`;
+  else if (ageMin < 60 * 24) rel = `för ${Math.floor(ageMin / 60)} tim sedan`;
+  else rel = `för ${Math.floor(ageMin / (60 * 24))} dag(ar) sedan`;
+  el.textContent = stale
+    ? `Senast uppdaterad ${rel} (ej verifierad mot Spotify just nu).`
+    : `Uppdaterad ${rel}.`;
+  el.classList.toggle('help--warning', stale);
+  el.hidden = false;
+}
+
+function setEditPlaylistSpinnerVisible(visible) {
+  const el = document.getElementById('edit-playlist-spinner');
+  if (el) el.hidden = !visible;
+}
+
+function updateEditPlaylistTruncatedWarning(truncated) {
+  const el = document.getElementById('edit-playlist-truncated-warning');
+  if (el) el.hidden = !truncated;
+}
+
+function renderEditPlaylistHeader() {
+  const state = editPlaylistState;
+  const meta = state?.meta;
+  const nameEl = document.getElementById('edit-playlist-selected-name');
+  if (nameEl) nameEl.textContent = meta?.name || selectedEditPlaylist?.name || '–';
+  const ownerEl = document.getElementById('edit-playlist-owner');
+  if (ownerEl) ownerEl.textContent = meta?.ownerName || selectedEditPlaylist?.ownerName || '–';
+  const totalEl = document.getElementById('edit-playlist-total');
+  if (totalEl) {
+    if (state) {
+      const kept = state.workingOrder.filter((u) => !state.pendingRemovals.has(u)).length;
+      totalEl.textContent = `${kept}${state.pendingRemovals.size ? ` (av ${state.workingOrder.length})` : ''}`;
+    } else {
+      totalEl.textContent = meta?.total != null ? String(meta.total) : '–';
+    }
+  }
+  const img = /** @type {HTMLImageElement | null} */ (document.getElementById('edit-playlist-art'));
+  const fallback = document.getElementById('edit-playlist-art-fallback');
+  const imageUrl = meta?.imageUrl ?? selectedEditPlaylist?.imageUrl ?? null;
+  if (img && fallback) {
+    if (imageUrl) {
+      img.src = imageUrl;
+      img.alt = `Omslag för ${meta?.name || selectedEditPlaylist?.name || 'spellistan'}`;
+      img.hidden = false;
+      fallback.hidden = true;
+    } else {
+      img.hidden = true;
+      img.removeAttribute('src');
+      fallback.hidden = false;
+    }
+  }
+  const deleteBtn = document.getElementById('btn-edit-playlist-delete');
+  if (deleteBtn) deleteBtn.hidden = false;
+}
+
+function destroyEditPlaylistSortable() {
+  try {
+    editPlaylistSortable?.destroy();
+  } catch {
+    /* ignore */
+  }
+  editPlaylistSortable = null;
+}
+
+function isEditPlaylistDirty() {
+  const s = editPlaylistState;
+  if (!s) return false;
+  if (s.pendingRemovals.size > 0) return true;
+  if (s.workingOrder.length !== s.original.length) return true;
+  for (let i = 0; i < s.workingOrder.length; i += 1) {
+    if (s.workingOrder[i] !== s.original[i].uri) return true;
+  }
+  return false;
+}
+
+function updateEditPlaylistDirtyUi() {
+  const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-edit-playlist-apply'));
+  const hint = document.getElementById('edit-playlist-dirty-hint');
+  const dirty = isEditPlaylistDirty();
+  if (btn) {
+    btn.disabled = !dirty;
+    btn.setAttribute('aria-disabled', dirty ? 'false' : 'true');
+  }
+  if (hint) hint.hidden = !dirty;
+}
+
+function updateEditPlaylistBulkBar() {
+  const bar = document.getElementById('edit-playlist-bulk-bar');
+  const countEl = document.getElementById('edit-playlist-bulk-count');
+  const state = editPlaylistState;
+  const count = state ? state.selection.size : 0;
+  if (bar) bar.hidden = count === 0;
+  if (countEl) countEl.textContent = `${count} markerade`;
+}
+
+function renderEditPlaylistTracks() {
+  const listEl = document.getElementById('edit-playlist-list');
+  const emptyEl = document.getElementById('edit-playlist-empty');
+  if (!listEl || !emptyEl) return;
+  const state = editPlaylistState;
+  if (!state) {
+    listEl.replaceChildren();
+    emptyEl.hidden = true;
+    return;
+  }
+  if (state.workingOrder.length === 0) {
+    listEl.replaceChildren();
+    emptyEl.hidden = false;
+    return;
+  }
+  emptyEl.hidden = true;
+  /** @type {Map<string, EditTrackRow>} */
+  const byUri = new Map(state.original.map((r) => [r.uri, r]));
+  const frag = document.createDocumentFragment();
+  for (const uri of state.workingOrder) {
+    const row = byUri.get(uri);
+    if (!row) continue;
+    frag.append(buildEditPlaylistTrackNode(row, state));
+  }
+  listEl.replaceChildren(frag);
+}
+
+/**
+ * @param {EditTrackRow} row
+ * @param {NonNullable<typeof editPlaylistState>} state
+ */
+function buildEditPlaylistTrackNode(row, state) {
+  const li = document.createElement('li');
+  li.className = 'edit-playlist-track';
+  li.dataset.uri = row.uri;
+  if (state.pendingRemovals.has(row.uri)) li.classList.add('edit-playlist-track--pending-remove');
+  if (row.isLocal) li.classList.add('edit-playlist-track--local');
+  if (row.isEpisode) li.classList.add('edit-playlist-track--episode');
+
+  const drag = document.createElement('span');
+  drag.className = 'edit-playlist-track__drag';
+  drag.setAttribute('aria-label', 'Dra för att ändra ordning');
+  drag.title = 'Dra för att ändra ordning';
+  drag.innerHTML = '<svg width="18" height="18" aria-hidden="true"><use href="#sym-grip" /></svg>';
+  if (row.isLocal) {
+    drag.setAttribute('aria-disabled', 'true');
+    drag.title = 'Lokala filer kan inte flyttas via Spotify Web API';
+  }
+  li.append(drag);
+
+  const cbWrap = document.createElement('span');
+  cbWrap.className = 'edit-playlist-track__checkbox-wrap';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.className = 'edit-playlist-track__checkbox';
+  cb.checked = state.selection.has(row.uri);
+  cb.setAttribute('aria-label', `Markera ${row.name}`);
+  cb.addEventListener('change', () => {
+    if (cb.checked) state.selection.add(row.uri);
+    else state.selection.delete(row.uri);
+    updateEditPlaylistBulkBar();
+  });
+  cbWrap.append(cb);
+  li.append(cbWrap);
+
+  if (row.albumImageUrl) {
+    const img = document.createElement('img');
+    img.className = 'edit-playlist-track__art';
+    img.src = row.albumImageUrl;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.referrerPolicy = 'no-referrer';
+    img.addEventListener(
+      'error',
+      () => {
+        const fb = document.createElement('span');
+        fb.className = 'edit-playlist-track__art-fallback';
+        fb.innerHTML = '<svg aria-hidden="true"><use href="#sym-note" /></svg>';
+        img.replaceWith(fb);
+      },
+      { once: true },
+    );
+    li.append(img);
+  } else {
+    const fb = document.createElement('span');
+    fb.className = 'edit-playlist-track__art-fallback';
+    fb.innerHTML = '<svg aria-hidden="true"><use href="#sym-note" /></svg>';
+    li.append(fb);
+  }
+
+  const body = document.createElement('div');
+  body.className = 'edit-playlist-track__body';
+  const nameEl = document.createElement('span');
+  nameEl.className = 'edit-playlist-track__name';
+  nameEl.textContent = row.name || '(utan namn)';
+  const artistEl = document.createElement('span');
+  artistEl.className = 'edit-playlist-track__artist';
+  artistEl.textContent = row.artists.join(', ') || (row.isEpisode ? 'Podcast-avsnitt' : row.isLocal ? 'Lokal fil' : '—');
+  body.append(nameEl, artistEl);
+  li.append(body);
+
+  return li;
+}
+
+function initEditPlaylistSortable() {
+  destroyEditPlaylistSortable();
+  const listEl = document.getElementById('edit-playlist-list');
+  const Sortable = /** @type {any} */ (window).Sortable;
+  if (!listEl || !Sortable) return;
+  editPlaylistSortable = new Sortable(listEl, {
+    handle: '.edit-playlist-track__drag',
+    animation: 140,
+    forceFallback: true,
+    fallbackOnBody: true,
+    ghostClass: 'edit-playlist-track--ghost',
+    chosenClass: 'edit-playlist-track--chosen',
+    dragClass: 'edit-playlist-track--dragging',
+    filter: '[aria-disabled="true"]',
+    preventOnFilter: true,
+    onEnd: onEditPlaylistSortableEnd,
+  });
+}
+
+function onEditPlaylistSortableEnd(evt) {
+  const state = editPlaylistState;
+  if (!state) return;
+  const oldIndex = Number(evt?.oldIndex);
+  const newIndex = Number(evt?.newIndex);
+  if (!Number.isFinite(oldIndex) || !Number.isFinite(newIndex) || oldIndex === newIndex) return;
+  const next = state.workingOrder.slice();
+  const [moved] = next.splice(oldIndex, 1);
+  if (!moved) return;
+  next.splice(newIndex, 0, moved);
+  state.workingOrder = next;
+  updateEditPlaylistDirtyUi();
+  renderEditPlaylistHeader();
+}
+
+function handleEditPlaylistSelectAllVisible() {
+  const state = editPlaylistState;
+  if (!state) return;
+  for (const uri of state.workingOrder) {
+    if (!state.pendingRemovals.has(uri)) state.selection.add(uri);
+  }
+  /* Uppdatera bara kryssrutorna i DOM, slipper full re-render. */
+  const listEl = document.getElementById('edit-playlist-list');
+  if (listEl) {
+    for (const li of listEl.querySelectorAll('li[data-uri]')) {
+      const cb = /** @type {HTMLInputElement | null} */ (li.querySelector('.edit-playlist-track__checkbox'));
+      if (cb) cb.checked = state.selection.has(li.getAttribute('data-uri') ?? '');
+    }
+  }
+  updateEditPlaylistBulkBar();
+}
+
+function handleEditPlaylistClearSelection() {
+  const state = editPlaylistState;
+  if (!state) return;
+  state.selection.clear();
+  const listEl = document.getElementById('edit-playlist-list');
+  if (listEl) {
+    for (const cb of listEl.querySelectorAll('.edit-playlist-track__checkbox')) {
+      /** @type {HTMLInputElement} */ (cb).checked = false;
+    }
+  }
+  updateEditPlaylistBulkBar();
+}
+
+function handleEditPlaylistBulkRemove() {
+  const state = editPlaylistState;
+  if (!state || state.selection.size === 0) return;
+  /** Lägg urvalet i pendingRemovals — men ta bort dem från workingOrder OCH selection
+   *  så listan inte visar dubbletter och "markerade"-räknaren nollställs. */
+  for (const uri of state.selection) {
+    state.pendingRemovals.add(uri);
+  }
+  state.workingOrder = state.workingOrder.filter((u) => !state.pendingRemovals.has(u));
+  state.selection.clear();
+  renderEditPlaylistTracks();
+  renderEditPlaylistHeader();
+  updateEditPlaylistBulkBar();
+  updateEditPlaylistDirtyUi();
+}
+
+async function handleEditPlaylistBulkCopyAsText() {
+  const state = editPlaylistState;
+  if (!state || state.selection.size === 0) return;
+  /** @type {Map<string, EditTrackRow>} */
+  const byUri = new Map(state.original.map((r) => [r.uri, r]));
+  const lines = [];
+  /* Använd listans nuvarande ordning för att ge naturligt klistrings-resultat. */
+  for (const uri of state.workingOrder) {
+    if (!state.selection.has(uri)) continue;
+    const row = byUri.get(uri);
+    if (!row) continue;
+    const artist = (row.artists || []).map((a) => a.trim()).filter(Boolean).join(', ');
+    const title = (row.name || '').trim();
+    /* parseTrackList tolkar "Artist - Title"; hoppa rader utan minst en sida så vi inte
+     * klistrar in tomma "—". Lokala filer/episod utan artist → "(Lokal fil) - Title". */
+    if (!artist && !title) continue;
+    const left = artist || (row.isEpisode ? 'Podcast' : row.isLocal ? 'Lokal fil' : 'Okänd');
+    const right = title || '(utan namn)';
+    lines.push(`${left} - ${right}`);
+  }
+  if (lines.length === 0) {
+    showToast('Inget att kopiera.', true);
+    return;
+  }
+  const text = lines.join('\n');
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    ok = true;
+  } catch {
+    /* clipboard-API kan vara blockerat i vissa mobila webbvyer — prova textarea-fallback. */
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'absolute';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      ok = document.execCommand && document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch {
+      ok = false;
+    }
+  }
+  if (ok) showToast(`Kopierat ${lines.length} rader.`);
+  else showToast('Kunde inte kopiera automatiskt.', true);
+}
+
+async function loadEditPlaylistTracks(opts = {}) {
+  const { force = false, manual = false, quiet = false, reason = 'unknown' } = opts;
+  if (!spotifyClient || !selectedEditPlaylist) {
+    if (!quiet) showToast('Välj en spellista först.', true);
+    return;
+  }
+  const playlistId = selectedEditPlaylist.id;
+
+  const userIdKnown =
+    typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null;
+
+  /* In-memory → annars IDB. Rendera direkt om vi hittar något så användaren ser listan
+   * medan nätverket hämtar färsk data. */
+  if (!force && editPlaylistState?.playlistId === playlistId) {
+    const ageMs = Date.now() - editPlaylistState.at;
+    if (ageMs < PLAYLIST_TRACKS_CACHE_TTL_MS) {
+      renderEditPlaylistHeader();
+      renderEditPlaylistTracks();
+      updateEditPlaylistTruncatedWarning(editPlaylistState.truncated);
+      updateEditPlaylistUpdatedAt(editPlaylistState.at, /* stale */ false);
+      setEditPlaylistSpinnerVisible(false);
+      updateEditPlaylistDirtyUi();
+      return;
+    }
+  }
+  if (!editPlaylistState || editPlaylistState.playlistId !== playlistId) {
+    if (userIdKnown) {
+      const persisted = await readPlaylistTracksCache(userIdKnown, playlistId);
+      if (persisted) {
+        editPlaylistState = {
+          playlistId,
+          meta: {
+            id: playlistId,
+            name: selectedEditPlaylist.name,
+            description: '',
+            ownerId: '',
+            ownerName: selectedEditPlaylist.ownerName ?? '',
+            imageUrl: selectedEditPlaylist.imageUrl ?? null,
+            snapshotId: persisted.snapshotId ?? '',
+            total: persisted.total,
+            isPublic: false,
+            collaborative: false,
+          },
+          original: persisted.tracks.map((r) => ({ ...r })),
+          workingOrder: persisted.tracks.map((r) => r.uri),
+          pendingRemovals: new Set(),
+          selection: new Set(),
+          snapshotId: persisted.snapshotId ?? '',
+          at: persisted.at,
+          truncated: persisted.truncated,
+          userId: userIdKnown,
+        };
+        renderEditPlaylistHeader();
+        renderEditPlaylistTracks();
+        updateEditPlaylistTruncatedWarning(persisted.truncated);
+        updateEditPlaylistUpdatedAt(persisted.at, /* stale */ false);
+        setEditPlaylistSpinnerVisible(false);
+        updateEditPlaylistDirtyUi();
+      }
+    }
+  }
+
+  logSpotify({
+    t: new Date().toISOString(),
+    kind: 'ui',
+    phase: 'refreshEditPlaylist',
+    reason: `edit-playlist/${reason}`,
+    playlistId,
+    cacheHit: Boolean(editPlaylistState?.playlistId === playlistId && !force),
+    inFlight: Boolean(editPlaylistTracksInFlight),
+    manual,
+    force,
+  });
+
+  if (editPlaylistTracksInFlight) return editPlaylistTracksInFlight;
+
+  const ac = new AbortController();
+  editPlaylistTracksAbort = ac;
+  const { signal } = ac;
+  setEditPlaylistSpinnerVisible(!(editPlaylistState?.playlistId === playlistId));
+  const job = (async () => {
+    try {
+      const [meta, tracksResult] = await Promise.all([
+        spotifyClient.getPlaylistMeta(playlistId, signal),
+        spotifyClient.getPlaylistTracksAll(playlistId, signal),
+      ]);
+      const uid =
+        userIdKnown ??
+        (typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null) ??
+        '';
+      const nowAt = Date.now();
+      /* Om användaren hunnit ändra lokalt (dirty) sparar vi workingOrder/pendingRemovals.
+       * Annars skapar vi en helt ny state från färskt svar. */
+      const prev = editPlaylistState;
+      const dirty = prev?.playlistId === playlistId && isEditPlaylistDirty();
+      /** @type {NonNullable<typeof editPlaylistState>} */
+      const next = {
+        playlistId,
+        meta,
+        original: tracksResult.tracks.map((r) => ({ ...r })),
+        workingOrder: dirty && prev ? prev.workingOrder.slice() : tracksResult.tracks.map((r) => r.uri),
+        pendingRemovals: dirty && prev ? new Set(prev.pendingRemovals) : new Set(),
+        selection: dirty && prev ? new Set(prev.selection) : new Set(),
+        snapshotId: meta.snapshotId || tracksResult.snapshotId || '',
+        at: nowAt,
+        truncated: tracksResult.truncated,
+        userId: uid,
+      };
+      editPlaylistState = next;
+      if (uid) {
+        void writePlaylistTracksCache(uid, playlistId, {
+          tracks: next.original,
+          truncated: next.truncated,
+          snapshotId: next.snapshotId,
+          total: meta.total,
+        });
+      }
+      /* Håll selectedEditPlaylist uppdaterad med senaste imageUrl/ownerName från meta. */
+      if (selectedEditPlaylist && selectedEditPlaylist.id === playlistId) {
+        selectedEditPlaylist = {
+          id: playlistId,
+          name: meta.name || selectedEditPlaylist.name,
+          ownerName: meta.ownerName || selectedEditPlaylist.ownerName,
+          imageUrl: meta.imageUrl ?? selectedEditPlaylist.imageUrl,
+        };
+        writeStoredSelectedEditPlaylist(selectedEditPlaylist);
+      }
+      renderEditPlaylistHeader();
+      renderEditPlaylistTracks();
+      updateEditPlaylistTruncatedWarning(next.truncated);
+      updateEditPlaylistUpdatedAt(next.at, /* stale */ false);
+      updateEditPlaylistDirtyUi();
+      updateEditPlaylistBulkBar();
+      initEditPlaylistSortable();
+      if (manual && !quiet) {
+        showToast(`${next.workingOrder.length} spår hämtade.`);
+      }
+    } catch (e) {
+      if (signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return;
+      const fellBack = Boolean(editPlaylistState?.playlistId === playlistId);
+      if (fellBack) {
+        const ageMs = Date.now() - editPlaylistState.at;
+        updateEditPlaylistUpdatedAt(editPlaylistState.at, ageMs < PLAYLIST_TRACKS_STALE_IF_ERROR_MS);
+      }
+      if (!quiet) {
+        showToast(
+          fellBack
+            ? 'Kunde inte uppdatera spåren just nu — visar senast kända lista.'
+            : String(e?.message ?? e),
+          true,
+        );
+      }
+      throw e;
+    } finally {
+      setEditPlaylistSpinnerVisible(false);
+      if (editPlaylistTracksAbort === ac) editPlaylistTracksAbort = null;
+      editPlaylistTracksInFlight = null;
+    }
+  })();
+  editPlaylistTracksInFlight = job;
+  return job;
+}
+
+/* --------------------------------------------------------------------------
+ * Genomför på Spotify — diff + pacing + progress.
+ * computeIncrementalOps räknar ut minimala skrivningar (DELETE batchar + PUT move).
+ * commitEdits exekverar dem med paus mellan varje steg.
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @param {EditTrackRow[]} original
+ * @param {string[]} workingOrder
+ * @param {Set<string>} pendingRemovals
+ */
+function computeIncrementalOps(original, workingOrder, pendingRemovals) {
+  /** Först: bygg DELETE-batcher med exakt positions[] enligt originalListan (Spotify kräver detta
+   *  för att hantera dubbletter korrekt). Gruppera per unik uri; sedan batcha uri-grupper om
+   *  upp till `EDIT_REMOVE_BATCH_SIZE`. */
+  /** @type {Map<string, number[]>} */
+  const posByUri = new Map();
+  original.forEach((row, idx) => {
+    if (!pendingRemovals.has(row.uri)) return;
+    const arr = posByUri.get(row.uri);
+    if (arr) arr.push(idx);
+    else posByUri.set(row.uri, [idx]);
+  });
+  /** @type {{ uri: string, positions: number[] }[][]} */
+  const removeBatches = [];
+  /** @type {{ uri: string, positions: number[] }[]} */
+  let cur = [];
+  for (const [uri, positions] of posByUri.entries()) {
+    cur.push({ uri, positions });
+    if (cur.length >= EDIT_REMOVE_BATCH_SIZE) {
+      removeBatches.push(cur);
+      cur = [];
+    }
+  }
+  if (cur.length > 0) removeBatches.push(cur);
+
+  /** Bygg target-ordningen (efter removes) och simulera den steg-för-steg för att producera
+   *  minsta möjliga PUT /tracks-reorder-kedja. Greedy: gå från vänster till höger och flytta
+   *  det första felplacerade itemet till korrekt plats. O(n²) worst case men n ≤ 4000. */
+  const targetSeq = workingOrder.filter((u) => !pendingRemovals.has(u));
+  const currentSeq = original.map((r) => r.uri).filter((u) => !pendingRemovals.has(u));
+  /** @type {{ rangeStart: number, insertBefore: number, rangeLength: number }[]} */
+  const moves = [];
+  for (let i = 0; i < targetSeq.length; i += 1) {
+    if (currentSeq[i] === targetSeq[i]) continue;
+    /** Hitta target[i] i current från position i och framåt; om ej hittad (udda fall — dubbletter),
+     *  ta första träffen från början av listan. */
+    let from = -1;
+    for (let j = i; j < currentSeq.length; j += 1) {
+      if (currentSeq[j] === targetSeq[i]) {
+        from = j;
+        break;
+      }
+    }
+    if (from < 0) {
+      for (let j = 0; j < currentSeq.length; j += 1) {
+        if (currentSeq[j] === targetSeq[i]) {
+          from = j;
+          break;
+        }
+      }
+    }
+    if (from < 0 || from === i) continue;
+    /** Spotifys semantik: insert_before tas *innan* flytten händer. För att flytta ett item
+     *  bakifrån till position `i` använder vi insert_before = i (giltigt när from > i). */
+    moves.push({ rangeStart: from, insertBefore: i, rangeLength: 1 });
+    /** Simulera flytten i current-listan. */
+    const [moved] = currentSeq.splice(from, 1);
+    currentSeq.splice(i, 0, moved);
+  }
+  return { removeBatches, moves };
+}
+
+function setEditPlaylistProgress(visible, text, ratio) {
+  const wrap = document.getElementById('edit-playlist-progress');
+  const label = document.getElementById('edit-playlist-progress-label');
+  const fill = document.getElementById('edit-playlist-progress-fill');
+  if (!wrap || !label || !fill) return;
+  wrap.hidden = !visible;
+  if (!visible) return;
+  if (text) label.textContent = text;
+  const pct = Math.max(0, Math.min(100, Math.round((ratio ?? 0) * 100)));
+  fill.style.width = `${pct}%`;
+}
+
+async function confirmEditPlaylistHeavy() {
+  const dlg = /** @type {HTMLDialogElement | null} */ (document.getElementById('edit-playlist-heavy-dialog'));
+  if (!dlg || typeof dlg.showModal !== 'function') return true;
+  return new Promise((resolve) => {
+    const onClose = () => {
+      dlg.removeEventListener('close', onClose);
+      resolve(dlg.returnValue === 'confirm');
+    };
+    dlg.addEventListener('close', onClose);
+    dlg.returnValue = 'cancel';
+    try {
+      dlg.showModal();
+    } catch {
+      dlg.removeEventListener('close', onClose);
+      resolve(true);
+    }
+  });
+}
+
+async function commitEditPlaylistChanges() {
+  const state = editPlaylistState;
+  if (!state || !spotifyClient || !selectedEditPlaylist) return;
+  if (!isEditPlaylistDirty()) {
+    showToast('Inga ändringar att spara.');
+    return;
+  }
+  const ops = computeIncrementalOps(state.original, state.workingOrder, state.pendingRemovals);
+  const totalSteps = ops.removeBatches.length + ops.moves.length;
+  if (totalSteps === 0) {
+    showToast('Inga ändringar att spara.');
+    return;
+  }
+  if (totalSteps >= EDIT_COMMIT_HEAVY_WARN_THRESHOLD) {
+    const ok = await confirmEditPlaylistHeavy();
+    if (!ok) return;
+  }
+  const ac = new AbortController();
+  editPlaylistCommitAbort = ac;
+  const { signal } = ac;
+  const applyBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-edit-playlist-apply'));
+  const deleteBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-edit-playlist-delete'));
+  const refreshBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('edit-playlist-refresh'));
+  if (applyBtn) applyBtn.disabled = true;
+  if (deleteBtn) deleteBtn.disabled = true;
+  if (refreshBtn) refreshBtn.disabled = true;
+
+  let done = 0;
+  let snapshotId = state.snapshotId || '';
+  const expectedMsPerStep = EDIT_COMMIT_STEP_GAP_MS + EDIT_COMMIT_STEP_JITTER_MS / 2;
+  const estimateRemainingText = () => {
+    const remainingMs = (totalSteps - done) * expectedMsPerStep;
+    const sec = Math.max(1, Math.ceil(remainingMs / 1000));
+    return `Skickar ${Math.min(done + 1, totalSteps)} av ${totalSteps} — kvarstår ~${sec} sek`;
+  };
+
+  setEditPlaylistProgress(true, `Förbereder ${totalSteps} ändring(ar)…`, 0);
+  try {
+    /* 1) Först: DELETE-batcherna. De tar bort spår *från originalpositionerna* så moves blir
+     *    meningsfulla mot den post-remove-listan vi räknade ut i computeIncrementalOps. */
+    for (const batch of ops.removeBatches) {
+      signal.throwIfAborted();
+      setEditPlaylistProgress(true, estimateRemainingText(), done / totalSteps);
+      const res = await spotifyClient.removePlaylistTracksBatch(
+        selectedEditPlaylist.id,
+        batch,
+        snapshotId,
+        { signal },
+      );
+      snapshotId = res.snapshotId || snapshotId;
+      done += 1;
+      setEditPlaylistProgress(true, estimateRemainingText(), done / totalSteps);
+      if (done < totalSteps) {
+        const gap = EDIT_COMMIT_STEP_GAP_MS + Math.floor(Math.random() * EDIT_COMMIT_STEP_JITTER_MS);
+        await new Promise((r) => setTimeout(r, gap));
+      }
+    }
+    /* 2) Sedan: flytt-operationerna (PUT /tracks). De räknas mot den nya, post-remove-listan. */
+    for (const mv of ops.moves) {
+      signal.throwIfAborted();
+      setEditPlaylistProgress(true, estimateRemainingText(), done / totalSteps);
+      const res = await spotifyClient.reorderPlaylistItem(
+        selectedEditPlaylist.id,
+        { ...mv, snapshotId },
+        { signal },
+      );
+      snapshotId = res.snapshotId || snapshotId;
+      done += 1;
+      setEditPlaylistProgress(true, estimateRemainingText(), done / totalSteps);
+      if (done < totalSteps) {
+        const gap = EDIT_COMMIT_STEP_GAP_MS + Math.floor(Math.random() * EDIT_COMMIT_STEP_JITTER_MS);
+        await new Promise((r) => setTimeout(r, gap));
+      }
+    }
+    /* Färdigt — invalidera cachen, markera state:n som i-synk (snapshot), förhindra
+     *  dubbelskrivningar, och nolla pendingRemovals. Hämta om listan för verifikation. */
+    state.snapshotId = snapshotId;
+    /* Uppdatera original till senaste kända post-commit-state så dirty-check ger false. */
+    const keptUris = new Set(state.workingOrder);
+    state.original = state.workingOrder
+      .map((uri) => state.original.find((r) => r.uri === uri))
+      .filter((r) => r && keptUris.has(r.uri));
+    state.pendingRemovals = new Set();
+    state.selection = new Set();
+    if (state.userId) {
+      void writePlaylistTracksCache(state.userId, selectedEditPlaylist.id, {
+        tracks: state.original,
+        truncated: state.truncated,
+        snapshotId,
+        total: state.original.length,
+      });
+    }
+    /* Välj-listans cache påverkas (total-antal och cover-art bevaras) — invalidera så nästa
+     *  visit hämtar om utan att bli blockerad av en stale färsk TTL. */
+    invalidateSelectPlaylistCache({ persistent: false });
+    renderEditPlaylistHeader();
+    renderEditPlaylistTracks();
+    updateEditPlaylistDirtyUi();
+    updateEditPlaylistBulkBar();
+    initEditPlaylistSortable();
+    setEditPlaylistProgress(false, '', 1);
+    showToast(`Klart! ${totalSteps} ändring(ar) sparade.`);
+  } catch (e) {
+    if (signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) {
+      setEditPlaylistProgress(false, '', 0);
+      showToast('Avbrutet. Redan skickade ändringar finns kvar i Spotify.', true);
+    } else {
+      setEditPlaylistProgress(false, '', 0);
+      showToast(String(e?.message ?? e), true);
+    }
+  } finally {
+    if (editPlaylistCommitAbort === ac) editPlaylistCommitAbort = null;
+    if (applyBtn) applyBtn.disabled = !isEditPlaylistDirty();
+    if (deleteBtn) deleteBtn.disabled = false;
+    if (refreshBtn) refreshBtn.disabled = false;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Radera spellistan — bekräftelse-dialog + API-anrop + cache-invalidering.
+ * -------------------------------------------------------------------------- */
+async function deleteEditPlaylistFlow() {
+  const state = editPlaylistState;
+  const sel = selectedEditPlaylist;
+  if (!spotifyClient || !sel) return;
+  const dlg = /** @type {HTMLDialogElement | null} */ (document.getElementById('edit-playlist-delete-dialog'));
+  const nameEl = document.getElementById('edit-playlist-delete-dialog-name');
+  const errEl = document.getElementById('edit-playlist-delete-dialog-error');
+  const confirmBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-edit-playlist-delete-confirm'));
+  const cancelBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-edit-playlist-delete-cancel'));
+  if (!dlg || !nameEl) return;
+  nameEl.textContent = state?.meta?.name || sel.name || '(utan namn)';
+  if (errEl) {
+    errEl.hidden = true;
+    errEl.textContent = '';
+  }
+  if (typeof dlg.showModal !== 'function') {
+    /* Extremt gammal browser — fallback: confirm(). */
+    const ok = window.confirm(`Du håller på att ta bort spellistan '${sel.name}'. Är du säker?`);
+    if (!ok) return;
+    await performDeletePlaylist(sel);
+    return;
+  }
+  dlg.returnValue = 'cancel';
+  try {
+    dlg.showModal();
+  } catch {
+    return;
+  }
+  /* Bekräfta via submit-event i stället för close-event, så att vi kan visa fel
+   * utan att dialogen stängs. Vi hanterar stängning själva. */
+  const form = /** @type {HTMLFormElement | null} */ (dlg.querySelector('form'));
+  if (!form) return;
+
+  const handler = async (ev) => {
+    const submitter = /** @type {HTMLButtonElement | null} */ (ev.submitter);
+    const confirmed = submitter?.value === 'confirm';
+    if (!confirmed) return;
+    ev.preventDefault();
+    if (errEl) errEl.hidden = true;
+    if (confirmBtn) confirmBtn.disabled = true;
+    if (cancelBtn) cancelBtn.disabled = true;
+    try {
+      await performDeletePlaylist(sel);
+      form.removeEventListener('submit', handler);
+      dlg.close('confirm');
+    } catch (e) {
+      if (errEl) {
+        errEl.textContent = String(e?.message ?? e);
+        errEl.hidden = false;
+      }
+    } finally {
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (cancelBtn) cancelBtn.disabled = false;
+    }
+  };
+  form.addEventListener('submit', handler);
+  /* Städa lyssnaren om användaren stänger via ESC / avbryt-knapp. */
+  dlg.addEventListener(
+    'close',
+    () => {
+      form.removeEventListener('submit', handler);
+    },
+    { once: true },
+  );
+}
+
+async function performDeletePlaylist(sel) {
+  await spotifyClient.unfollowPlaylist(sel.id);
+  const uid =
+    typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null;
+  if (uid) {
+    void deletePlaylistTracksCache(uid, sel.id);
+  }
+  /* Rensa både in-memory och IDB-cache för välj-listan så borttagen spellista försvinner. */
+  invalidateSelectPlaylistCache({ persistent: true, userId: uid });
+  /* Nollställ edit-state och vald spellista så användaren inte landar i trasig vy vid tillbakanavigering. */
+  editPlaylistState = null;
+  destroyEditPlaylistSortable();
+  selectedEditPlaylist = null;
+  writeStoredSelectedEditPlaylist(null);
+  setFlowStep('select-playlist', { focusPanel: true });
+  showToast('Spellistan togs bort.');
+}
+
+/* --------------------------------------------------------------------------
+ * Wire + step-enter/exit-hooks.
+ * -------------------------------------------------------------------------- */
+
+function wireEditPlaylist() {
+  const refresh = document.getElementById('edit-playlist-refresh');
+  if (refresh) {
+    refresh.addEventListener('click', () => {
+      loadEditPlaylistTracks({ force: true, manual: true, reason: 'manual-refresh' }).catch(() => {});
+    });
+  }
+  const deleteBtn = document.getElementById('btn-edit-playlist-delete');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', () => {
+      deleteEditPlaylistFlow().catch((e) => showToast(String(e?.message ?? e), true));
+    });
+  }
+  const selectAllBtn = document.getElementById('btn-edit-playlist-select-all');
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener('click', () => handleEditPlaylistSelectAllVisible());
+  }
+  const clearSelBtn = document.getElementById('btn-edit-playlist-clear-selection');
+  if (clearSelBtn) {
+    clearSelBtn.addEventListener('click', () => handleEditPlaylistClearSelection());
+  }
+  const removeBtn = document.getElementById('btn-edit-playlist-remove');
+  if (removeBtn) {
+    removeBtn.addEventListener('click', () => handleEditPlaylistBulkRemove());
+  }
+  const copyBtn = document.getElementById('btn-edit-playlist-copy');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      handleEditPlaylistBulkCopyAsText().catch((e) => showToast(String(e?.message ?? e), true));
+    });
+  }
+  const applyBtn = document.getElementById('btn-edit-playlist-apply');
+  if (applyBtn) {
+    applyBtn.addEventListener('click', () => {
+      commitEditPlaylistChanges().catch((e) => showToast(String(e?.message ?? e), true));
+    });
+  }
+  const cancelProgress = document.getElementById('btn-edit-playlist-progress-cancel');
+  if (cancelProgress) {
+    cancelProgress.addEventListener('click', () => {
+      try {
+        editPlaylistCommitAbort?.abort();
+      } catch {
+        /* ignore */
+      }
+    });
+  }
+}
+
+function exitEditPlaylistStep() {
+  /* Avbryt ev. pågående fetch — men inte commit:en (den ska få köra klart). */
+  try {
+    editPlaylistTracksAbort?.abort();
+  } catch {
+    /* ignore */
+  }
+  destroyEditPlaylistSortable();
+}
+
 function enterEditPlaylistStep() {
   if (!selectedEditPlaylist) {
     selectedEditPlaylist = readStoredSelectedEditPlaylist();
   }
-  const nameEl = document.getElementById('edit-playlist-selected-name');
-  if (nameEl) {
-    nameEl.textContent = selectedEditPlaylist?.name || '–';
-  }
   if (!selectedEditPlaylist) {
     /* Ingen spellista vald — skicka användaren till val-vyn så hen kan välja en. */
     setFlowStep('select-playlist', { focusPanel: false });
+    return;
   }
+  /* Om state redan är laddad för denna spellista, rendera direkt. */
+  if (editPlaylistState?.playlistId === selectedEditPlaylist.id) {
+    renderEditPlaylistHeader();
+    renderEditPlaylistTracks();
+    updateEditPlaylistTruncatedWarning(editPlaylistState.truncated);
+    updateEditPlaylistUpdatedAt(editPlaylistState.at, /* stale */ false);
+    updateEditPlaylistDirtyUi();
+    updateEditPlaylistBulkBar();
+    initEditPlaylistSortable();
+  } else {
+    /* Nytt val: städa gammal state innan vi laddar ny spellista. */
+    editPlaylistState = null;
+    destroyEditPlaylistSortable();
+    renderEditPlaylistHeader();
+    renderEditPlaylistTracks();
+    updateEditPlaylistDirtyUi();
+    updateEditPlaylistBulkBar();
+    setEditPlaylistSpinnerVisible(true);
+  }
+  loadEditPlaylistTracks({ reason: 'step-enter', quiet: true }).catch(() => {
+    /* Toast hanteras internt. */
+  });
 }
 
 /** @param {number | undefined} ms */
@@ -2958,6 +3925,7 @@ async function boot() {
   wireFlow();
   wirePlaylistMode();
   wireSelectPlaylist();
+  wireEditPlaylist();
   if (FEATURE_ROW_FULL_PLAYBACK) {
     bindRowPlaybackControls($('results-body'), {
       getRows: () => resultRows,
@@ -3070,6 +4038,8 @@ async function boot() {
      *  få en stale vald spellista i Redigera-vyn. */
     selectedEditPlaylist = null;
     writeStoredSelectedEditPlaylist(null);
+    editPlaylistState = null;
+    destroyEditPlaylistSortable();
     /** Artist-banken behålls med flit vid logout — den är samlad söklärdom per user-id
      *  (endast publika artistnamn, ingen token/profilinfo) och ska hjälpa framtida sessioner.
      *  Manuell rensning finns under Inställningar via knappen "Rensa artist-bank". */

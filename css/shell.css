@@ -665,6 +665,401 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   background: color-mix(in srgb, var(--spotify) 10%, var(--surface));
 }
 
+/* Redigera playlist — header, bulk-bar, lista, DnD, progress, dialoger.
+ * Åter-använder tokens från .flow-card och .btn. Små drag-mönster (grip + checkbox) ger
+ * stor tryck-yta på mobil utan att stjäla plats för text. */
+.edit-playlist-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.9rem;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.edit-playlist-header[hidden] {
+  display: none;
+}
+
+.edit-playlist-header__art {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--border) 60%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-playlist-header__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.edit-playlist-header__art-fallback {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-playlist-header__art-fallback[hidden] {
+  display: none;
+}
+
+.edit-playlist-header__meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.edit-playlist-header__owner,
+.edit-playlist-header__total {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.edit-playlist-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .edit-playlist-header {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'art meta'
+      'actions actions';
+    row-gap: 0.6rem;
+  }
+  .edit-playlist-header__art {
+    grid-area: art;
+  }
+  .edit-playlist-header__meta {
+    grid-area: meta;
+  }
+  .edit-playlist-header__actions {
+    grid-area: actions;
+  }
+  .edit-playlist-header__actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.edit-playlist-bulk-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 var(--space-sm);
+  padding: 0.55rem 0.7rem;
+  background: color-mix(in srgb, var(--spotify) 6%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--spotify) 35%, var(--border));
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--shell-navy) 10%, transparent);
+}
+
+.edit-playlist-bulk-bar[hidden] {
+  display: none;
+}
+
+.edit-playlist-bulk-bar__count {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.edit-playlist-bulk-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .edit-playlist-bulk-bar__actions {
+    width: 100%;
+  }
+  .edit-playlist-bulk-bar__actions .btn {
+    flex: 1 1 calc(50% - 0.4rem);
+    justify-content: center;
+  }
+}
+
+.edit-playlist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.edit-playlist-list:empty {
+  display: none;
+}
+
+.edit-playlist-track {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  transition: background 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+.edit-playlist-track:hover {
+  border-color: color-mix(in srgb, var(--spotify) 30%, var(--border));
+}
+
+.edit-playlist-track--pending-remove {
+  opacity: 0.45;
+  text-decoration: line-through;
+  text-decoration-color: var(--danger);
+}
+
+.edit-playlist-track--local,
+.edit-playlist-track--episode {
+  background: color-mix(in srgb, var(--border) 15%, var(--surface));
+}
+
+.edit-playlist-track__drag {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: grab;
+  color: var(--text-muted);
+  background: transparent;
+  touch-action: none;
+}
+
+.edit-playlist-track__drag:active {
+  cursor: grabbing;
+  background: color-mix(in srgb, var(--spotify) 10%, transparent);
+}
+
+.edit-playlist-track__drag[aria-disabled='true'] {
+  cursor: not-allowed;
+  color: color-mix(in srgb, var(--text-muted) 60%, transparent);
+}
+
+.edit-playlist-track__checkbox-wrap {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-playlist-track__checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.edit-playlist-track__art {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: color-mix(in srgb, var(--border) 60%, transparent);
+  display: block;
+}
+
+.edit-playlist-track__art-fallback {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--border) 60%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.edit-playlist-track__art-fallback svg {
+  width: 20px;
+  height: 20px;
+}
+
+.edit-playlist-track__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.edit-playlist-track__name {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.edit-playlist-track__artist {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sortable-klasser (standardnamn från SortableJS). */
+.edit-playlist-track--chosen {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--spotify) 55%, transparent);
+}
+
+.edit-playlist-track--ghost {
+  opacity: 0.35;
+}
+
+.edit-playlist-track--dragging {
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--shell-navy) 22%, transparent);
+  background: color-mix(in srgb, var(--spotify) 10%, var(--surface));
+}
+
+.edit-playlist-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px dashed color-mix(in srgb, var(--spotify) 45%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--spotify) 4%, var(--surface));
+  margin: var(--space-sm) 0;
+}
+
+.edit-playlist-progress[hidden] {
+  display: none;
+}
+
+.edit-playlist-progress__label {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.edit-playlist-progress__bar {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+  overflow: hidden;
+}
+
+.edit-playlist-progress__fill {
+  height: 100%;
+  width: 0%;
+  background: var(--spotify);
+  transition: width 160ms ease;
+}
+
+.edit-playlist-progress .btn {
+  align-self: flex-start;
+}
+
+/* Native <dialog> som används av Redigera-vyn (radera-bekräftelse, heavy-varning). */
+.app-dialog {
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: var(--radius);
+  padding: 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--shell-navy) 22%, transparent);
+  max-width: min(28rem, 94vw);
+}
+
+.app-dialog::backdrop {
+  background: color-mix(in srgb, var(--shell-navy) 40%, transparent);
+}
+
+[data-theme='dark'] .app-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.app-dialog__form {
+  padding: var(--space);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+}
+
+.app-dialog__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.app-dialog__text {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.app-dialog__error {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.app-dialog__error[hidden] {
+  display: none;
+}
+
+.app-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .app-dialog__actions {
+    flex-direction: column-reverse;
+  }
+  .app-dialog__actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+[data-theme='dark'] .edit-playlist-track {
+  background: var(--surface);
+}
+
 /* Steg 1: ett sammanhängande kort (lista + matchningar) + sticky nav längst ner i kortet */
 #flow-step-1 .flow-step-1-shell {
   background: var(--surface);
