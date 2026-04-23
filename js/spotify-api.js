@@ -1005,8 +1005,11 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
       if (!playlistId || typeof playlistId !== 'string') {
         throw new Error('getPlaylistTracksAll: saknar playlistId');
       }
+      /** Obs: `episode` är inte ett sub-fält på `track` — Spotify kan svara 403/400 på okända
+       *  sub-fält. Vi håller oss till dokumenterade fält. Podcast-avsnitt identifieras via
+       *  `track.type === 'episode'` eller `is_local` separat. */
       const baseFields = encodeURIComponent(
-        'items(added_at,is_local,track(uri,id,name,type,is_local,duration_ms,artists(name),album(name,images(url)),episode)),next,limit,offset,total',
+        'items(added_at,is_local,track(uri,id,name,type,is_local,duration_ms,artists(name),album(name,images(url)))),next,limit,offset,total',
       );
       return scheduleSearchGetChain(async () => {
         signal?.throwIfAborted();
@@ -1021,11 +1024,13 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
         await sleepAbortable(PLAYLIST_TRACKS_FETCH_INITIAL_GAP_MS, signal);
         while (true) {
           signal?.throwIfAborted();
-          const path = `/playlists/${encodeURIComponent(playlistId)}/tracks?limit=${pageSize}&offset=${offset}&fields=${baseFields}`;
+          const path = `/playlists/${encodeURIComponent(playlistId)}/tracks?limit=${pageSize}&offset=${offset}&market=from_token&fields=${baseFields}`;
           const reqStartedAt = new Date().toISOString();
           const res = await getWith401Retry(path, 0, signal);
           const bodyText = await res.text();
           if (!res.ok) {
+            /** Logga body-snippet för diagnos av ovanliga 4xx (t.ex. 403 med specifik orsaksrad). */
+            const bodySnippet = typeof bodyText === 'string' ? bodyText.slice(0, 400) : '';
             logSpotify({
               t: new Date().toISOString(),
               kind: 'http',
@@ -1037,6 +1042,7 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
               source: 'network',
               httpStatus: res.status,
               ok: false,
+              bodySnippet,
               reqStartedAt,
             });
             throw new Error(formatSpotifyApiError(res.status, bodyText));
