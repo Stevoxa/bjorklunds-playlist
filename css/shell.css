@@ -440,6 +440,195 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   color: var(--text-muted);
 }
 
+/* Välj playlist (Redigera-flödet): filter + list + status-rad.
+ * Återanvänder tokens från .flow-card/.btn; nya klasser håller radkortens layout
+ * (omslag + namn/ägare + chevron) och hanterar bredd/spinner/tom-tillstånd. */
+.select-playlist-filter {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: var(--space-sm);
+}
+
+.select-playlist-filter .label {
+  margin: 0;
+}
+
+.select-playlist-filter .input {
+  width: 100%;
+}
+
+.select-playlist-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.select-playlist-filter-toggle input[type='checkbox'] {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.select-playlist-filter-toggle .code-inline {
+  font-size: 0.85em;
+}
+
+.select-playlist-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.select-playlist-updated {
+  margin: 0;
+  font-size: 0.85rem;
+  text-align: right;
+  min-width: 0;
+}
+
+.select-playlist-spinner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: var(--space) 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.select-playlist-spinner__dot {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-top-color: var(--spotify);
+  animation: select-playlist-spin 0.9s linear infinite;
+}
+
+@keyframes select-playlist-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.select-playlist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.select-playlist-list:empty {
+  display: none;
+}
+
+.select-playlist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
+}
+
+.select-playlist-item:hover {
+  background: color-mix(in srgb, var(--spotify) 6%, var(--surface));
+  border-color: color-mix(in srgb, var(--spotify) 35%, var(--border));
+}
+
+.select-playlist-item:focus-visible {
+  outline: var(--focus);
+  outline-offset: 3px;
+}
+
+.select-playlist-item:active {
+  transform: translateY(1px);
+}
+
+.select-playlist-item__art {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: color-mix(in srgb, var(--border) 60%, transparent);
+  display: block;
+}
+
+.select-playlist-item__art-fallback {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--border) 60%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.select-playlist-item__art-fallback svg {
+  width: 24px;
+  height: 24px;
+}
+
+.select-playlist-item__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.select-playlist-item__name {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-playlist-item__owner {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-playlist-item__chevron {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+
+[data-theme='dark'] .select-playlist-item {
+  background: var(--surface);
+}
+
+[data-theme='dark'] .select-playlist-item:hover {
+  background: color-mix(in srgb, var(--spotify) 10%, var(--surface));
+}
+
 /* Steg 1: ett sammanhängande kort (lista + matchningar) + sticky nav längst ner i kortet */
 #flow-step-1 .flow-step-1-shell {
   background: var(--surface);

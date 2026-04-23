@@ -767,8 +767,8 @@
               </div>
             </section>
 
-            <!-- Redigera-flödet: platshållar-vy som listar användarens spellistor.
-                 Implementeras i iteration B (hämtning + cache + filter). -->
+            <!-- Redigera-flödet: vy som listar användarens alla Spotify-spellistor.
+                 Klick på en rad öppnar Redigera-vyn för den valda spellistan. -->
             <section id="flow-step-select-playlist" class="flow-step" data-flow-panel="select-playlist" tabindex="-1" aria-labelledby="flow-step-select-playlist-title">
               <div class="flow-card">
                 <div class="flow-card__head">
@@ -780,10 +780,46 @@
                     <p class="flow-card__subtitle">Välj den spellista du vill redigera.</p>
                   </div>
                 </div>
-                <p class="help">Funktionen kommer i nästa uppdatering. Då listas alla dina spellistor med möjlighet att söka och välja.</p>
+                <div class="select-playlist-filter">
+                  <label for="select-playlist-filter-input" class="label label--section">Filtrera</label>
+                  <input
+                    type="search"
+                    id="select-playlist-filter-input"
+                    class="input"
+                    autocomplete="off"
+                    placeholder="Sök efter namn"
+                    aria-describedby="select-playlist-filter-help"
+                  />
+                  <p class="help" id="select-playlist-filter-help">Filtret matchar namn (skiftlägesoberoende) på listorna nedan.</p>
+                  <label class="select-playlist-filter-toggle" for="select-playlist-prefix-toggle">
+                    <input type="checkbox" id="select-playlist-prefix-toggle" />
+                    <span>
+                      Visa endast namn som börjar med
+                      <code class="code-inline" id="select-playlist-prefix-label"></code>
+                    </span>
+                  </label>
+                </div>
+                <div class="select-playlist-status-row">
+                  <button type="button" class="btn btn--with-icon" id="select-playlist-refresh">
+                    <span class="btn__icon-wrap" aria-hidden="true">
+                      <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
+                    </span>
+                    <span>Hämta om lista</span>
+                  </button>
+                  <p class="help select-playlist-updated" id="select-playlist-updated" aria-live="polite" hidden></p>
+                </div>
+                <p class="help help--warning" id="select-playlist-truncated-warning" hidden>
+                  Du har ovanligt många spellistor. Appen visar de första 1000. Saknas en spellista
+                  kan du öppna den direkt i Spotify och komma tillbaka för att uppdatera listan.
+                </p>
+                <div class="select-playlist-spinner" id="select-playlist-spinner" role="status" aria-live="polite" hidden>
+                  <span class="select-playlist-spinner__dot" aria-hidden="true"></span>
+                  <span>Hämtar dina spellistor…</span>
+                </div>
+                <p class="help" id="select-playlist-empty" hidden>Inga spellistor matchar filtret.</p>
+                <ul id="select-playlist-list" class="select-playlist-list" role="list"></ul>
                 <div class="flow-nav">
                   <button type="button" class="btn btn--flow-nav-width" data-flow-goto="landing">Tillbaka</button>
-                  <button type="button" class="btn btn--primary btn--flow-nav-width" data-flow-goto="edit-playlist">Nästa</button>
                 </div>
               </div>
             </section>
@@ -798,7 +834,9 @@
                   </div>
                   <div class="flow-card__titles">
                     <h2 class="flow-card__title flow-card__title--hero-step" id="flow-step-edit-playlist-title">Redigera playlist</h2>
-                    <p class="flow-card__subtitle">Ändra ordning, ta bort eller kopiera låtar.</p>
+                    <p class="flow-card__subtitle">
+                      Vald spellista: <span id="edit-playlist-selected-name">–</span>
+                    </p>
                   </div>
                 </div>
                 <p class="help">Funktionen kommer i nästa uppdatering. Då hämtas alla låtar i listan och kan sorteras via drag &amp; släpp.</p>

@@ -22,6 +22,9 @@ import {
   readPlaylistListCache,
   writePlaylistListCache,
   deletePlaylistListCache,
+  readAllPlaylistsCache,
+  writeAllPlaylistsCache,
+  deleteAllPlaylistsCache,
 } from './playlist-list-cache.js';
 import { readArtistBank, addArtistsToBank, deleteArtistBank } from './artist-bank.js';
 import { readSpotifySession, writeSpotifySession, clearSpotifySession } from './token-session.js';
@@ -930,6 +933,12 @@ function setFlowStep(step, opts = {}) {
      * i fliken och artist-banken kan ha uppdaterats efter en sökning. */
     void refreshSettingsStats();
   }
+  if (step === 'select-playlist') {
+    enterSelectPlaylistStep();
+  }
+  if (step === 'edit-playlist') {
+    enterEditPlaylistStep();
+  }
   updateSummarySubtitle(step);
   updateSummaryTip(step);
   syncPlaylistModeBlocks();
@@ -1690,6 +1699,458 @@ function wirePlaylistMode() {
     );
   });
   update();
+}
+
+/* =============================================================================
+ * Redigera-flödet: "Välj playlist"-vy
+ *
+ * Återanvänder hela cache/single-flight/cooldown/stale-if-error-mönstret från
+ * Skapa-flödets "Mina listor" (steg 2). Skillnad: vi hämtar *alla* listor och
+ * filtrerar klientside, samt visar omslagsbild + ägare per rad.
+ * ============================================================================= */
+
+/** @typedef {{ id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null }} SelectPlaylistRow */
+
+/** @type {{ at: number, list: SelectPlaylistRow[], truncated: boolean, userId: string } | null} */
+let selectPlaylistListCache = null;
+
+/** @type {Promise<void> | null} */
+let selectPlaylistListInFlight = null;
+
+/** @type {AbortController | null} */
+let selectPlaylistListRefreshAbort = null;
+
+let selectPlaylistFilterText = '';
+let selectPlaylistShowPrefixedOnly = false;
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let selectPlaylistFilterDebounce = null;
+
+/** Persisterat val av spellista för redigering (överlever reload i samma session). */
+/** @type {{ id: string, name: string, ownerName: string, imageUrl: string | null } | null} */
+let selectedEditPlaylist = null;
+
+const SELECT_PLAYLIST_EDIT_STORAGE_KEY = 'bjorklund-edit-playlist';
+
+function readStoredSelectedEditPlaylist() {
+  try {
+    const raw = sessionStorage.getItem(SELECT_PLAYLIST_EDIT_STORAGE_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (!o || typeof o.id !== 'string' || typeof o.name !== 'string') return null;
+    return {
+      id: o.id,
+      name: o.name,
+      ownerName: typeof o.ownerName === 'string' ? o.ownerName : '',
+      imageUrl: typeof o.imageUrl === 'string' ? o.imageUrl : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredSelectedEditPlaylist(v) {
+  try {
+    if (v) sessionStorage.setItem(SELECT_PLAYLIST_EDIT_STORAGE_KEY, JSON.stringify(v));
+    else sessionStorage.removeItem(SELECT_PLAYLIST_EDIT_STORAGE_KEY);
+  } catch {
+    /* sessionStorage kan vara blockerat (t.ex. inbäddat) — val förloras vid reload då. */
+  }
+}
+
+/** @type {{ at: number, stale: boolean } | null} */
+let selectPlaylistUpdatedAtState = null;
+/** @type {ReturnType<typeof setInterval> | null} */
+let selectPlaylistUpdatedAtTicker = null;
+
+function updateSelectPlaylistUpdatedAt(at, stale) {
+  const el = document.getElementById('select-playlist-updated');
+  if (!el) return;
+  if (at == null) {
+    selectPlaylistUpdatedAtState = null;
+    el.hidden = true;
+    el.textContent = '';
+    if (selectPlaylistUpdatedAtTicker) {
+      clearInterval(selectPlaylistUpdatedAtTicker);
+      selectPlaylistUpdatedAtTicker = null;
+    }
+    return;
+  }
+  selectPlaylistUpdatedAtState = { at, stale };
+  renderSelectPlaylistUpdatedAtText();
+  if (!selectPlaylistUpdatedAtTicker) {
+    selectPlaylistUpdatedAtTicker = setInterval(renderSelectPlaylistUpdatedAtText, 30_000);
+  }
+}
+
+function renderSelectPlaylistUpdatedAtText() {
+  const el = document.getElementById('select-playlist-updated');
+  if (!el || !selectPlaylistUpdatedAtState) return;
+  const { at, stale } = selectPlaylistUpdatedAtState;
+  const ageMs = Math.max(0, Date.now() - at);
+  const ageMin = Math.floor(ageMs / 60_000);
+  let rel;
+  if (ageMs < 60_000) rel = 'nu nyss';
+  else if (ageMin < 60) rel = `för ${ageMin} min sedan`;
+  else if (ageMin < 60 * 24) rel = `för ${Math.floor(ageMin / 60)} tim sedan`;
+  else rel = `för ${Math.floor(ageMin / (60 * 24))} dag(ar) sedan`;
+  el.textContent = stale
+    ? `Senast uppdaterad ${rel} (ej verifierad mot Spotify just nu).`
+    : `Uppdaterad ${rel}.`;
+  el.classList.toggle('help--warning', stale);
+  el.hidden = false;
+}
+
+function updateSelectPlaylistTruncatedWarning(truncated) {
+  const el = document.getElementById('select-playlist-truncated-warning');
+  if (!el) return;
+  el.hidden = !truncated;
+}
+
+function setSelectPlaylistSpinnerVisible(visible) {
+  const el = document.getElementById('select-playlist-spinner');
+  if (el) el.hidden = !visible;
+}
+
+function invalidateSelectPlaylistCache(opts = {}) {
+  const prevUserId = selectPlaylistListCache?.userId ?? null;
+  selectPlaylistListCache = null;
+  updateSelectPlaylistUpdatedAt(null, false);
+  updateSelectPlaylistTruncatedWarning(false);
+  if (opts.persistent) {
+    const uid = opts.userId ?? prevUserId;
+    if (uid) void deleteAllPlaylistsCache(uid);
+  }
+}
+
+function computeFilteredSelectPlaylistRows() {
+  const cache = selectPlaylistListCache;
+  if (!cache) return [];
+  const prefix = getPlaylistPrefixFromInput();
+  const needle = selectPlaylistFilterText.trim().toLowerCase();
+  return cache.list.filter((p) => {
+    if (selectPlaylistShowPrefixedOnly && prefix && !p.name.startsWith(prefix)) return false;
+    if (needle && !p.name.toLowerCase().includes(needle)) return false;
+    return true;
+  });
+}
+
+function renderSelectPlaylistList() {
+  const listEl = document.getElementById('select-playlist-list');
+  const emptyEl = document.getElementById('select-playlist-empty');
+  if (!listEl || !emptyEl) return;
+  if (!selectPlaylistListCache) {
+    listEl.replaceChildren();
+    emptyEl.hidden = true;
+    return;
+  }
+  const rows = computeFilteredSelectPlaylistRows();
+  if (rows.length === 0) {
+    listEl.replaceChildren();
+    emptyEl.hidden = false;
+    emptyEl.textContent = selectPlaylistListCache.list.length === 0
+      ? 'Du har inga spellistor på Spotify än.'
+      : 'Inga spellistor matchar filtret.';
+    return;
+  }
+  emptyEl.hidden = true;
+  const frag = document.createDocumentFragment();
+  for (const row of rows) {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'select-playlist-item';
+    btn.dataset.playlistId = row.id;
+    btn.setAttribute(
+      'aria-label',
+      `${row.name}${row.ownerName ? ` (ägare: ${row.ownerName})` : ''}`,
+    );
+    if (row.imageUrl) {
+      const img = document.createElement('img');
+      img.className = 'select-playlist-item__art';
+      img.src = row.imageUrl;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.referrerPolicy = 'no-referrer';
+      img.addEventListener('error', () => {
+        const fallback = document.createElement('span');
+        fallback.className = 'select-playlist-item__art-fallback';
+        fallback.setAttribute('aria-hidden', 'true');
+        fallback.innerHTML = '<svg><use href="#sym-playlist" /></svg>';
+        img.replaceWith(fallback);
+      }, { once: true });
+      btn.append(img);
+    } else {
+      const fallback = document.createElement('span');
+      fallback.className = 'select-playlist-item__art-fallback';
+      fallback.setAttribute('aria-hidden', 'true');
+      fallback.innerHTML = '<svg><use href="#sym-playlist" /></svg>';
+      btn.append(fallback);
+    }
+    const body = document.createElement('span');
+    body.className = 'select-playlist-item__body';
+    const name = document.createElement('span');
+    name.className = 'select-playlist-item__name';
+    name.textContent = row.name;
+    const owner = document.createElement('span');
+    owner.className = 'select-playlist-item__owner';
+    owner.textContent = row.ownerName ? `Ägare: ${row.ownerName}` : '';
+    body.append(name, owner);
+    btn.append(body);
+    const chev = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    chev.setAttribute('class', 'select-playlist-item__chevron');
+    chev.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#sym-chevron-right');
+    chev.appendChild(use);
+    btn.append(chev);
+    btn.addEventListener('click', () => handleSelectPlaylistRowClick(row));
+    li.append(btn);
+    frag.append(li);
+  }
+  listEl.replaceChildren(frag);
+}
+
+function handleSelectPlaylistRowClick(row) {
+  selectedEditPlaylist = {
+    id: row.id,
+    name: row.name,
+    ownerName: row.ownerName,
+    imageUrl: row.imageUrl,
+  };
+  writeStoredSelectedEditPlaylist(selectedEditPlaylist);
+  setFlowStep('edit-playlist', { focusPanel: true });
+}
+
+function maybePopulateSelectPlaylistFromStaleCache() {
+  const c = selectPlaylistListCache;
+  if (!c) return false;
+  const age = Date.now() - c.at;
+  if (age < 0 || age > PLAYLIST_LIST_STALE_IF_ERROR_MS) return false;
+  updateSelectPlaylistTruncatedWarning(c.truncated);
+  updateSelectPlaylistUpdatedAt(c.at, /* stale */ true);
+  renderSelectPlaylistList();
+  return true;
+}
+
+/**
+ * @param {{ force?: boolean, manual?: boolean, quiet?: boolean, reason?: string }} [opts]
+ *   force: kringgå cache-TTL. manual: kringgå 429-cooldown (användaren tryckte "Hämta om lista").
+ *   quiet: ingen toast vid felaktig nätverksväg. reason: loggas i Spotify-loggen.
+ */
+async function loadSelectPlaylistList(opts = {}) {
+  const { force = false, manual = false, quiet = false, reason = 'unknown' } = opts;
+  if (!spotifyClient) {
+    if (!quiet) showToast('Du behöver logga in på Spotify först.', true);
+    return;
+  }
+
+  /* Försök fylla in-memory-cachen från IDB innan vi resonerar om färskhet. */
+  if (!selectPlaylistListCache) {
+    const userIdKnown =
+      typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null;
+    if (userIdKnown) {
+      const persisted = await readAllPlaylistsCache(userIdKnown);
+      if (persisted) {
+        selectPlaylistListCache = {
+          at: persisted.at,
+          list: persisted.list,
+          truncated: persisted.truncated,
+          userId: persisted.userId,
+        };
+      }
+    }
+  }
+
+  const cacheFresh =
+    !force &&
+    selectPlaylistListCache &&
+    Date.now() - selectPlaylistListCache.at < PLAYLIST_LIST_CACHE_TTL_MS;
+
+  logSpotify({
+    t: new Date().toISOString(),
+    kind: 'ui',
+    phase: 'refreshPlaylistList',
+    reason: `select-playlist/${reason}`,
+    cacheHit: Boolean(cacheFresh),
+    inFlight: Boolean(selectPlaylistListInFlight),
+    inCooldown: isExistingPlaylistListAutoFetchInCooldown(),
+    manual,
+    force,
+  });
+
+  if (cacheFresh) {
+    updateSelectPlaylistTruncatedWarning(selectPlaylistListCache.truncated);
+    updateSelectPlaylistUpdatedAt(selectPlaylistListCache.at, /* stale */ false);
+    setSelectPlaylistSpinnerVisible(false);
+    renderSelectPlaylistList();
+    return;
+  }
+
+  /* Cooldown: delas med Skapa-flödets /me/playlists-kö. Manuell knapp får ändå försöka. */
+  if (!manual && isExistingPlaylistListAutoFetchInCooldown()) {
+    const leftSec = Math.max(1, Math.ceil(remainingExistingPlaylistListCooldownMs() / 1000));
+    if (!quiet) {
+      showToast(
+        `Spotify har pausat vidare anrop. Försök igen om cirka ${leftSec} sekunder eller klicka på Hämta om lista.`,
+        true,
+      );
+    }
+    setSelectPlaylistSpinnerVisible(false);
+    maybePopulateSelectPlaylistFromStaleCache();
+    return;
+  }
+
+  if (selectPlaylistListInFlight) return selectPlaylistListInFlight;
+
+  const ac = new AbortController();
+  selectPlaylistListRefreshAbort = ac;
+  const { signal } = ac;
+  setSelectPlaylistSpinnerVisible(!selectPlaylistListCache);
+
+  const job = (async () => {
+    try {
+      const { list, truncated, userId } = await spotifyClient.listMyPlaylistsAll(signal);
+      const at = Date.now();
+      selectPlaylistListCache = {
+        at,
+        list: list.map((p) => ({ ...p })),
+        truncated,
+        userId,
+      };
+      void writeAllPlaylistsCache(userId, list, truncated);
+      updateSelectPlaylistTruncatedWarning(truncated);
+      updateSelectPlaylistUpdatedAt(at, /* stale */ false);
+      renderSelectPlaylistList();
+      if (!quiet && manual) {
+        showToast(
+          list.length ? `${list.length} spellistor hämtade.` : 'Du har inga spellistor på Spotify.',
+        );
+      }
+    } catch (e) {
+      if (signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return;
+      const fellBack = maybePopulateSelectPlaylistFromStaleCache();
+      if (!quiet) {
+        showToast(
+          fellBack
+            ? 'Kunde inte uppdatera listan från Spotify just nu — visar senast kända lista.'
+            : String(e?.message ?? e),
+          true,
+        );
+      }
+      throw e;
+    } finally {
+      setSelectPlaylistSpinnerVisible(false);
+      if (selectPlaylistListRefreshAbort === ac) selectPlaylistListRefreshAbort = null;
+      selectPlaylistListInFlight = null;
+    }
+  })();
+  selectPlaylistListInFlight = job;
+  return job;
+}
+
+function syncSelectPlaylistPrefixLabel() {
+  const el = document.getElementById('select-playlist-prefix-label');
+  if (!el) return;
+  const prefix = getPlaylistPrefixFromInput();
+  el.textContent = prefix;
+}
+
+function wireSelectPlaylist() {
+  syncSelectPlaylistPrefixLabel();
+
+  const toggle = /** @type {HTMLInputElement | null} */ (
+    document.getElementById('select-playlist-prefix-toggle')
+  );
+  if (toggle) {
+    try {
+      selectPlaylistShowPrefixedOnly =
+        localStorage.getItem('bjorklund-select-playlist-prefix-only') === '1';
+    } catch {
+      selectPlaylistShowPrefixedOnly = false;
+    }
+    toggle.checked = selectPlaylistShowPrefixedOnly;
+    toggle.addEventListener('change', () => {
+      selectPlaylistShowPrefixedOnly = toggle.checked;
+      try {
+        localStorage.setItem(
+          'bjorklund-select-playlist-prefix-only',
+          selectPlaylistShowPrefixedOnly ? '1' : '0',
+        );
+      } catch {
+        /* ignore */
+      }
+      renderSelectPlaylistList();
+    });
+  }
+
+  const input = /** @type {HTMLInputElement | null} */ (
+    document.getElementById('select-playlist-filter-input')
+  );
+  if (input) {
+    input.addEventListener('input', () => {
+      if (selectPlaylistFilterDebounce) clearTimeout(selectPlaylistFilterDebounce);
+      selectPlaylistFilterDebounce = setTimeout(() => {
+        selectPlaylistFilterText = input.value;
+        renderSelectPlaylistList();
+      }, 150);
+    });
+  }
+
+  const refreshBtn = document.getElementById('select-playlist-refresh');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      loadSelectPlaylistList({
+        force: true,
+        manual: true,
+        reason: 'manual-refresh',
+      }).catch(() => {
+        /* fel visas redan som toast i loadSelectPlaylistList */
+      });
+    });
+  }
+
+  /* Prefixet kan ändras i Inställningar — uppdatera label så toggle visar rätt värde.
+   * Lyssnar på samma input-händelse som debounce-loopen för Skapa-flödet. */
+  const prefixInput = document.getElementById('playlist-prefix');
+  if (prefixInput) {
+    prefixInput.addEventListener('input', () => {
+      syncSelectPlaylistPrefixLabel();
+      if (currentFlowStep === 'select-playlist' && selectPlaylistShowPrefixedOnly) {
+        renderSelectPlaylistList();
+      }
+    });
+  }
+}
+
+function enterSelectPlaylistStep() {
+  syncSelectPlaylistPrefixLabel();
+  /* Rendera direkt från eventuell in-memory-cache så användaren ser något innan fetch. */
+  if (selectPlaylistListCache) {
+    updateSelectPlaylistTruncatedWarning(selectPlaylistListCache.truncated);
+    updateSelectPlaylistUpdatedAt(selectPlaylistListCache.at, /* stale */ false);
+    renderSelectPlaylistList();
+  } else {
+    setSelectPlaylistSpinnerVisible(true);
+  }
+  loadSelectPlaylistList({ reason: 'step-enter', quiet: true }).catch(() => {
+    /* Toast hanteras internt. */
+  });
+}
+
+function enterEditPlaylistStep() {
+  if (!selectedEditPlaylist) {
+    selectedEditPlaylist = readStoredSelectedEditPlaylist();
+  }
+  const nameEl = document.getElementById('edit-playlist-selected-name');
+  if (nameEl) {
+    nameEl.textContent = selectedEditPlaylist?.name || '–';
+  }
+  if (!selectedEditPlaylist) {
+    /* Ingen spellista vald — skicka användaren till val-vyn så hen kan välja en. */
+    setFlowStep('select-playlist', { focusPanel: false });
+  }
 }
 
 /** @param {number | undefined} ms */
@@ -2496,6 +2957,7 @@ async function boot() {
 
   wireFlow();
   wirePlaylistMode();
+  wireSelectPlaylist();
   if (FEATURE_ROW_FULL_PLAYBACK) {
     bindRowPlaybackControls($('results-body'), {
       getRows: () => resultRows,
@@ -2603,6 +3065,11 @@ async function boot() {
     spotifyClient = null;
     spotifyUserDisplay = '';
     invalidateExistingPlaylistListCache({ persistent: true, userId: uidForCacheWipe });
+    invalidateSelectPlaylistCache({ persistent: true, userId: uidForCacheWipe });
+    /** Nollställ valet för Redigera-flödet — annars skulle nästa inloggade användare
+     *  få en stale vald spellista i Redigera-vyn. */
+    selectedEditPlaylist = null;
+    writeStoredSelectedEditPlaylist(null);
     /** Artist-banken behålls med flit vid logout — den är samlad söklärdom per user-id
      *  (endast publika artistnamn, ingen token/profilinfo) och ska hjälpa framtida sessioner.
      *  Manuell rensning finns under Inställningar via knappen "Rensa artist-bank". */

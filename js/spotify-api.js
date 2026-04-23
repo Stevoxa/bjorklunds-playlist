@@ -599,6 +599,81 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
     return res;
   }
 
+  /**
+   * Gemensam paginerad hämtning av `/me/playlists`. Körs via `scheduleSearchGetChain` för att
+   * serialisera mot söktrafiken. Returnerar rå `items` från Spotify (utan filter) så att olika
+   * konsumenter (Skapa-flödets prefix-filter resp. Redigera-flödets "alla listor") kan mappa/filtrera
+   * efter eget behov. Inga 429-retries på raderna — Retry-After på /me/playlists är ofta 30–60 s,
+   * UI-lagret visar cooldown-toast och låter användaren trycka "Hämta om lista" när det passar.
+   * @param {AbortSignal} [signal]
+   * @param {{ phase?: string }} [opts] phase används i logg för `max_pages_reached`.
+   * @returns {Promise<{ rawItems: any[], truncated: boolean, userId: string }>}
+   */
+  async function fetchAllMePlaylistPages(signal, opts = {}) {
+    const phase = opts.phase ?? 'fetchAllMePlaylistPages';
+    return scheduleSearchGetChain(async () => {
+      signal?.throwIfAborted();
+      let myId = cachedSpotifyUserId;
+      if (!myId) {
+        const access = await ensureAccess();
+        let res = await api(access, '/me', { signal });
+        if (res.status === 401 && t.refreshToken) {
+          await refreshAccessCoalesced();
+          res = await api(t.accessToken, '/me', { signal });
+        }
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        if (data && typeof data.id === 'string') {
+          cachedSpotifyUserId = data.id;
+          myId = data.id;
+        }
+      }
+      const rawItems = [];
+      let offset = 0;
+      const page = 50;
+      let pagesFetched = 0;
+      let truncated = false;
+      await sleepAbortable(PLAYLIST_FETCH_INITIAL_GAP_MS, signal);
+      while (true) {
+        signal?.throwIfAborted();
+        const path = `/me/playlists?limit=${page}&offset=${offset}`;
+        const res = await getWith401Retry(path, 0, signal);
+        const bodyText = await res.text();
+        if (!res.ok) throw new Error(formatSpotifyApiError(res.status, bodyText));
+        let data;
+        try {
+          data = bodyText ? JSON.parse(bodyText) : {};
+        } catch {
+          throw new Error('Ogiltigt JSON-svar från Spotify (spellistor)');
+        }
+        const items = Array.isArray(data.items) ? data.items : [];
+        for (const item of items) {
+          if (item && typeof item.id === 'string') rawItems.push(item);
+        }
+        pagesFetched += 1;
+        if (items.length < page) break;
+        if (pagesFetched >= PLAYLIST_LIST_MAX_PAGES) {
+          truncated = true;
+          logSpotify({
+            t: new Date().toISOString(),
+            kind: 'ui',
+            phase,
+            reason: 'max_pages_reached',
+            pagesFetched,
+            maxPages: PLAYLIST_LIST_MAX_PAGES,
+          });
+          break;
+        }
+        offset += page;
+        await sleepAbortable(
+          PLAYLIST_PAGE_GAP_MS + Math.floor(Math.random() * PLAYLIST_PAGE_JITTER_MS),
+          signal,
+        );
+      }
+      return { rawItems, truncated, userId: myId ?? '' };
+    });
+  }
+
   return {
     getTokens: () => ({ ...t }),
 
@@ -643,72 +718,68 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
 
     /**
      * Spellistor som ägs av inloggad användare och vars namn börjar med prefix (GET /me/playlists, paginerat).
+     * Filtrerar ägarskap + prefix klientside på svaret från gemensamma paginerings-hjälparen.
      * @param {string} prefix
      * @param {AbortSignal} [signal]
      * @returns {Promise<{ list: { id: string, name: string }[], truncated: boolean, userId: string }>}
      *   truncated: true om vi stoppade vid PLAYLIST_LIST_MAX_PAGES (safeguard mot worst-case-konton).
      */
     async listMyPlaylistsByPrefix(prefix, signal) {
-      return scheduleSearchGetChain(async () => {
-        signal?.throwIfAborted();
-        let myId = cachedSpotifyUserId;
-        if (!myId) {
-          const me = await this.me(signal);
-          myId = me.id;
-          cachedSpotifyUserId = myId;
-        }
-        const pref = String(prefix ?? '');
-        /** @type {Map<string, { id: string, name: string }>} */
-        const byId = new Map();
-        let offset = 0;
-        const page = 50;
-        let pagesFetched = 0;
-        let truncated = false;
-        await sleepAbortable(PLAYLIST_FETCH_INITIAL_GAP_MS, signal);
-        while (true) {
-          signal?.throwIfAborted();
-          const path = `/me/playlists?limit=${page}&offset=${offset}`;
-          /** Inga retries här: Spotifys Retry-After på /me/playlists är ofta 30–60 s,
-           *  då är snabba återförsök kontraproduktivt. UI visar cool-down-toast och användaren trycker ”Hämta om lista” när det passar. */
-          const res = await getWith401Retry(path, 0, signal);
-          const bodyText = await res.text();
-          if (!res.ok) throw new Error(formatSpotifyApiError(res.status, bodyText));
-          let data;
-          try {
-            data = bodyText ? JSON.parse(bodyText) : {};
-          } catch {
-            throw new Error('Ogiltigt JSON-svar från Spotify (spellistor)');
-          }
-          const items = data.items ?? [];
-          for (const item of items) {
-            if (item?.owner?.id === myId && typeof item.name === 'string' && item.name.startsWith(pref)) {
-              byId.set(item.id, { id: item.id, name: item.name });
-            }
-          }
-          pagesFetched += 1;
-          if (items.length < page) break;
-          if (pagesFetched >= PLAYLIST_LIST_MAX_PAGES) {
-            truncated = true;
-            logSpotify({
-              t: new Date().toISOString(),
-              kind: 'ui',
-              phase: 'listMyPlaylistsByPrefix',
-              reason: 'max_pages_reached',
-              pagesFetched,
-              maxPages: PLAYLIST_LIST_MAX_PAGES,
-            });
-            break;
-          }
-          offset += page;
-          await sleepAbortable(
-            PLAYLIST_PAGE_GAP_MS + Math.floor(Math.random() * PLAYLIST_PAGE_JITTER_MS),
-            signal,
-          );
-        }
-        const out = [...byId.values()];
-        out.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
-        return { list: out, truncated, userId: myId };
+      const { rawItems, truncated, userId } = await fetchAllMePlaylistPages(signal, {
+        phase: 'listMyPlaylistsByPrefix',
       });
+      const pref = String(prefix ?? '');
+      /** @type {Map<string, { id: string, name: string }>} */
+      const byId = new Map();
+      for (const item of rawItems) {
+        if (
+          item?.owner?.id === userId &&
+          typeof item.name === 'string' &&
+          item.name.startsWith(pref)
+        ) {
+          byId.set(item.id, { id: item.id, name: item.name });
+        }
+      }
+      const out = [...byId.values()];
+      out.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+      return { list: out, truncated, userId };
+    },
+
+    /**
+     * Alla spellistor i `GET /me/playlists` (ägda + följda), oavsett prefix. Returnerar rikare
+     * radobjekt inklusive ägarnamn och `imageUrl` (första bilden från Spotifys svar; inga extra
+     * nätverksanrop). Används av Redigera-flödets "Välj playlist"-vy.
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<{ list: { id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null }[], truncated: boolean, userId: string }>}
+     */
+    async listMyPlaylistsAll(signal) {
+      const { rawItems, truncated, userId } = await fetchAllMePlaylistPages(signal, {
+        phase: 'listMyPlaylistsAll',
+      });
+      /** @type {Map<string, { id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null }>} */
+      const byId = new Map();
+      for (const item of rawItems) {
+        if (!item || typeof item.id !== 'string') continue;
+        const name = typeof item.name === 'string' ? item.name : '';
+        const ownerId = typeof item?.owner?.id === 'string' ? item.owner.id : '';
+        const ownerDisplay =
+          typeof item?.owner?.display_name === 'string' && item.owner.display_name.length > 0
+            ? item.owner.display_name
+            : ownerId;
+        const imgArr = Array.isArray(item.images) ? item.images : [];
+        const imageUrl =
+          imgArr.length > 0 && typeof imgArr[0]?.url === 'string' ? imgArr[0].url : null;
+        byId.set(item.id, {
+          id: item.id,
+          name,
+          ownerId,
+          ownerName: ownerDisplay,
+          imageUrl,
+        });
+      }
+      const out = [...byId.values()];
+      out.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+      return { list: out, truncated, userId };
     },
 
     /**

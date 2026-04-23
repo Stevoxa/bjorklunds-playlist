@@ -67,6 +67,16 @@ const REQUIRED_IDS = [
   'step3-apply-result-message',
   'pref-developer-mode',
   'btn-settings-back-to-flow',
+  'select-playlist-list',
+  'select-playlist-filter-input',
+  'select-playlist-prefix-toggle',
+  'select-playlist-prefix-label',
+  'select-playlist-refresh',
+  'select-playlist-updated',
+  'select-playlist-truncated-warning',
+  'select-playlist-spinner',
+  'select-playlist-empty',
+  'edit-playlist-selected-name',
 ];
 
 function main() {
