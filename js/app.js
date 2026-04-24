@@ -2618,6 +2618,16 @@ function playlistDescriptionForEditView(value) {
   return t;
 }
 
+/** Rent spelliste-id för open.spotify.com (utan `spotify:playlist:`-prefix). */
+function normalizeSpotifyPlaylistId(raw) {
+  let s = String(raw ?? '').trim();
+  const prefix = 'spotify:playlist:';
+  if (s.toLowerCase().startsWith(prefix)) {
+    s = s.slice(prefix.length).trim();
+  }
+  return s;
+}
+
 function renderEditPlaylistHeader() {
   const state = editPlaylistState;
   const meta = state?.meta;
@@ -2664,7 +2674,7 @@ function renderEditPlaylistHeader() {
   const fallback = document.getElementById('edit-playlist-art-fallback');
   const spotifyLink = /** @type {HTMLAnchorElement | null} */ (document.getElementById('edit-playlist-spotify-link'));
   const imageUrl = meta?.imageUrl ?? selectedEditPlaylist?.imageUrl ?? null;
-  const playlistId = String(meta?.id ?? selectedEditPlaylist?.id ?? '').trim();
+  const playlistId = normalizeSpotifyPlaylistId(meta?.id ?? selectedEditPlaylist?.id ?? '');
   const plName = meta?.name || selectedEditPlaylist?.name || 'spellistan';
   if (img && fallback) {
     if (imageUrl) {
@@ -2682,13 +2692,16 @@ function renderEditPlaylistHeader() {
   }
   if (spotifyLink) {
     if (playlistId) {
-      spotifyLink.href = `https://open.spotify.com/playlist/${encodeURIComponent(playlistId)}`;
+      const webUrl = `https://open.spotify.com/playlist/${encodeURIComponent(playlistId)}`;
+      spotifyLink.href = webUrl;
+      spotifyLink.dataset.spotifyPlaylistId = playlistId;
       spotifyLink.classList.remove('edit-playlist-header__art-link--inactive');
       spotifyLink.removeAttribute('aria-hidden');
       spotifyLink.setAttribute('aria-label', `Öppna ${plName} på Spotify`);
       spotifyLink.title = 'Öppna på Spotify';
     } else {
       spotifyLink.href = '#';
+      delete spotifyLink.dataset.spotifyPlaylistId;
       spotifyLink.classList.add('edit-playlist-header__art-link--inactive');
       spotifyLink.setAttribute('aria-hidden', 'true');
       spotifyLink.removeAttribute('aria-label');
@@ -3736,6 +3749,24 @@ function wireEditPlaylist() {
         editPlaylistCommitAbort?.abort();
       } catch {
         /* ignore */
+      }
+    });
+  }
+  /* PWA (Android standalone): vanlig <a target="_blank"> öppnar ofta inte Spotify utanför appen.
+   * Öppna i systemets webbläsare / ny kontext med window.open så PWA:n stannar kvar. */
+  const spotifyPlLink = document.getElementById('edit-playlist-spotify-link');
+  if (spotifyPlLink && !spotifyPlLink.dataset.spotifyNavBound) {
+    spotifyPlLink.dataset.spotifyNavBound = '1';
+    spotifyPlLink.addEventListener('click', (e) => {
+      if (e.defaultPrevented) return;
+      if (e.button !== 0) return;
+      const id = spotifyPlLink.dataset.spotifyPlaylistId || '';
+      if (!id) return;
+      e.preventDefault();
+      const url = `https://open.spotify.com/playlist/${encodeURIComponent(id)}`;
+      const win = window.open(url, '_blank', 'noopener,noreferrer');
+      if (win == null) {
+        showToast('Kunde inte öppna Spotify. Tillåt popup-fönster eller öppna länken från webbläsaren.', true);
       }
     });
   }
