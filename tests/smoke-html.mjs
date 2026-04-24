@@ -91,6 +91,7 @@ const REQUIRED_IDS = [
   'edit-playlist-list',
   'edit-playlist-art',
   'edit-playlist-art-fallback',
+  'edit-playlist-spotify-link',
   'edit-playlist-owner',
   'edit-playlist-total',
   'edit-playlist-bulk-bar',

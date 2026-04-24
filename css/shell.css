@@ -699,6 +699,36 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   justify-content: center;
 }
 
+/* Spellistomslag → öppna listan på Spotify. Ingen visuell ”länk”-stil på bilden. */
+.edit-playlist-header__art-link {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  text-decoration: none;
+  border-radius: inherit;
+}
+
+.edit-playlist-header__art-link:hover {
+  text-decoration: none;
+}
+
+.edit-playlist-header__art-link:focus {
+  outline: none;
+}
+
+.edit-playlist-header__art-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--text) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.edit-playlist-header__art-link--inactive {
+  pointer-events: none;
+  cursor: default;
+}
+
 .edit-playlist-header__art img {
   width: 100%;
   height: 100%;

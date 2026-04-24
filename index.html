@@ -850,11 +850,19 @@
                 </div>
 
                 <div class="edit-playlist-header" id="edit-playlist-header">
-                  <div class="edit-playlist-header__art" aria-hidden="true">
-                    <img id="edit-playlist-art" alt="" hidden />
-                    <span class="edit-playlist-header__art-fallback" id="edit-playlist-art-fallback" aria-hidden="true">
-                      <svg width="28" height="28"><use href="#sym-playlist" /></svg>
-                    </span>
+                  <div class="edit-playlist-header__art">
+                    <a
+                      class="edit-playlist-header__art-link"
+                      id="edit-playlist-spotify-link"
+                      href="#"
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      <img id="edit-playlist-art" alt="" decoding="async" hidden />
+                      <span class="edit-playlist-header__art-fallback" id="edit-playlist-art-fallback" aria-hidden="true">
+                        <svg width="28" height="28" aria-hidden="true"><use href="#sym-playlist" /></svg>
+                      </span>
+                    </a>
                   </div>
                   <div class="edit-playlist-header__meta">
                     <p class="edit-playlist-header__total" id="edit-playlist-total-row"><span id="edit-playlist-total">–</span> spår</p>
