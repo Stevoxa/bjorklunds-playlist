@@ -559,6 +559,7 @@ async function syncSpotifySessionToUi(extraHint = '') {
   initSpotifyClient();
   await refreshSpotifyUserDisplay();
   setAuthStatus(extraHint);
+  updateStep0NextButton();
 }
 
 const SPOTIFY_DASHBOARD_URL = 'https://developer.spotify.com/dashboard';
@@ -780,6 +781,206 @@ const BREADCRUMB_SPECS = {
   ]),
 };
 
+/** Bakåt från steg 1 (Skapa) när login hoppats över p.g.a. giltig token → `landing`, annars `0`. */
+/** @type {'0' | 'landing'} */
+let flowBackFromStep1Create = '0';
+
+/** Bakåt från Välj playlist (Redigera) när login hoppats över → `landing`, annars `0`. */
+/** @type {'0' | 'landing'} */
+let flowBackFromSelectPlaylistEdit = '0';
+
+/** Svep framåt select→edit endast efter att användaren lämnat redigeringsvyn med Tillbaka. */
+let allowSwipeForwardToEditPlaylist = false;
+
+/** True medan en horisontell svepgest behandlas så vi inte dubbeltriggar. */
+let flowNavSwipeLock = false;
+
+/**
+ * Inloggning + Client ID + spelliste-scope — samma villkor som krävs för att gå vidare från steg 0.
+ * @returns {boolean}
+ */
+function hasSpotifyPlaylistReadySession() {
+  if (!vaultData?.tokens?.accessToken || !spotifyClient) return false;
+  const cid = (vaultData.clientId || '').trim() || getClientId().trim();
+  if (!cid) return false;
+  const gs = (vaultData.tokens.grantedScopeRaw || '').trim();
+  return gs.includes('playlist-modify-public') || gs.includes('playlist-modify-private');
+}
+
+function isStep0NextReady() {
+  return hasSpotifyPlaylistReadySession();
+}
+
+function updateStep0NextButton() {
+  const btn = document.getElementById('btn-step-0-next');
+  if (!btn) return;
+  const ready = isStep0NextReady();
+  /** @type {HTMLButtonElement} */ (btn).disabled = !ready;
+  btn.setAttribute('aria-disabled', ready ? 'false' : 'true');
+}
+
+/** Samma villkor som #btn-flow-step-1-next (används av svep B och sticky-nav). */
+function isStep1NextEnabled() {
+  const busy = searchInProgress;
+  const pendingSearch = resultRows.some((r) => r.tracks === null);
+  return (
+    !busy &&
+    resultRows.length > 0 &&
+    !pendingSearch &&
+    selectedUrisForPlaylist().length > 0
+  );
+}
+
+/**
+ * Regelbaserat bakåt-steg (svep A / Android back). Speglar brödsmulornas ordning, inte
+ * webbläsarens historik-stack.
+ * @returns {FlowStep | null} null ⇒ ingen intern vy kvar (t.ex. landning — låt webbläsaren fortsätta).
+ */
+function resolveFlowBackStep() {
+  const step = currentFlowStep;
+  if (step === 'landing') return null;
+  if (step === 'settings') return lastFlowStepBeforeSettings;
+  if (step === '0') return 'landing';
+  if (currentFlowMode === 'create') {
+    if (step === '3') return '2';
+    if (step === '2') return '1';
+    if (step === '1') return flowBackFromStep1Create;
+  }
+  if (currentFlowMode === 'edit') {
+    if (step === 'edit-playlist') return 'select-playlist';
+    if (step === 'select-playlist') return flowBackFromSelectPlaylistEdit;
+  }
+  /* Steg 1–3 utan aktivt flödesläge (ovanligt) — behandla som skapa bakåt där det går. */
+  if (step === '3') return '2';
+  if (step === '2') return '1';
+  if (step === '1') return flowBackFromStep1Create;
+  return 'landing';
+}
+
+/**
+ * Regelbaserat framåt-steg (svep B/C). Aldrig till steg `0` via svep.
+ * @returns {FlowStep | null}
+ */
+function resolveFlowForwardStep() {
+  const step = currentFlowStep;
+  if (step === 'landing') return null;
+  if (step === 'settings') return null;
+  if (step === '0') {
+    if (!isStep0NextReady()) return null;
+    return currentFlowMode === 'edit' ? 'select-playlist' : '1';
+  }
+  if (currentFlowMode === 'create') {
+    if (step === '1') {
+      if (!isStep1NextEnabled()) return null;
+      return '2';
+    }
+    if (step === '2') {
+      if (!isStep2PlaylistConfigReady()) return null;
+      return '3';
+    }
+    if (step === '3') return null;
+  }
+  if (currentFlowMode === 'edit') {
+    if (step === 'select-playlist') {
+      if (!allowSwipeForwardToEditPlaylist || !selectedEditPlaylist) return null;
+      return 'edit-playlist';
+    }
+    if (step === 'edit-playlist') return null;
+  }
+  return null;
+}
+
+/**
+ * @param {EventTarget | null} target
+ * @returns {boolean}
+ */
+function flowNavSwipeShouldIgnoreEl(target) {
+  const el = target && target instanceof Element ? target : null;
+  if (!el) return false;
+  if (el.closest('dialog[open], .edit-playlist-list, .edit-playlist-track, .playlist-result-dialog'))
+    return true;
+  if (el.closest('input, textarea, select, [contenteditable="true"]')) return true;
+  return false;
+}
+
+function wireFlowNavGestures() {
+  const main = document.getElementById('main');
+  if (!main) return;
+  const MIN_DX = 72;
+  const MAX_ATAN2_RATIO = 0.55;
+  let sx = 0;
+  let sy = 0;
+  let st = 0;
+  let tracking = false;
+
+  main.addEventListener(
+    'touchstart',
+    (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      if (flowNavSwipeShouldIgnoreEl(e.target)) return;
+      sx = t.clientX;
+      sy = t.clientY;
+      st = Date.now();
+      tracking = true;
+    },
+    { passive: true },
+  );
+
+  main.addEventListener(
+    'touchmove',
+    (e) => {
+      if (!tracking || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const dx = t.clientX - sx;
+      const dy = t.clientY - sy;
+      if (Math.abs(dy) > Math.abs(dx) * (1 / MAX_ATAN2_RATIO)) {
+        tracking = false;
+      }
+    },
+    { passive: true },
+  );
+
+  main.addEventListener(
+    'touchend',
+    (e) => {
+      if (!tracking) return;
+      tracking = false;
+      if (e.changedTouches.length !== 1) return;
+      const t = e.changedTouches[0];
+      if (flowNavSwipeShouldIgnoreEl(e.changedTouches[0].target)) return;
+      const dx = t.clientX - sx;
+      const dy = t.clientY - sy;
+      const dt = Date.now() - st;
+      if (dt > 900 || Math.abs(dx) < MIN_DX) return;
+      if (Math.abs(dy) > Math.abs(dx) * (1 / MAX_ATAN2_RATIO)) return;
+      if (flowNavSwipeLock) return;
+      /* vänster→höger = bakåt (A) */
+      if (dx > 0) {
+        const back = resolveFlowBackStep();
+        if (!back) return;
+        flowNavSwipeLock = true;
+        setFlowStep(back, { focusPanel: true });
+        queueMicrotask(() => {
+          flowNavSwipeLock = false;
+        });
+        return;
+      }
+      /* höger→vänster = framåt (B/C) */
+      if (currentFlowStep === '0' && !isStep0NextReady()) return;
+      if (currentFlowStep === '0' && !currentFlowMode) setFlowMode('create');
+      const fwd = resolveFlowForwardStep();
+      if (!fwd) return;
+      flowNavSwipeLock = true;
+      setFlowStep(fwd, { focusPanel: true });
+      queueMicrotask(() => {
+        flowNavSwipeLock = false;
+      });
+    },
+    { passive: true },
+  );
+}
+
 /**
  * Bygg om breadcrumb-listan utifrån aktivt flöde. Kallas från setFlowStep så varje
  * stegbyte återspeglas i knapparna. Vi återanvänder befintlig CSS (.flow-breadcrumbs__crumb).
@@ -811,7 +1012,7 @@ function renderBreadcrumbs(activeStep) {
       btn.appendChild(span);
     }
     btn.addEventListener('click', () => {
-      setFlowStep(entry.step, { focusPanel: true });
+      setFlowStep(entry.step, { focusPanel: true, historyMode: 'replace' });
     });
     li.appendChild(btn);
     list.appendChild(li);
@@ -858,15 +1059,21 @@ function scrollAppToTop() {
 
 /**
  * @param {FlowStep} step
- * @param {{ focusPanel?: boolean, skipSpotifyWarmup?: boolean, fromPopstate?: boolean }} [opts]
+ * @param {{ focusPanel?: boolean, skipSpotifyWarmup?: boolean, fromPopstate?: boolean, historyMode?: 'push' | 'replace' }} [opts]
  *   focusPanel: flytta fokus till aktivt steg (t.ex. efter klick i steglisten), inte vid sidladdning.
  *   skipSpotifyWarmup: vid steg 0 undvik dublett av init + /me när boot() redan kört syncSpotifySessionToUi.
  *   fromPopstate: anropet kommer från popstate-listenern (Android back / bakåtknapp) —
  *     då ska vi INTE pusha en ny history-entry (det vore en loop och skulle också göra
  *     att back-knappen inte längre kan stega tillbaka).
+ *   historyMode: `replace` för brödsmul-teleport (undviker förgiftad historik-stack); default `push`.
  */
 function setFlowStep(step, opts = {}) {
-  const { focusPanel = false, skipSpotifyWarmup = false, fromPopstate = false } = opts;
+  const {
+    focusPanel = false,
+    skipSpotifyWarmup = false,
+    fromPopstate = false,
+    historyMode = 'push',
+  } = opts;
   syncClientIdFromFormIntoVault();
   /* Kom ihåg vilket flow-steg användaren var på innan inställningar öppnades, så att
    * retur-pilen i toolbaren kan ta hen tillbaka till samma vy vid stängning. */
@@ -880,6 +1087,27 @@ function setFlowStep(step, opts = {}) {
   }
   const prevStep = currentFlowStep;
   currentFlowStep = step;
+  if (step === 'landing') {
+    allowSwipeForwardToEditPlaylist = false;
+  }
+  if (step === '1' && currentFlowMode === 'create') {
+    if (prevStep === '0') flowBackFromStep1Create = '0';
+    else if (prevStep === 'landing') flowBackFromStep1Create = 'landing';
+  }
+  if (step === 'select-playlist' && currentFlowMode === 'edit') {
+    if (prevStep === '0') {
+      flowBackFromSelectPlaylistEdit = '0';
+      allowSwipeForwardToEditPlaylist = false;
+    } else if (prevStep === 'landing') {
+      flowBackFromSelectPlaylistEdit = 'landing';
+      allowSwipeForwardToEditPlaylist = false;
+    } else if (prevStep === 'edit-playlist') {
+      allowSwipeForwardToEditPlaylist = true;
+    }
+  }
+  if (step === 'edit-playlist' && prevStep === 'select-playlist') {
+    allowSwipeForwardToEditPlaylist = false;
+  }
   if (FEATURE_ROW_FULL_PLAYBACK && step !== '1') {
     void resetWebPlaybackSession();
   }
@@ -971,16 +1199,20 @@ function setFlowStep(step, opts = {}) {
   } else {
     requestAnimationFrame(() => scrollAppToTop());
   }
-  /* Spara varje vy-byte i historiken så att Android/back-knappen stegar bakåt i
-   * appen istället för att lämna sidan direkt. Vi rör inte URL:en (tredje arg
-   * utelämnas) så OAuth-redirecten och andra URL-antaganden påverkas inte. */
+  /* Historik: `push` vid linjär navigation, `replace` vid brödsmul-teleport så Android back
+   * följer samma logiska ordning som resolveFlowBackStep (inte en felaktigt djup stack). */
   if (!fromPopstate && step !== prevStep) {
     try {
-      history.pushState({ step }, '');
+      if (historyMode === 'replace') {
+        history.replaceState({ step }, '');
+      } else {
+        history.pushState({ step }, '');
+      }
     } catch {
       /* ignorera — vissa WebView-konfigurationer kan strypa pushState */
     }
   }
+  updateStep0NextButton();
 }
 
 function updateSummarySubtitle(step) {
@@ -1340,6 +1572,10 @@ function wireFlow() {
   const step0Next = document.getElementById('btn-step-0-next');
   if (step0Next) {
     step0Next.addEventListener('click', () => {
+      if (!isStep0NextReady()) {
+        showToast('Ange Client ID och logga in med spellistbehörighet för att gå vidare.', true);
+        return;
+      }
       const target = currentFlowMode === 'edit' ? 'select-playlist' : '1';
       if (!currentFlowMode) setFlowMode('create');
       setFlowStep(target, { focusPanel: true });
@@ -1365,20 +1601,24 @@ function wireFlow() {
       setFlowStep(lastFlowStepBeforeSettings, { focusPanel: true });
     });
   }
-  /* Android/browser back-knappen: istället för att lämna PWA:n direkt, stegar
-   * vi tillbaka en vy i flödet. setFlowStep pushar en entry vid varje byte och
-   * popstate läser tillbaka det föregående step-värdet här. fromPopstate ser
-   * till att vi inte pushar en ny entry i svar på ett bakåt-steg. */
+  /* Android/browser back: samma mål som svep (A) — resolveFlowBackStep, inte ev.state.step. */
   try {
     history.replaceState({ step: currentFlowStep }, '');
   } catch {
     /* best-effort */
   }
-  window.addEventListener('popstate', (ev) => {
-    const s = ev.state && typeof ev.state.step === 'string' ? ev.state.step : null;
-    if (!s) return;
-    setFlowStep(/** @type {FlowStep} */ (s), { focusPanel: true, fromPopstate: true });
+  window.addEventListener('popstate', () => {
+    const next = resolveFlowBackStep();
+    if (next) {
+      setFlowStep(next, { focusPanel: true, fromPopstate: true });
+      try {
+        history.replaceState({ step: next }, '');
+      } catch {
+        /* best-effort */
+      }
+    }
   });
+  wireFlowNavGestures();
 }
 
 function getPlaylistPrefixFromInput() {
@@ -2295,7 +2535,7 @@ function setEditPlaylistBlocked(blocked) {
 /**
  * Read-only-läge för spellistor användaren inte äger: /items kommer ge 403 (eller så kan
  * vi ändå inte spara ändringar), så vi hoppar över items-anropet och döljer allt som rör
- * trackredigering. Kvar blir headern (art/namn/ägare) och "Ta bort från biblioteket"-knappen.
+ * trackredigering. Kvar blir headern (art/namn/ägare) och "Ta bort spellistan"-knappen.
  *
  * Viktigt: när readOnly=false får vi INTE tvinga hidden=false på element som normalt styrs
  * villkorligt (progress, spinner, bulk-bar, dirty-block, empty-state, truncated-warning).
@@ -2357,6 +2597,18 @@ function isEditPlaylistReadOnlyUpfront() {
   return selectedEditPlaylist?.readOnlyVerified === true;
 }
 
+/**
+ * Beskrivning i Redigera playlist: visa bara när Spotify faktiskt har en icke-tom text.
+ * `null`, saknad, ogiltig typ eller enbart blanksteg ⇒ inget utskrivet (elementet döljs).
+ */
+function playlistDescriptionForEditView(value) {
+  if (value == null || typeof value !== 'string') return '';
+  const t = value.trim();
+  if (!t) return '';
+  if (/^(null|undefined)$/i.test(t)) return '';
+  return t;
+}
+
 function renderEditPlaylistHeader() {
   const state = editPlaylistState;
   const meta = state?.meta;
@@ -2390,7 +2642,7 @@ function renderEditPlaylistHeader() {
      * (editPlaylistState.meta.description = '') visas ingen text förrän meta-anropet
      * är klart. Tomma/null-beskrivningar döljs helt så action-raden ligger kvar intill
      * headern. HTML-entiteter decodas automatiskt av textContent. */
-    const desc = typeof meta?.description === 'string' ? meta.description.trim() : '';
+    const desc = playlistDescriptionForEditView(meta?.description);
     if (desc) {
       descEl.textContent = desc;
       descEl.hidden = false;
@@ -2418,8 +2670,8 @@ function renderEditPlaylistHeader() {
   if (deleteBtn) {
     deleteBtn.hidden = false;
     /** Knappen agerar olika beroende på ägarskap: för ägarens egen spellista är det en destruktiv
-     *  åtgärd (röd), för följda spellistor är det en icke-destruktiv "ta bort från biblioteket"
-     *  (neutral). Spotify har ingen "delete playlist"-endpoint alls — båda fallen anropar samma
+     *  åtgärd (röd), för följda spellistor samma etikett men neutral stil (unfollow). Spotify har
+     *  ingen "delete playlist"-endpoint alls — båda fallen anropar samma
      *  DELETE /playlists/{id}/followers (unfollow). Spotify bevarar listan internt så länge någon
      *  annan följer den. Därför använder vi "Ta bort" i UI:t i stället för "Radera". */
     const isOwner = isEditPlaylistOwnedByUser();
@@ -2430,8 +2682,8 @@ function renderEditPlaylistHeader() {
       if (labelEl) labelEl.textContent = 'Ta bort spellistan';
     } else {
       deleteBtn.classList.remove('btn--danger');
-      deleteBtn.title = 'Ta bort från biblioteket';
-      if (labelEl) labelEl.textContent = 'Ta bort från biblioteket';
+      deleteBtn.title = 'Ta bort spellistan';
+      if (labelEl) labelEl.textContent = 'Ta bort spellistan';
     }
   }
 }
@@ -2441,7 +2693,7 @@ function renderEditPlaylistHeader() {
  * Vi läser i första hand ownerId från state.meta (färskast, från /playlists/{id}) och faller
  * tillbaka till selectedEditPlaylist.ownerId (satt när användaren klickade raden i Välj playlist).
  * Vid helt okänt ägarskap eller okänt uid returnerar vi false — det är säkrare att visa den
- * neutrala "Ta bort från biblioteket"-etiketten än den destruktiva ägarvarianten.
+ * neutral stil (samma etikett) än den destruktiva ägarvarianten.
  */
 function isEditPlaylistOwnedByUser() {
   const ownerId =
@@ -2756,12 +3008,12 @@ async function loadEditPlaylistTracks(opts = {}) {
 
   /* Read-only-läge: äger användaren inte listan så slipper vi både getPlaylistMeta och
    * getPlaylistTracksAll (det senare ger ändå 403 för Spotifys algoritmiska listor).
-   * Kvar blir bara "Ta bort från biblioteket". Headern renderas från selectedEditPlaylist
+   * Kvar blir bara "Ta bort spellistan". Headern renderas från selectedEditPlaylist
    * som redan har namn, ägare och omslag. */
   if (isEditPlaylistReadOnlyUpfront()) {
     setEditPlaylistReadOnly(true);
     /* Visa även bannern: för icke-ägda listor kan vi i praktiken inte läsa /items, så vi
-     * berättar det för användaren direkt. Delete-knappen ("Ta bort från biblioteket") ligger
+     * berättar det för användaren direkt. Delete-knappen ("Ta bort spellistan") ligger
      * kvar synlig eftersom det är den enda meningsfulla åtgärden här. */
     setEditPlaylistBlocked(true);
     renderEditPlaylistHeader();
@@ -3820,13 +4072,7 @@ function updateStep1StickyNav() {
   const hint = document.getElementById('flow-step-1-sticky-hint');
   if (!btn || !hint) return;
 
-  const busy = searchInProgress;
-  const pendingSearch = resultRows.some((r) => r.tracks === null);
-  const ready =
-    !busy &&
-    resultRows.length > 0 &&
-    !pendingSearch &&
-    selectedUrisForPlaylist().length > 0;
+  const ready = isStep1NextEnabled();
 
   btn.disabled = !ready;
   btn.setAttribute('aria-disabled', ready ? 'false' : 'true');

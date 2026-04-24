@@ -971,10 +971,13 @@ export function createSpotifyClient(tokens, clientId, onTokensUpdate) {
           total,
           reqStartedAt,
         });
+        const rawDesc = data.description;
+        const description =
+          rawDesc == null || typeof rawDesc !== 'string' ? '' : rawDesc.trim();
         return {
           id: typeof data.id === 'string' ? data.id : playlistId,
           name: typeof data.name === 'string' ? data.name : '',
-          description: typeof data.description === 'string' ? data.description : '',
+          description,
           ownerId,
           ownerName: ownerDisplay,
           imageUrl,
