@@ -844,7 +844,13 @@ function resolveFlowBackStep() {
   if (currentFlowMode === 'create') {
     if (step === '3') return '2';
     if (step === '2') return '1';
-    if (step === '1') return flowBackFromStep1Create;
+    if (step === '1') {
+      /* På Välj musik krävs redan inloggning för att nå hit — svep/Android back ska inte
+       * skicka användaren till Logga in (0); Start räcker (samma som token-hopp från landning).
+       * Utan session (ovanligt) faller vi tillbaka till spårad föregångare. */
+      if (hasSpotifyPlaylistReadySession()) return 'landing';
+      return flowBackFromStep1Create;
+    }
   }
   if (currentFlowMode === 'edit') {
     if (step === 'edit-playlist') return 'select-playlist';
@@ -853,7 +859,10 @@ function resolveFlowBackStep() {
   /* Steg 1–3 utan aktivt flödesläge (ovanligt) — behandla som skapa bakåt där det går. */
   if (step === '3') return '2';
   if (step === '2') return '1';
-  if (step === '1') return flowBackFromStep1Create;
+  if (step === '1') {
+    if (hasSpotifyPlaylistReadySession()) return 'landing';
+    return flowBackFromStep1Create;
+  }
   return 'landing';
 }
 
@@ -4740,6 +4749,9 @@ async function boot() {
       focusPanel: false,
       skipSpotifyWarmup: true,
     });
+    /* Vid reload hoppar vi över steg 0 — tvinga bakåt-mål så svep/back aldrig landar på Logga in. */
+    if (storedMode === 'create') flowBackFromStep1Create = 'landing';
+    if (storedMode === 'edit') flowBackFromSelectPlaylistEdit = 'landing';
   } else if (storedMode) {
     /* Flöde valt i tidigare session men token har gått ut — visa login-vyn som
      * startpunkt så användaren kan logga in igen utan att klicka landningssidan. */
