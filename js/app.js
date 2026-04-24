@@ -1743,7 +1743,7 @@ let selectPlaylistShowPrefixedOnly = false;
 let selectPlaylistFilterDebounce = null;
 
 /** Persisterat val av spellista för redigering (överlever reload i samma session). */
-/** @type {{ id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null, collaborative: boolean } | null} */
+/** @type {{ id: string, name: string, ownerId: string, ownerName: string, imageUrl: string | null, collaborative: boolean, readOnlyVerified?: boolean } | null} */
 let selectedEditPlaylist = null;
 
 const SELECT_PLAYLIST_EDIT_STORAGE_KEY = 'bjorklund-edit-playlist';
@@ -1761,6 +1761,7 @@ function readStoredSelectedEditPlaylist() {
       ownerName: typeof o.ownerName === 'string' ? o.ownerName : '',
       imageUrl: typeof o.imageUrl === 'string' ? o.imageUrl : null,
       collaborative: Boolean(o.collaborative),
+      readOnlyVerified: typeof o.readOnlyVerified === 'boolean' ? o.readOnlyVerified : undefined,
     };
   } catch {
     return null;
@@ -2342,21 +2343,18 @@ function setEditPlaylistReadOnly(readOnly) {
 }
 
 /**
- * Returnerar true om vi vet upfront att användaren INTE kan redigera spellistan — dvs vi kan
- * hoppa över både getPlaylistMeta och getPlaylistTracksAll. Editerbar = ägare ELLER
- * collaborative (då får även icke-ägare ändra spåren). Allt annat är read-only.
- * Båda fälten sätts när raden klickades i Välj playlist (via handleSelectPlaylistRowClick).
- * Om någon del är okänd returnerar vi false — då kör vi normalt flöde och gör en post-check
- * efter getPlaylistMeta.
+ * Returnerar true om vi VERIFIERAT upfront att spellistan inte är editerbar — dvs vi kan
+ * hoppa över både getPlaylistMeta och getPlaylistTracksAll.
+ *
+ * Viktigt: `collaborative`-fältet från GET /me/playlists är känt för att vara opålitligt
+ * (returnerar ofta false för genuint collaborative-listor ägda av någon annan). Vi litar
+ * DÄRFÖR BARA på `readOnlyVerified`-flaggan som sätts i post-checken efter en lyckad
+ * getPlaylistMeta — det är den enda sanningskällan vi kan lita på. Före första
+ * verifieringen returnerar vi false så att vi försöker hämta listan normalt och låter
+ * post-checken avgöra editerbarhet från tillförlitlig meta-data.
  */
 function isEditPlaylistReadOnlyUpfront() {
-  if (selectedEditPlaylist?.collaborative) return false;
-  const ownerId = selectedEditPlaylist?.ownerId;
-  if (!ownerId) return false;
-  const uid =
-    typeof spotifyClient?.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null;
-  if (!uid) return false;
-  return String(ownerId) !== String(uid);
+  return selectedEditPlaylist?.readOnlyVerified === true;
 }
 
 function renderEditPlaylistHeader() {
@@ -2847,11 +2845,9 @@ async function loadEditPlaylistTracks(opts = {}) {
         (typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null) ??
         '';
 
-      /* Post-check editerbarhet: editerbar = ägare ELLER collaborative. Om upfront-checken
-       * inte kunde avgöra (ownerId/collaborative saknades i selectedEditPlaylist eller uid var
-       * inte cachad) men meta avslöjar att vi varken äger listan eller är collaborator, växla
-       * till read-only här. Spara ownerId + collaborative i selectedEditPlaylist så nästa
-       * besök hoppar över nätverksanropen helt via isEditPlaylistReadOnlyUpfront(). */
+      /* Post-check editerbarhet från TILLFÖRLITLIG meta-data (getPlaylistMeta, inte list-
+       * endpoint). Editerbar = ägare ELLER collaborative. `readOnlyVerified` cachas så att
+       * nästa besök kan hoppa över API-anropen via isEditPlaylistReadOnlyUpfront. */
       const isOwner = Boolean(meta.ownerId) && Boolean(uid) && String(meta.ownerId) === String(uid);
       const isCollaborative = Boolean(meta.collaborative);
       if (meta.ownerId && uid && !isOwner && !isCollaborative) {
@@ -2863,6 +2859,7 @@ async function loadEditPlaylistTracks(opts = {}) {
             ownerName: meta.ownerName || selectedEditPlaylist.ownerName,
             imageUrl: meta.imageUrl ?? selectedEditPlaylist.imageUrl,
             collaborative: false,
+            readOnlyVerified: true,
           };
           writeStoredSelectedEditPlaylist(selectedEditPlaylist);
         }
@@ -2911,7 +2908,8 @@ async function loadEditPlaylistTracks(opts = {}) {
         });
       }
       /* Håll selectedEditPlaylist uppdaterad med senaste imageUrl/ownerName/collaborative
-       * från meta så upfront-checken vid nästa besök blir korrekt. */
+       * från meta. Sätt readOnlyVerified:false eftersom vi nu vet att listan ÄR editerbar —
+       * annars skulle gamla (felaktiga) readOnlyVerified-värden kunna ligga kvar. */
       if (selectedEditPlaylist && selectedEditPlaylist.id === playlistId) {
         selectedEditPlaylist = {
           id: playlistId,
@@ -2920,6 +2918,7 @@ async function loadEditPlaylistTracks(opts = {}) {
           ownerName: meta.ownerName || selectedEditPlaylist.ownerName,
           imageUrl: meta.imageUrl ?? selectedEditPlaylist.imageUrl,
           collaborative: Boolean(meta.collaborative),
+          readOnlyVerified: false,
         };
         writeStoredSelectedEditPlaylist(selectedEditPlaylist);
       }
@@ -2941,6 +2940,15 @@ async function loadEditPlaylistTracks(opts = {}) {
       const msg = String(e?.message ?? e);
       const isForbidden = /\b403\b/.test(msg) || /Forbidden/i.test(msg);
       if (isForbidden) {
+        /* Cacha att listan är verifierat icke-editerbar så kommande besök hoppar
+         * över API-anropen helt (går raka vägen in i read-only + banner). */
+        if (selectedEditPlaylist && selectedEditPlaylist.id === playlistId) {
+          selectedEditPlaylist = {
+            ...selectedEditPlaylist,
+            readOnlyVerified: true,
+          };
+          writeStoredSelectedEditPlaylist(selectedEditPlaylist);
+        }
         setEditPlaylistReadOnly(true);
         setEditPlaylistBlocked(true);
         return;
