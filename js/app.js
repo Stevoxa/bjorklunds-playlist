@@ -4072,6 +4072,8 @@ function updateStep1StickyNav() {
   const hint = document.getElementById('flow-step-1-sticky-hint');
   if (!btn || !hint) return;
 
+  const busy = searchInProgress;
+  const pendingSearch = resultRows.some((r) => r.tracks === null);
   const ready = isStep1NextEnabled();
 
   btn.disabled = !ready;
