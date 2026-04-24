@@ -739,6 +739,21 @@ body[data-flow-step='settings'] .flow-toolbar__settings-icon--return {
   display: none;
 }
 
+/* Spellistans beskrivning (från getPlaylistMeta.description). Visas mellan headern och
+ * action-raden. Vid tom/saknad beskrivning hålls elementet [hidden]. */
+.edit-playlist-description {
+  margin: 0 0 var(--space-sm);
+  font-size: 0.95rem;
+  color: var(--text);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.edit-playlist-description[hidden] {
+  display: none;
+}
+
 /* Action-rad under headern: Ta bort spellistan + Hämta listan, båda till vänster.
  * Desktop: auto-width-knappar sida vid sida, vänsterställda.
  * Mobil: knapparna flex-grow:ar så de tillsammans spänner hela radens bredd (50/50). */

@@ -2384,6 +2384,21 @@ function renderEditPlaylistHeader() {
       totalEl.textContent = meta?.total != null ? String(meta.total) : '–';
     }
   }
+  const descEl = document.getElementById('edit-playlist-description');
+  if (descEl) {
+    /* Description hämtas via getPlaylistMeta — när vi renderar från cachad track-data
+     * (editPlaylistState.meta.description = '') visas ingen text förrän meta-anropet
+     * är klart. Tomma/null-beskrivningar döljs helt så action-raden ligger kvar intill
+     * headern. HTML-entiteter decodas automatiskt av textContent. */
+    const desc = typeof meta?.description === 'string' ? meta.description.trim() : '';
+    if (desc) {
+      descEl.textContent = desc;
+      descEl.hidden = false;
+    } else {
+      descEl.textContent = '';
+      descEl.hidden = true;
+    }
+  }
   const img = /** @type {HTMLImageElement | null} */ (document.getElementById('edit-playlist-art'));
   const fallback = document.getElementById('edit-playlist-art-fallback');
   const imageUrl = meta?.imageUrl ?? selectedEditPlaylist?.imageUrl ?? null;
