@@ -1008,7 +1008,12 @@
                   </div>
                 </div>
                 <p class="help" id="redirect-uri-help">
-                  Under <strong>Redirect URIs</strong> i er Spotify-app — en rad identisk med URI:n nedan.
+                  Öppna
+                  <a href="https://developer.spotify.com/dashboard" rel="noopener noreferrer" target="_blank">Spotify Developer Dashboard</a>,
+                  skapa/öppna appen och lägg till URI:n nedan under <strong>Redirect URIs</strong> (måste matcha exakt).
+                  Kopiera sedan <strong>Client ID</strong>, gå till
+                  <button type="button" class="inline-flow-link" data-flow-step="0" aria-controls="flow-step-0">login-sidan</button>
+                  och logga in med Spotify.
                 </p>
                 <div class="redirect-uri-row">
                   <code id="redirect-uri-display" class="code-block" aria-describedby="redirect-uri-help"></code>
@@ -1018,6 +1023,41 @@
                     </span>
                     <span>Kopiera URI</span>
                   </button>
+                </div>
+              </div>
+
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-gear" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="heading-prefs">Appinställningar</h2>
+                    <p class="flow-card__subtitle">Generella app inställningar</p>
+                  </div>
+                </div>
+                <label for="pref-theme" class="label">Tema</label>
+                <select id="pref-theme" class="select">
+                  <option value="system">Valt av din enhet</option>
+                  <option value="light">Ljust</option>
+                  <option value="dark">Mörkt</option>
+                </select>
+              </div>
+
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-tag" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="heading-playlist-prefix">Prefix för spellistor</h2>
+                    <p class="flow-card__subtitle" id="playlist-prefix-help">Prefix används när du skapar nya spellistor och som filter för när du hämtar dina spellistor från Spotify.</p>
+                  </div>
+                </div>
+                <label for="playlist-prefix" class="label">Prefix</label>
+                <input type="text" id="playlist-prefix" class="input" autocomplete="off" spellcheck="false" value="Björklunds playlist - " />
+                <div class="row row--wrap">
+                  <button type="button" class="btn" id="btn-reset-playlist-prefix">Återställ standardprefix</button>
                 </div>
               </div>
 
@@ -1046,35 +1086,18 @@
                     <svg><use href="#sym-refresh" /></svg>
                   </div>
                   <div class="flow-card__titles">
-                    <h2 class="flow-card__title" id="heading-data-reset">Datahantering</h2>
+                    <h2 class="flow-card__title" id="heading-playlist-cache">Spellistcache</h2>
                     <p class="flow-card__subtitle">
-                      Extra rensning för felsökning när listor eller session känns fast.
+                      Cachade spellistlistor och tracklistor för Skapa/Redigera-flödet.
                     </p>
                   </div>
                 </div>
-                <p class="help settings-stats" id="settings-data-reset-help">
-                  Välj nivå: bara playlist-cache, sessiondata, eller full fabriksåterställning av appens lokala data.
-                </p>
-                <div class="row row--wrap">
-                  <button type="button" class="btn btn--with-icon" id="btn-clear-playlist-caches">
-                    <span class="btn__icon-wrap" aria-hidden="true">
-                      <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
-                    </span>
-                    <span>Rensa playlist-cache</span>
-                  </button>
-                  <button type="button" class="btn btn--with-icon" id="btn-clear-session-data">
-                    <span class="btn__icon-wrap" aria-hidden="true">
-                      <svg class="btn__icon" width="18" height="18"><use href="#sym-recycle" /></svg>
-                    </span>
-                    <span>Rensa sessionsdata</span>
-                  </button>
-                  <button type="button" class="btn btn--danger btn--with-icon" id="btn-factory-reset-app-data">
-                    <span class="btn__icon-wrap" aria-hidden="true">
-                      <svg class="btn__icon" width="18" height="18"><use href="#sym-trash" /></svg>
-                    </span>
-                    <span>Fabriksåterställ appdata</span>
-                  </button>
-                </div>
+                <button type="button" class="btn btn--with-icon" id="btn-clear-playlist-caches">
+                  <span class="btn__icon-wrap" aria-hidden="true">
+                    <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
+                  </span>
+                  <span>Rensa playlist-cache</span>
+                </button>
               </div>
 
               <div class="flow-card">
@@ -1099,36 +1122,32 @@
               <div class="flow-card">
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
-                    <svg><use href="#sym-tag" /></svg>
+                    <svg><use href="#sym-refresh" /></svg>
                   </div>
                   <div class="flow-card__titles">
-                    <h2 class="flow-card__title" id="heading-playlist-prefix">Prefix för spellistor</h2>
-                    <p class="flow-card__subtitle" id="playlist-prefix-help">Prefix används när du skapar nya spellistor och som filter för när du hämtar dina spellistor från Spotify.</p>
+                    <h2 class="flow-card__title" id="heading-data-reset">Datahantering</h2>
+                    <p class="flow-card__subtitle">
+                      Extra rensning för felsökning när session eller appdata känns fast.
+                    </p>
                   </div>
                 </div>
-                <label for="playlist-prefix" class="label">Prefix</label>
-                <input type="text" id="playlist-prefix" class="input" autocomplete="off" spellcheck="false" value="Björklunds playlist - " />
+                <p class="help settings-stats" id="settings-data-reset-help">
+                  Välj nivå: rensa sessionsdata eller kör full fabriksåterställning av appens lokala data.
+                </p>
                 <div class="row row--wrap">
-                  <button type="button" class="btn" id="btn-reset-playlist-prefix">Återställ standardprefix</button>
+                  <button type="button" class="btn btn--with-icon" id="btn-clear-session-data">
+                    <span class="btn__icon-wrap" aria-hidden="true">
+                      <svg class="btn__icon" width="18" height="18"><use href="#sym-recycle" /></svg>
+                    </span>
+                    <span>Rensa sessionsdata</span>
+                  </button>
+                  <button type="button" class="btn btn--danger btn--with-icon" id="btn-factory-reset-app-data">
+                    <span class="btn__icon-wrap" aria-hidden="true">
+                      <svg class="btn__icon" width="18" height="18"><use href="#sym-trash" /></svg>
+                    </span>
+                    <span>Fabriksåterställ appdata</span>
+                  </button>
                 </div>
-              </div>
-
-              <div class="flow-card">
-                <div class="flow-card__head">
-                  <div class="flow-card__icon-ring" aria-hidden="true">
-                    <svg><use href="#sym-gear" /></svg>
-                  </div>
-                  <div class="flow-card__titles">
-                    <h2 class="flow-card__title" id="heading-prefs">Appinställningar</h2>
-                    <p class="flow-card__subtitle">Tema och prefix sparas automatiskt lokalt i din webbläsare.</p>
-                  </div>
-                </div>
-                <label for="pref-theme" class="label">Tema</label>
-                <select id="pref-theme" class="select">
-                  <option value="system">Valt av din enhet</option>
-                  <option value="light">Ljust</option>
-                  <option value="dark">Mörkt</option>
-                </select>
               </div>
 
               <div class="flow-card">
