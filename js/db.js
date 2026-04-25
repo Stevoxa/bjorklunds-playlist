@@ -68,3 +68,40 @@ export async function idbDelete(id) {
     };
   });
 }
+
+/**
+ * Tar bort alla poster vars `id` börjar med något av prefixen.
+ * Används av Inställningar -> cache-rensning utan att behöva känna till exakta nycklar.
+ *
+ * @param {string[]} prefixes
+ * @returns {Promise<number>} antal rader som togs bort
+ */
+export async function idbDeleteByIdPrefix(prefixes) {
+  const normalized = Array.isArray(prefixes)
+    ? prefixes.filter((p) => typeof p === 'string' && p.length > 0)
+    : [];
+  if (normalized.length === 0) return 0;
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_VAULT, 'readwrite');
+    const store = tx.objectStore(STORE_VAULT);
+    let deleted = 0;
+    const req = store.openCursor();
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const cursor = req.result;
+      if (!cursor) return;
+      const key = typeof cursor.key === 'string' ? cursor.key : String(cursor.key ?? '');
+      if (normalized.some((prefix) => key.startsWith(prefix))) {
+        cursor.delete();
+        deleted += 1;
+      }
+      cursor.continue();
+    };
+    tx.onerror = () => reject(tx.error);
+    tx.oncomplete = () => {
+      db.close();
+      resolve(deleted);
+    };
+  });
+}

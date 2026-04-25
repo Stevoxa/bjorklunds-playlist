@@ -1043,6 +1043,43 @@
               <div class="flow-card">
                 <div class="flow-card__head">
                   <div class="flow-card__icon-ring" aria-hidden="true">
+                    <svg><use href="#sym-refresh" /></svg>
+                  </div>
+                  <div class="flow-card__titles">
+                    <h2 class="flow-card__title" id="heading-data-reset">Datahantering</h2>
+                    <p class="flow-card__subtitle">
+                      Extra rensning för felsökning när listor eller session känns fast.
+                    </p>
+                  </div>
+                </div>
+                <p class="help settings-stats" id="settings-data-reset-help">
+                  Välj nivå: bara playlist-cache, sessiondata, eller full fabriksåterställning av appens lokala data.
+                </p>
+                <div class="row row--wrap">
+                  <button type="button" class="btn btn--with-icon" id="btn-clear-playlist-caches">
+                    <span class="btn__icon-wrap" aria-hidden="true">
+                      <svg class="btn__icon" width="18" height="18"><use href="#sym-refresh" /></svg>
+                    </span>
+                    <span>Rensa playlist-cache</span>
+                  </button>
+                  <button type="button" class="btn btn--with-icon" id="btn-clear-session-data">
+                    <span class="btn__icon-wrap" aria-hidden="true">
+                      <svg class="btn__icon" width="18" height="18"><use href="#sym-recycle" /></svg>
+                    </span>
+                    <span>Rensa sessionsdata</span>
+                  </button>
+                  <button type="button" class="btn btn--danger btn--with-icon" id="btn-factory-reset-app-data">
+                    <span class="btn__icon-wrap" aria-hidden="true">
+                      <svg class="btn__icon" width="18" height="18"><use href="#sym-trash" /></svg>
+                    </span>
+                    <span>Fabriksåterställ appdata</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="flow-card">
+                <div class="flow-card__head">
+                  <div class="flow-card__icon-ring" aria-hidden="true">
                     <svg><use href="#sym-mag-refresh" /></svg>
                   </div>
                   <div class="flow-card__titles">

@@ -1,4 +1,5 @@
 import {
+  APP_STORAGE_ID,
   DEFAULT_PLAYLIST_DESCRIPTION,
   DEFAULT_PLAYLIST_NAME_PREFIX,
   FEATURE_ROW_FULL_PLAYBACK,
@@ -13,8 +14,8 @@ import {
   EDIT_COMMIT_HEAVY_WARN_THRESHOLD,
 } from './config.js';
 import { getRedirectUri, beginLogin, consumeOAuthCallback } from './auth.js';
-import { readLocalSettings, writeLocalSettings } from './local-settings.js';
-import { idbGet } from './db.js';
+import { readLocalSettings, writeLocalSettings, clearLocalSettings } from './local-settings.js';
+import { idbGet, idbDeleteByIdPrefix } from './db.js';
 import { parseTrackList } from './parser.js';
 import { createSpotifyClient, parsePlaylistIdFromInput } from './spotify-api.js';
 import { subscribeSpotifyLog, clearSpotifyLog, logSpotify } from './spotify-log.js';
@@ -480,6 +481,57 @@ async function refreshSettingsStats() {
   } catch {
     bankEl.textContent = 'Kunde inte läsa artist-banken.';
   }
+}
+
+/** Rensa IDB-cachar för playlist-listor + playlist-tracks för alla konton i denna app. */
+async function clearPlaylistCachesAllUsers() {
+  const deleted = await idbDeleteByIdPrefix([
+    `${APP_STORAGE_ID}-plcache-`,
+    `${APP_STORAGE_ID}-pltracks-`,
+  ]);
+  existingPlaylistListCache = null;
+  selectPlaylistListCache = null;
+  editPlaylistState = null;
+  destroyEditPlaylistSortable();
+  updatePlaylistListUpdatedAt(null, false);
+  updatePlaylistListTruncatedWarning(false);
+  updateSelectPlaylistUpdatedAt(null, false);
+  updateSelectPlaylistTruncatedWarning(false);
+  return deleted;
+}
+
+/** Rensar sessiondata men lämnar lokala inställningar kvar. */
+function clearSessionDataOnly() {
+  clearSearchCache();
+  clearSpotifySession();
+  setFlowMode(null);
+  selectedEditPlaylist = null;
+  writeStoredSelectedEditPlaylist(null);
+  editPlaylistState = null;
+  destroyEditPlaylistSortable();
+  resultRows = [];
+  searchInProgress = false;
+  searchAbortController = null;
+  setSearchProgress(false);
+  renderResults();
+  refreshSummary();
+}
+
+/** Full reset av appdata: session + local settings + IDB-cachar + logg i minnet. */
+async function factoryResetAppData() {
+  clearSessionDataOnly();
+  clearSpotifyLog();
+  clearLocalSettings();
+  await idbDeleteByIdPrefix([
+    `${APP_STORAGE_ID}-plcache-`,
+    `${APP_STORAGE_ID}-pltracks-`,
+    `${APP_STORAGE_ID}-artistbank-`,
+  ]);
+  existingPlaylistListCache = null;
+  selectPlaylistListCache = null;
+  invalidateExistingPlaylistListCache({ persistent: false });
+  invalidateSelectPlaylistCache({ persistent: false });
+  applyTheme('system');
 }
 
 function initSpotifyClient() {
@@ -4527,6 +4579,42 @@ async function boot() {
       reason: 'manual-clear',
     });
     void refreshSettingsStats();
+  });
+
+  $('btn-clear-playlist-caches').addEventListener('click', async () => {
+    const deleted = await clearPlaylistCachesAllUsers();
+    showToast(
+      deleted > 0
+        ? `Playlist-cachar rensade (${deleted} poster).`
+        : 'Playlist-cachar var redan tomma.',
+    );
+    void refreshSettingsStats();
+  });
+
+  $('btn-clear-session-data').addEventListener('click', () => {
+    const ok = window.confirm(
+      'Rensa sessionsdata nu? Detta loggar ut Spotify-sessionen i denna flik och återställer till Start, men behåller lokala inställningar.',
+    );
+    if (!ok) return;
+    clearSessionDataOnly();
+    setAuthStatus();
+    touchPlaylistApplyPostSuccessDirty();
+    setFlowStep('landing', { focusPanel: true, historyMode: 'replace', skipSpotifyWarmup: true });
+    showToast('Sessionsdata rensad.');
+  });
+
+  $('btn-factory-reset-app-data').addEventListener('click', async () => {
+    const ok = window.confirm(
+      'Fabriksåterställ appdata? Detta rensar session, lokala inställningar, playlist-cache och artist-bank för appen på denna enhet.',
+    );
+    if (!ok) return;
+    await factoryResetAppData();
+    hydrateLocalSettingsIntoUI();
+    setAuthStatus();
+    touchPlaylistApplyPostSuccessDirty();
+    void refreshSettingsStats();
+    setFlowStep('landing', { focusPanel: true, historyMode: 'replace', skipSpotifyWarmup: true });
+    showToast('Appdata fabriksåterställd.');
   });
 
   $('btn-abort-search').addEventListener('click', () => {
