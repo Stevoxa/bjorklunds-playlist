@@ -3154,40 +3154,9 @@ async function loadEditPlaylistTracks(opts = {}) {
         (typeof spotifyClient.getCachedUserId === 'function' ? spotifyClient.getCachedUserId() : null) ??
         '';
 
-      /* Post-check editerbarhet från TILLFÖRLITLIG meta-data (getPlaylistMeta, inte list-
-       * endpoint). Editerbar = ägare ELLER collaborative. `readOnlyVerified` cachas så att
-       * nästa besök kan hoppa över API-anropen via isEditPlaylistReadOnlyUpfront. */
-      const isOwner = Boolean(meta.ownerId) && Boolean(uid) && String(meta.ownerId) === String(uid);
-      const isCollaborative = Boolean(meta.collaborative);
-      if (meta.ownerId && uid && !isOwner && !isCollaborative) {
-        if (selectedEditPlaylist && selectedEditPlaylist.id === playlistId) {
-          selectedEditPlaylist = {
-            id: playlistId,
-            name: meta.name || selectedEditPlaylist.name,
-            ownerId: meta.ownerId,
-            ownerName: meta.ownerName || selectedEditPlaylist.ownerName,
-            imageUrl: meta.imageUrl ?? selectedEditPlaylist.imageUrl,
-            collaborative: false,
-            readOnlyVerified: true,
-          };
-          writeStoredSelectedEditPlaylist(selectedEditPlaylist);
-        }
-        setEditPlaylistReadOnly(true);
-        setEditPlaylistBlocked(true);
-        renderEditPlaylistHeader();
-        logSpotify({
-          t: new Date().toISOString(),
-          kind: 'ui',
-          phase: 'refreshEditPlaylist',
-          reason: `edit-playlist/${reason}`,
-          playlistId,
-          readOnly: true,
-          detectedVia: 'post-meta',
-          manual,
-          force,
-        });
-        return;
-      }
+      /* Viktigt: `collaborative`-flaggan är inte tillräckligt pålitlig för att ensam
+       * avgöra read-only. Om vi redan lyckats läsa /items här betraktar vi listan som
+       * redigerbar i UI:t och låter verkliga API-fel (främst 403) verifiera read-only. */
 
       const nowAt = Date.now();
       /* Om användaren hunnit ändra lokalt (dirty) sparar vi workingOrder/pendingRemovals.
