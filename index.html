@@ -1007,14 +1007,41 @@
                     <p class="flow-card__subtitle">Måste matcha exakt i Spotify Dashboard.</p>
                   </div>
                 </div>
-                <p class="help" id="redirect-uri-help">
-                  Öppna
-                  <a href="https://developer.spotify.com/dashboard" rel="noopener noreferrer" target="_blank">Spotify Developer Dashboard</a>,
-                  skapa/öppna appen och lägg till URI:n nedan under <strong>Redirect URIs</strong> (måste matcha exakt).
-                  Kopiera sedan <strong>Client ID</strong>, gå till
-                  <button type="button" class="inline-flow-link" data-flow-step="0" aria-controls="flow-step-0">login-sidan</button>
-                  och logga in med Spotify.
-                </p>
+                <ol class="help" id="redirect-uri-help">
+                  <li>
+                    Gå till
+                    <a href="https://developer.spotify.com/dashboard" rel="noopener noreferrer" target="_blank">Spotify Developer Dashboard</a>
+                    och logga in.
+                  </li>
+                  <li>Klicka på <strong>Create app</strong>.</li>
+                  <li>
+                    Ange <strong>App name</strong>:
+                    <code>Björklunds Playlist</code>
+                  </li>
+                  <li>
+                    Ange <strong>App description</strong>:
+                    <code>Björklunds playlist builder</code>
+                  </li>
+                  <li>
+                    Ange <strong>Redirect URI</strong>:
+                    <code>https://stevoxa.github.io/bjorklunds-playlist/</code>
+                  </li>
+                  <li>
+                    Under <strong>Which API/SDKs are you planning to use?</strong>, välj:
+                    <strong>Web API</strong>.
+                  </li>
+                  <li>Kryssa i att du godkänner <strong>Spotify's Developer Terms of Service and Design Guidelines</strong>.</li>
+                  <li>Klicka på <strong>Save</strong>.</li>
+                  <li>Kopiera värdet under <strong>Client ID</strong>.</li>
+                  <li>
+                    Gå till
+                    <button type="button" class="inline-flow-link" data-flow-step="0" aria-controls="flow-step-0">login-sidan</button>
+                    i appen.
+                  </li>
+                  <li>Klistra in ditt <strong>Client ID</strong>.</li>
+                  <li>Klicka på <strong>Logga in med Spotify</strong> och godkänn åtkomst.</li>
+                </ol>
+                <p class="help"><strong>Klart! Appen är nu ansluten till Spotify.</strong></p>
                 <div class="redirect-uri-row">
                   <code id="redirect-uri-display" class="code-block" aria-describedby="redirect-uri-help"></code>
                   <button type="button" class="btn btn--with-icon" id="btn-copy-redirect">
