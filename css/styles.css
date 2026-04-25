@@ -592,6 +592,21 @@ a:focus-visible {
   align-self: stretch;
 }
 
+.settings-card-divider {
+  margin: var(--space-md) 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.flow-card__title--subsection {
+  font-size: 1.1rem;
+  margin-top: 0;
+}
+
+.flow-card__subtitle--subsection {
+  margin-bottom: var(--space-sm);
+}
+
 /* Kompakt, subtil statistikrad ovanför "Rensa"-knapparna i Inställningar. */
 .settings-stats {
   margin: 0 0 0.6rem;

@@ -1003,8 +1003,10 @@
                     <svg><use href="#sym-link" /></svg>
                   </div>
                   <div class="flow-card__titles">
-                    <h2 class="flow-card__title" id="flow-step-settings-title">Omdirigerings-URI</h2>
-                    <p class="flow-card__subtitle">Måste matcha exakt i Spotify Dashboard.</p>
+                    <h2 class="flow-card__title" id="flow-step-settings-title">Anslut via Spotify Developer Dashboard</h2>
+                    <p class="flow-card__subtitle">
+                      Appen behöver ett Client ID för att starta Spotify-inloggningen. Client ID används bara för att identifiera appen och inloggningen skyddas med PKCE med tidsbegränsad åtkomst.
+                    </p>
                   </div>
                 </div>
                 <ol class="help" id="redirect-uri-help">
@@ -1042,6 +1044,9 @@
                   <li>Klicka på <strong>Logga in med Spotify</strong> och godkänn åtkomst.</li>
                 </ol>
                 <p class="help"><strong>Klart! Appen är nu ansluten till Spotify.</strong></p>
+                <hr class="settings-card-divider" aria-hidden="true" />
+                <h3 class="flow-card__title flow-card__title--subsection">Omdirigerings-URI</h3>
+                <p class="flow-card__subtitle flow-card__subtitle--subsection">Måste matcha exakt i Spotify Dashboard.</p>
                 <div class="redirect-uri-row">
                   <code id="redirect-uri-display" class="code-block" aria-describedby="redirect-uri-help"></code>
                   <button type="button" class="btn btn--with-icon" id="btn-copy-redirect">
