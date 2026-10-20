@@ -161,6 +161,8 @@ async function mockSpotify(page) {
 async function gotoApp(page) {
   await page.goto('/');
   await page.locator('#app-splash').waitFor({ state: 'detached' });
+  // Typsnitt som laddas sent ger annars enstaka pixelskillnader mellan körningar.
+  await page.evaluate(() => document.fonts.ready);
 }
 
 async function seedLogin(page) {
@@ -184,12 +186,23 @@ async function seedLogin(page) {
   );
 }
 
+/** Fast tidpunkt så att "Spotify-token giltig till …" blir samma i varje körning. */
+const FIXED_NOW = new Date('2026-06-20T10:00:00+02:00');
+
 // Fast höjd i stället för fullPage: stegens klistrade knappfält hamnar annars mitt i bilden.
-test.use({ serviceWorkers: 'block', viewport: { width: 1280, height: 1000 } });
+// Tidszon och språk låses så att klockslaget formateras likadant lokalt och i CI.
+test.use({
+  serviceWorkers: 'block',
+  viewport: { width: 1280, height: 1000 },
+  timezoneId: 'Europe/Stockholm',
+  locale: 'sv-SE',
+});
 
 test.describe('README-skärmbilder (mockat Spotify)', () => {
   test.beforeEach(async ({ page }) => {
     mkdirSync(outDir, { recursive: true });
+    // Före seedLogin så att tokenens expiresAt också räknas från den fasta tiden.
+    await page.clock.setFixedTime(FIXED_NOW);
     await mockSpotify(page);
     await seedLogin(page);
   });
