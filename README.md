@@ -123,8 +123,7 @@ npx serve . --listen 4173
 | `npm run test:e2e` | Alla Playwright-specar, inklusive det mockade Spotify-flödet |
 | `npm run verify` | Allt ovan i följd |
 | `npm run screenshots:readme` | Tar om skärmbilderna i `docs/screenshots/` |
-| `npm run icons` | Genererar app- och favicon-ikoner från `media/bjorklunds_playlist_logo_source.png` |
-| `npm run icons:maskable` | Genererar maskable- och Apple touch-ikoner med rätt säkerhetsmarginal |
+| `npm run icons:maskable` | Genererar maskable- och Apple touch-ikoner från `icons/icon-674.png` med rätt säkerhetsmarginal |
 
 CI kör röktestet, UI-testet och Playwright-sviten på varje push och pull request, och laddar upp skärmbilderna som artefakt.
 
