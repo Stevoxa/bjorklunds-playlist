@@ -37,6 +37,8 @@ async function main() {
     cwd: root,
     shell: true,
     stdio: ['ignore', 'pipe', 'pipe'],
+    /** Egen processgrupp på Linux/macOS så att hela kedjan sh → npx → serve kan stoppas. */
+    detached: process.platform !== 'win32',
   });
   let serveErr = '';
   serve.stderr.on('data', (d) => {
@@ -49,7 +51,8 @@ async function main() {
   try {
     await waitForHttp(`${base}/`);
   } catch (e) {
-    serve.kill('SIGTERM');
+    if (process.platform === 'win32') serve.kill('SIGTERM');
+    else process.kill(-serve.pid, 'SIGTERM');
     throw new Error(`${e.message}\nserve stderr: ${serveErr.slice(-2000)}`);
   }
 
@@ -154,7 +157,8 @@ async function main() {
       if (process.platform === 'win32' && serve.pid) {
         spawn('taskkill', ['/PID', String(serve.pid), '/T', '/F'], { shell: true, stdio: 'ignore' });
       } else {
-        serve.kill('SIGTERM');
+        /** serve.kill() träffar bara skalet; serve lever annars kvar och håller processen vid liv. */
+        process.kill(-serve.pid, 'SIGTERM');
       }
     } catch {
       /* */
