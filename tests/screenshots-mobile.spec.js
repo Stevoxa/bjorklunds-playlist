@@ -6,6 +6,14 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = join(root, 'artifacts', 'screenshots-mobile');
 
+/** Appen öppnar på startsidan ("Vad vill du göra?") bakom en splash i ~1,5 s. */
+async function openCreateFlow(page) {
+  await page.goto('/');
+  await page.locator('#app-splash').waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Skapa en ny spellista på Spotify' }).click();
+  await page.locator('#flow-step-0').waitFor({ state: 'visible' });
+}
+
 function ensureOut() {
   mkdirSync(outDir, { recursive: true });
 }
@@ -19,7 +27,7 @@ test.use({
 test.describe('Mobile screenshots (<=720px breakpoint)', () => {
   test('steg 0 — startsida', async ({ page }) => {
     ensureOut();
-    await page.goto('/');
+    await openCreateFlow(page);
     await page.locator('#flow-step-0').waitFor({ state: 'visible' });
     await page.waitForTimeout(400);
     await page.screenshot({ path: join(outDir, '01-step-0.png'), fullPage: false });

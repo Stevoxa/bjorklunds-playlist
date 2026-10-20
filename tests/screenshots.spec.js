@@ -6,6 +6,14 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = join(root, 'artifacts', 'screenshots');
 
+/** Appen öppnar på startsidan ("Vad vill du göra?") bakom en splash i ~1,5 s. */
+async function openCreateFlow(page) {
+  await page.goto('/');
+  await page.locator('#app-splash').waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Skapa en ny spellista på Spotify' }).click();
+  await page.locator('#flow-step-0').waitFor({ state: 'visible' });
+}
+
 function ensureOut() {
   mkdirSync(outDir, { recursive: true });
 }
@@ -13,7 +21,7 @@ function ensureOut() {
 test.describe('UI screenshots (headless)', () => {
   test('steg 0 — startsida', async ({ page }) => {
     ensureOut();
-    await page.goto('/');
+    await openCreateFlow(page);
     await page.locator('#flow-step-0').waitFor({ state: 'visible' });
     await page.waitForTimeout(400);
     await page.screenshot({ path: join(outDir, '01-step-0.png'), fullPage: true });
@@ -21,7 +29,7 @@ test.describe('UI screenshots (headless)', () => {
 
   test('steg 1 — låtar', async ({ page }) => {
     ensureOut();
-    await page.goto('/');
+    await openCreateFlow(page);
     await page.getByRole('button', { name: 'Välj musik' }).click();
     await page.locator('#flow-step-1').waitFor({ state: 'visible' });
     await page.waitForTimeout(300);
@@ -30,7 +38,7 @@ test.describe('UI screenshots (headless)', () => {
 
   test('steg 2 — spellista', async ({ page }) => {
     ensureOut();
-    await page.goto('/');
+    await openCreateFlow(page);
     await page.getByRole('button', { name: 'Välj spellista' }).click();
     await page.locator('#flow-step-2').waitFor({ state: 'visible' });
     await page.waitForTimeout(300);
@@ -39,7 +47,7 @@ test.describe('UI screenshots (headless)', () => {
 
   test('steg 3 — åtgärd', async ({ page }) => {
     ensureOut();
-    await page.goto('/');
+    await openCreateFlow(page);
     await page.getByRole('button', { name: 'Genomför' }).click();
     await page.locator('#flow-step-3').waitFor({ state: 'visible' });
     await page.waitForTimeout(300);

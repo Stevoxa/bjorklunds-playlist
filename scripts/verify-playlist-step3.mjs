@@ -2,13 +2,13 @@
  * Verifierar att steg 2 visar rätt block för ny vs befintlig spellista
  * och att steg 3 speglar sammanfattningen (data-playlist-mode, sammanfattningsvärden).
  * Kör: node scripts/verify-playlist-step3.mjs
- * Kräver: npm-paketet playwright (npx playwright install chromium)
+ * Kräver: @playwright/test (npx playwright install chromium)
  */
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium } from '@playwright/test';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -61,6 +61,8 @@ async function main() {
 
   try {
     await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
+    await page.locator('#app-splash').waitFor({ state: 'detached', timeout: 15000 });
+    await page.getByRole('button', { name: 'Skapa en ny spellista på Spotify' }).click();
     await page.waitForSelector('#flow-step-0.is-active', { timeout: 15000 });
 
     await page.locator('.flow-breadcrumbs__crumb[data-flow-step="1"]').click();
@@ -87,10 +89,10 @@ async function main() {
     const newVisibleNew = await page.locator('#block-new-playlist').isVisible();
     if (!newVisibleNew) throw new Error('#block-new-playlist ska synas i läget ny spellista');
 
-    const updateLabel = page.getByText('Uppdatering', { exact: true });
+    const updateLabel = page.locator('#sum-row-update-method');
     if (await updateLabel.isVisible()) {
       await page.screenshot({ path: path.join(root, 'test-results', 'fail-update-visible.png'), fullPage: true });
-      throw new Error('"Uppdatering" ska inte synas i läget ny spellista');
+      throw new Error('"Hur sker uppdatering" ska inte synas i läget ny spellista');
     }
 
     const title = await page.locator('#heading-playlist').textContent();
@@ -118,7 +120,7 @@ async function main() {
     if (!newHiddenEx) throw new Error('#block-new-playlist ska döljas i läget befintlig spellista');
 
     if (!(await updateLabel.isVisible())) {
-      throw new Error('"Uppdatering" ska synas i läget befintlig spellista');
+      throw new Error('"Hur sker uppdatering" ska synas i läget befintlig spellista');
     }
 
     const outDir = path.join(root, 'test-results');
