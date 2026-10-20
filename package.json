@@ -6,8 +6,11 @@
     "postinstall": "playwright install chromium",
     "test": "node tests/smoke-html.mjs",
     "test:e2e": "playwright test",
-    "verify": "node tests/smoke-html.mjs && playwright test",
+    "test:flow": "node scripts/verify-playlist-step3.mjs",
+    "verify": "node tests/smoke-html.mjs && node scripts/verify-playlist-step3.mjs && playwright test",
     "screenshots": "playwright test tests/screenshots.spec.js",
+    "screenshots:readme": "playwright test tests/screenshots-flow.spec.js",
+    "icons": "node scripts/regen-icons.mjs",
     "icons:maskable": "node scripts/regen-maskable-apple.mjs"
   },
   "devDependencies": {
